@@ -3,7 +3,7 @@ import 'package:timezone/timezone.dart' as tz;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter/material.dart';
 import '../models/price_data.dart';
-import 'awattar_service.dart';
+import 'price_cache_service.dart';
 
 class NotificationService {
   static final NotificationService _instance = NotificationService._internal();
@@ -48,8 +48,8 @@ class NotificationService {
     
     if (!notificationsEnabled) return;
     
-    final awattarService = AwattarService();
-    final prices = await awattarService.fetchPrices();
+    final priceCacheService = PriceCacheService();
+    final prices = await priceCacheService.getPrices();
     
     if (prices.isEmpty) return;
     
@@ -184,5 +184,12 @@ class NotificationService {
 
   Future<void> cancelAllNotifications() async {
     await notifications.cancelAll();
+  }
+  
+  /// Aktualisiert die Preise und plant Notifications neu
+  Future<void> refreshPricesAndSchedule() async {
+    final priceCacheService = PriceCacheService();
+    await priceCacheService.getPrices(forceRefresh: true);
+    await scheduleNotifications();
   }
 }

@@ -19,7 +19,7 @@ class _SettingsPageState extends State<SettingsPage> {
   bool notificationsEnabled = true;
   bool priceThresholdEnabled = true;
   bool cheapestTimeEnabled = true;
-  double notificationThreshold = 10.0;
+  double notificationThreshold = 5.0;
   int notificationMinutesBefore = 15;
   TimeOfDay quietTimeStart = const TimeOfDay(hour: 22, minute: 0);
   TimeOfDay quietTimeEnd = const TimeOfDay(hour: 7, minute: 0);
@@ -36,8 +36,16 @@ class _SettingsPageState extends State<SettingsPage> {
       notificationsEnabled = prefs.getBool('notifications_enabled') ?? true;
       priceThresholdEnabled = prefs.getBool('price_threshold_enabled') ?? true;
       cheapestTimeEnabled = prefs.getBool('cheapest_time_enabled') ?? true;
-      notificationThreshold = prefs.getDouble('notification_threshold') ?? 10.0;
+      notificationThreshold = prefs.getDouble('notification_threshold') ?? 5.0;
       notificationMinutesBefore = prefs.getInt('notification_minutes_before') ?? 15;
+      
+      final startHour = prefs.getInt('quiet_time_start_hour') ?? 22;
+      final startMinute = prefs.getInt('quiet_time_start_minute') ?? 0;
+      final endHour = prefs.getInt('quiet_time_end_hour') ?? 7;
+      final endMinute = prefs.getInt('quiet_time_end_minute') ?? 0;
+      
+      quietTimeStart = TimeOfDay(hour: startHour, minute: startMinute);
+      quietTimeEnd = TimeOfDay(hour: endHour, minute: endMinute);
     });
   }
 
@@ -48,6 +56,10 @@ class _SettingsPageState extends State<SettingsPage> {
     await prefs.setBool('cheapest_time_enabled', cheapestTimeEnabled);
     await prefs.setDouble('notification_threshold', notificationThreshold);
     await prefs.setInt('notification_minutes_before', notificationMinutesBefore);
+    await prefs.setInt('quiet_time_start_hour', quietTimeStart.hour);
+    await prefs.setInt('quiet_time_start_minute', quietTimeStart.minute);
+    await prefs.setInt('quiet_time_end_hour', quietTimeEnd.hour);
+    await prefs.setInt('quiet_time_end_minute', quietTimeEnd.minute);
   }
 
   Future<bool> _checkShellyAuth() async {
@@ -87,42 +99,51 @@ class _SettingsPageState extends State<SettingsPage> {
             cheapestTimeEnabled: cheapestTimeEnabled,
             notificationThreshold: notificationThreshold,
             notificationMinutesBefore: notificationMinutesBefore,
-            onNotificationsEnabledChanged: (value) {
+            onNotificationsEnabledChanged: (value) async {
               setState(() {
                 notificationsEnabled = value;
-                if (value) {
-                  _notificationService.scheduleNotifications();
-                } else {
-                  _notificationService.cancelAllNotifications();
-                }
               });
-              _saveSettings();
+              await _saveSettings();
+              
+              if (value) {
+                await _notificationService.scheduleNotifications();
+                debugPrint('Notifications enabled and scheduled');
+              } else {
+                await _notificationService.cancelAllNotifications();
+                debugPrint('All notifications cancelled');
+              }
             },
-            onPriceThresholdEnabledChanged: (value) {
+            onPriceThresholdEnabledChanged: (value) async {
               setState(() {
                 priceThresholdEnabled = value;
-                _notificationService.scheduleNotifications();
               });
-              _saveSettings();
+              await _saveSettings();
+              await _notificationService.scheduleNotifications();
+              debugPrint('Price threshold changed to: $value');
             },
-            onCheapestTimeEnabledChanged: (value) {
+            onCheapestTimeEnabledChanged: (value) async {
               setState(() {
                 cheapestTimeEnabled = value;
-                _notificationService.scheduleNotifications();
               });
-              _saveSettings();
+              await _saveSettings();
+              await _notificationService.scheduleNotifications();
+              debugPrint('Cheapest time notifications changed to: $value');
             },
-            onNotificationThresholdChanged: (value) {
+            onNotificationThresholdChanged: (value) async {
               setState(() {
                 notificationThreshold = value;
               });
-              _saveSettings();
+              await _saveSettings();
+              await _notificationService.scheduleNotifications();
+              debugPrint('Notification threshold changed to: ${value.toStringAsFixed(2)} ct/kWh');
             },
-            onNotificationMinutesBeforeChanged: (value) {
+            onNotificationMinutesBeforeChanged: (value) async {
               setState(() {
                 notificationMinutesBefore = value.toInt();
               });
-              _saveSettings();
+              await _saveSettings();
+              await _notificationService.scheduleNotifications();
+              debugPrint('Notification minutes before changed to: ${value.toInt()}');
             },
           ),
           
@@ -156,8 +177,10 @@ class _SettingsPageState extends State<SettingsPage> {
                       if (time != null) {
                         setState(() {
                           quietTimeStart = time;
-                          _notificationService.scheduleNotifications();
                         });
+                        await _saveSettings();
+                        await _notificationService.scheduleNotifications();
+                        debugPrint('Quiet time start changed to: ${time.format(context)}');
                       }
                     },
                   ),
@@ -173,8 +196,10 @@ class _SettingsPageState extends State<SettingsPage> {
                       if (time != null) {
                         setState(() {
                           quietTimeEnd = time;
-                          _notificationService.scheduleNotifications();
                         });
+                        await _saveSettings();
+                        await _notificationService.scheduleNotifications();
+                        debugPrint('Quiet time end changed to: ${time.format(context)}');
                       }
                     },
                   ),
@@ -227,12 +252,41 @@ class _SettingsPageState extends State<SettingsPage> {
           
           const SizedBox(height: 16),
           
-          ElevatedButton.icon(
-            onPressed: () => _notificationService.scheduleNotifications(),
-            icon: const Icon(Icons.refresh),
-            label: const Text('Benachrichtigungen aktualisieren'),
-            style: ElevatedButton.styleFrom(
+          Card(
+            child: Padding(
               padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Icon(Icons.update, color: Theme.of(context).colorScheme.primary),
+                      const SizedBox(width: 8),
+                      Text(
+                        'Background Updates',
+                        style: Theme.of(context).textTheme.titleMedium,
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Die App aktualisiert Strompreise automatisch im Hintergrund:',
+                    style: Theme.of(context).textTheme.bodySmall,
+                  ),
+                  const SizedBox(height: 8),
+                  const Text('• Täglich zwischen 13-15 Uhr für Morgen-Preise'),
+                  const Text('• Nachts für neue Tagespreise'),
+                  const Text('• Alle 6 Stunden als Backup'),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Funktioniert auch wenn die App geschlossen ist!',
+                    style: TextStyle(
+                      color: Theme.of(context).colorScheme.primary,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
         ],

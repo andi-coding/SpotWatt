@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'dart:async';
 import '../models/price_data.dart';
-import '../services/awattar_service.dart';
+import '../services/price_cache_service.dart';
 import '../widgets/price_chart.dart';
 import '../widgets/price_card.dart';
 import '../utils/price_utils.dart';
@@ -37,10 +37,10 @@ class _PriceOverviewPageState extends State<PriceOverviewPage> {
     super.dispose();
   }
 
-  Future<void> loadPrices() async {
+  Future<void> loadPrices({bool forceRefresh = false}) async {
     try {
-      final awattarService = AwattarService();
-      final fetchedPrices = await awattarService.fetchPrices();
+      final priceCacheService = PriceCacheService();
+      final fetchedPrices = await priceCacheService.getPrices(forceRefresh: forceRefresh);
       
       setState(() {
         prices = fetchedPrices;
@@ -97,7 +97,7 @@ class _PriceOverviewPageState extends State<PriceOverviewPage> {
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh),
-            onPressed: loadPrices,
+            onPressed: () => loadPrices(forceRefresh: true),
           ),
         ],
       ),

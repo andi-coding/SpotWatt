@@ -60,9 +60,9 @@ class NotificationSettings extends StatelessWidget {
                   Text('Schwellwert: ${notificationThreshold.toStringAsFixed(2)} ct/kWh'),
                   Slider(
                     value: notificationThreshold,
-                    min: 0,
+                    min: -10,
                     max: 30,
-                    divisions: 60,
+                    divisions: 80,
                     label: notificationThreshold.toStringAsFixed(2),
                     onChanged: (notificationsEnabled && priceThresholdEnabled) 
                       ? onNotificationThresholdChanged 
@@ -73,8 +73,8 @@ class NotificationSettings extends StatelessWidget {
             ),
             const Divider(),
             SwitchListTile(
-              title: const Text('Günstigste Zeit'),
-              subtitle: Text('$notificationMinutesBefore Min. vor dem günstigsten Zeitpunkt'),
+              title: const Text('Günstigste Zeit des Tages'),
+              subtitle: Text('$notificationMinutesBefore Min. vor dem günstigsten Zeitpunkt des Tages'),
               value: cheapestTimeEnabled && notificationsEnabled,
               onChanged: notificationsEnabled ? onCheapestTimeEnabledChanged : null,
             ),

@@ -16,4 +16,12 @@ class PriceData {
       price: json['marketprice'] / 10.0, // Convert to ct/kWh
     );
   }
+  
+  Map<String, dynamic> toJson() {
+    return {
+      'start_timestamp': startTime.millisecondsSinceEpoch,
+      'end_timestamp': endTime.millisecondsSinceEpoch,
+      'marketprice': price * 10.0, // Convert back from ct/kWh
+    };
+  }
 }
