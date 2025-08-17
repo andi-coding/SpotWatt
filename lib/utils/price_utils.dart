@@ -24,7 +24,12 @@ class PriceUtils {
   }
 
   static String formatPrice(double price) {
-    return '${price.toStringAsFixed(2)} ct/kWh';
+    // Fix for -0.00 display issue: if the absolute value rounds to 0.00, show 0.00
+    final rounded = price.toStringAsFixed(2);
+    if (rounded == '-0.00') {
+      return '0.00 ct/kWh';
+    }
+    return '$rounded ct/kWh';
   }
 
   static String formatTime(DateTime time) {

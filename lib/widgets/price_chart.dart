@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
 import '../models/price_data.dart';
+import '../utils/price_utils.dart';
 
 class PriceChart extends StatelessWidget {
   final List<PriceData> prices;
@@ -50,6 +51,15 @@ class PriceChart extends StatelessWidget {
         ),
         titlesData: FlTitlesData(
           leftTitles: AxisTitles(
+            axisNameWidget: Text(
+              'Preis: ct/kWh',
+              style: TextStyle(
+                color: isDarkMode ? Colors.white54 : Colors.black54,
+                fontSize: 10,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+            axisNameSize: 16,
             sideTitles: SideTitles(
               showTitles: true,
               reservedSize: 45,
@@ -66,24 +76,50 @@ class PriceChart extends StatelessWidget {
             ),
           ),
           bottomTitles: AxisTitles(
+            axisNameWidget: Text(
+              'Uhrzeit',
+              style: TextStyle(
+                color: isDarkMode ? Colors.white54 : Colors.black54,
+                fontSize: 10,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+            axisNameSize: 16,
             sideTitles: SideTitles(
               showTitles: true,
-              interval: 3,
+              interval: 1,
               getTitlesWidget: (value, meta) {
                 if (value.toInt() >= 0 && value.toInt() < prices.length) {
-                  final price = prices[value.toInt()];
+                  final index = value.toInt();
+                  final price = prices[index];
                   final hour = price.startTime.hour;
-                  final isToday = price.startTime.day == DateTime.now().day;
+                  final now = DateTime.now();
+                  final isToday = price.startTime.day == now.day && 
+                                  price.startTime.month == now.month && 
+                                  price.startTime.year == now.year;
+                  
+                  // Check if this is the first entry of tomorrow
+                  bool isDayBoundary = false;
+                  if (!isToday && index > 0) {
+                    final prevPrice = prices[index - 1];
+                    final prevIsToday = prevPrice.startTime.day == now.day && 
+                                       prevPrice.startTime.month == now.month && 
+                                       prevPrice.startTime.year == now.year;
+                    isDayBoundary = prevIsToday;
+                  } else if (!isToday && index == 0) {
+                    // First entry is already tomorrow
+                    isDayBoundary = true;
+                  }
 
-                  // Spezialfall: Mit zusätzlichem Text ("Morgen")
-                  if (hour == 0 && !isToday) {
+                  // Always show the day boundary
+                  if (isDayBoundary) {
                     return Padding(
-                      padding: const EdgeInsets.only(top: 2.0),
+                      padding: const EdgeInsets.only(top: 1.0),
                       child: Column(
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           Text(
-                            '${hour}h',
+                            hour == 0 ? '0h' : '${hour}h',
                             style: TextStyle(
                               fontSize: 10,
                               fontWeight: FontWeight.w500,
@@ -94,17 +130,23 @@ class PriceChart extends StatelessWidget {
                           Text(
                             'Morgen',
                             style: TextStyle(
-                              fontSize: 8.5,
-                              height: 1.0,
-                              color: isDarkMode ? Colors.white54 : Colors.black54,
+                              fontSize: 7,
+                              height: 0.9,
+                              color: Colors.blue,
+                              fontWeight: FontWeight.bold,
                             ),
                           ),
                         ],
                       ),
                     );
                   }
+                  
+                  // Only show labels every 3 hours, but always at day boundary
+                  if (index % 3 != 0 && !isDayBoundary) {
+                    return const SizedBox.shrink();
+                  }
 
-                  // Standardfall: Nur Stunde
+                  // Normal hours display
                   return Padding(
                     padding: const EdgeInsets.only(top: 2.0),
                     child: Text(
@@ -150,7 +192,7 @@ class PriceChart extends StatelessWidget {
                   final price = prices[flSpot.x.toInt()];
                   final time = '${price.startTime.hour}:00 - ${price.endTime.hour}:00';
                   return LineTooltipItem(
-                    '$time\n${price.price.toStringAsFixed(2)} ct/kWh',
+                    '$time\n${PriceUtils.formatPrice(price.price)}',
                     TextStyle(
                       color: isDarkMode ? Colors.white : Colors.black87,
                       fontWeight: FontWeight.bold,

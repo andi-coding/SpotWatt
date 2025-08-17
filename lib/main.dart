@@ -2,8 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:timezone/data/latest_all.dart' as tz;
 import 'package:timezone/timezone.dart' as tz;
 import 'screens/home_screen.dart';
-import 'services/background_service.dart';
-import 'services/background_fetch_service.dart';
+import 'services/background_task_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -11,9 +10,9 @@ void main() async {
   final String timeZoneName = 'Europe/Vienna';
   tz.setLocalLocation(tz.getLocation(timeZoneName));
   
-  // Background Services initialisieren
-  BackgroundService.startPeriodicUpdates(); // Für wenn App läuft
-  await BackgroundFetchService.initialize(); // Für wenn App geschlossen ist
+  // Background Tasks initialisieren (Workmanager für Android)
+  // Läuft immer - egal ob App offen oder geschlossen
+  await BackgroundTaskService.initialize();
   
   runApp(const WattWiseApp());
 }

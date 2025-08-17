@@ -34,7 +34,7 @@ class CurrentPriceCard extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      '${currentPrice.toStringAsFixed(2)} ct/kWh',
+                      PriceUtils.formatPrice(currentPrice),
                       style: Theme.of(context).textTheme.headlineMedium?.copyWith(
                         color: PriceUtils.getPriceColor(currentPrice, minPrice, maxPrice),
                         fontWeight: FontWeight.bold,
@@ -66,12 +66,14 @@ class MinMaxPriceCards extends StatelessWidget {
   final double minPrice;
   final double maxPrice;
   final DateTime? cheapestTime;
+  final DateTime? expensiveTime;
 
   const MinMaxPriceCards({
     Key? key,
     required this.minPrice,
     required this.maxPrice,
     this.cheapestTime,
+    this.expensiveTime,
   }) : super(key: key);
 
   @override
@@ -92,7 +94,7 @@ class MinMaxPriceCards extends StatelessWidget {
                     style: Theme.of(context).textTheme.bodySmall,
                   ),
                   Text(
-                    '${minPrice.toStringAsFixed(2)} ct/kWh',
+                    PriceUtils.formatPrice(minPrice),
                     style: Theme.of(context).textTheme.titleLarge?.copyWith(
                       color: Colors.green,
                       fontWeight: FontWeight.bold,
@@ -123,12 +125,17 @@ class MinMaxPriceCards extends StatelessWidget {
                     style: Theme.of(context).textTheme.bodySmall,
                   ),
                   Text(
-                    '${maxPrice.toStringAsFixed(2)} ct/kWh',
+                    PriceUtils.formatPrice(maxPrice),
                     style: Theme.of(context).textTheme.titleLarge?.copyWith(
                       color: Colors.red,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
+                  if (expensiveTime != null)
+                    Text(
+                      '${expensiveTime!.hour}:${expensiveTime!.minute.toString().padLeft(2, '0')} Uhr',
+                      style: Theme.of(context).textTheme.bodySmall,
+                    ),
                 ],
               ),
             ),

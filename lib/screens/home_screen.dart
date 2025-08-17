@@ -3,6 +3,7 @@ import 'price_overview_page.dart';
 import 'devices_page.dart';
 import 'settings_page.dart';
 import '../services/notification_service.dart';
+import '../services/price_cache_service.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({Key? key}) : super(key: key);
@@ -24,12 +25,37 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void initState() {
     super.initState();
-    _initializeNotifications();
+    _initializeApp();
   }
   
-  Future<void> _initializeNotifications() async {
+  Future<void> _initializeApp() async {
+    // Notifications initialisieren
     await _notificationService.initialize(context);
-    await _notificationService.scheduleNotifications();
+    
+    // Beim App-Start prüfen ob Update nötig ist
+    await _checkForUpdatesOnStartup();
+  }
+  
+  Future<void> _checkForUpdatesOnStartup() async {
+    try {
+      debugPrint('[App Start] Quick check for updates...');
+      
+      final priceCacheService = PriceCacheService();
+      final cacheAge = await priceCacheService.getCacheAge();
+      
+      // Nur updaten wenn: Kein Cache ODER Cache älter als 24 Stunden
+      if (cacheAge == null || cacheAge.inHours >= 24) {
+        debugPrint('[App Start] Cache stale (${cacheAge?.inMinutes ?? 0} min old), updating...');
+        await priceCacheService.getPrices(forceRefresh: true);
+        await _notificationService.scheduleNotifications();
+      } else {
+        debugPrint('[App Start] Cache fresh (${cacheAge.inMinutes} min old)');
+        // Nur Notifications neu planen falls nötig
+       // await _notificationService.scheduleNotifications();
+      }
+    } catch (e) {
+      debugPrint('[App Start] Update check failed: $e');
+    }
   }
 
   @override

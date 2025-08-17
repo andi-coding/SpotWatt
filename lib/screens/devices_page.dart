@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../models/smart_device.dart';
 import '../models/shelly_device.dart';
 import '../services/shelly_service.dart';
+import '../utils/price_utils.dart';
 import '../widgets/device_card.dart';
 import '../widgets/shelly_device_card.dart';
 import 'settings_page.dart';
@@ -99,13 +100,13 @@ class _DevicesPageState extends State<DevicesPage> {
                 controller: TextEditingController(text: device.shellyId),
               ),
               const SizedBox(height: 16),
-              Text('Zielpreis: ${device.targetPrice.toStringAsFixed(2)} ct/kWh'),
+              Text('Zielpreis: ${PriceUtils.formatPrice(device.targetPrice)}'),
               Slider(
                 value: device.targetPrice,
                 min: 0,
                 max: 50,
                 divisions: 50,
-                label: device.targetPrice.toStringAsFixed(2),
+                label: PriceUtils.formatPrice(device.targetPrice).replaceAll(' ct/kWh', ''),
                 onChanged: (value) {
                   setState(() {
                     device.targetPrice = value;

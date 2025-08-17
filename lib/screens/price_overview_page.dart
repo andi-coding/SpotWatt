@@ -20,6 +20,7 @@ class _PriceOverviewPageState extends State<PriceOverviewPage> {
   double minPrice = 0.0;
   double maxPrice = 0.0;
   DateTime? cheapestTime;
+  DateTime? expensiveTime;
   Timer? _refreshTimer;
 
   @override
@@ -43,13 +44,18 @@ class _PriceOverviewPageState extends State<PriceOverviewPage> {
       final fetchedPrices = await priceCacheService.getPrices(forceRefresh: forceRefresh);
       
       setState(() {
-        prices = fetchedPrices;
+        final now = DateTime.now();
+        final currentHour = DateTime(now.year, now.month, now.day, now.hour);
+        
+        // Filter out past hours - only keep current hour and future hours
+        prices = fetchedPrices.where((price) => 
+          price.startTime.isAtSameMomentAs(currentHour) || 
+          price.startTime.isAfter(currentHour)
+        ).toList();
+        
         isLoading = false;
         
         if (prices.isNotEmpty) {
-          final now = DateTime.now();
-          final currentHour = DateTime(now.year, now.month, now.day, now.hour);
-          
           try {
             final currentPriceData = prices.firstWhere(
               (price) => price.startTime.isAtSameMomentAs(currentHour) ||
@@ -66,6 +72,9 @@ class _PriceOverviewPageState extends State<PriceOverviewPage> {
           
           final cheapest = prices.reduce((a, b) => a.price < b.price ? a : b);
           cheapestTime = cheapest.startTime;
+          
+          final expensive = prices.reduce((a, b) => a.price > b.price ? a : b);
+          expensiveTime = expensive.startTime;
         }
       });
     } catch (e) {
@@ -83,10 +92,36 @@ class _PriceOverviewPageState extends State<PriceOverviewPage> {
   List<PriceData> getBestTimes() {
     if (prices.isEmpty) return [];
     
-    final sorted = List<PriceData>.from(prices)
+    final now = DateTime.now();
+    final currentHour = DateTime(now.year, now.month, now.day, now.hour);
+    
+    // Only consider current and future prices
+    final futurePrices = prices.where((price) => 
+      price.startTime.isAtSameMomentAs(currentHour) || 
+      price.startTime.isAfter(currentHour)
+    ).toList();
+    
+    final sorted = List<PriceData>.from(futurePrices)
       ..sort((a, b) => a.price.compareTo(b.price));
     
     return sorted.take(3).toList();
+  }
+  
+  String _getChartTitle() {
+    if (prices.isEmpty) return 'Preisverlauf';
+    
+    final now = DateTime.now();
+    final hasTomorrow = prices.any((p) => p.startTime.day != now.day);
+    
+    if (hasTomorrow) {
+      // Check if we only have tomorrow's prices
+      final hasToday = prices.any((p) => p.startTime.day == now.day);
+      if (!hasToday) {
+        return 'Preisverlauf (Morgen)';
+      }
+      return 'Preisverlauf (Heute & Morgen)';
+    }
+    return 'Preisverlauf (Heute)';
   }
 
   @override
@@ -120,10 +155,11 @@ class _PriceOverviewPageState extends State<PriceOverviewPage> {
                       minPrice: minPrice,
                       maxPrice: maxPrice,
                       cheapestTime: cheapestTime,
+                      expensiveTime: expensiveTime,
                     ),
                     const SizedBox(height: 24),
                     Text(
-                      'Preisverlauf (bis morgen)',
+                      _getChartTitle(),
                       style: Theme.of(context).textTheme.titleLarge,
                     ),
                     const SizedBox(height: 16),
@@ -137,31 +173,37 @@ class _PriceOverviewPageState extends State<PriceOverviewPage> {
                       style: Theme.of(context).textTheme.titleLarge,
                     ),
                     const SizedBox(height: 8),
-                    ...getBestTimes().map((time) => Card(
-                      child: ListTile(
-                        leading: CircleAvatar(
-                          backgroundColor: Colors.green,
-                          child: Text(
-                            time.startTime.day == DateTime.now().day ? 'Heute' : 'Morgen',
-                            style: const TextStyle(color: Colors.white, fontSize: 10),
+                    ...getBestTimes().map((time) {
+                      final isToday = time.startTime.day == DateTime.now().day;
+                      final dayText = isToday ? 'Heute' : 'Morgen';
+                      final timeText = isToday 
+                        ? '${time.startTime.hour}:00 - ${time.endTime.hour}:00 Uhr'
+                        : '${time.startTime.hour}:00 - ${time.endTime.hour}:00 Uhr (Morgen)';
+                      
+                      return Card(
+                        child: ListTile(
+                          leading: CircleAvatar(
+                            backgroundColor: isToday ? Colors.green : Colors.blue,
+                            child: Text(
+                              dayText,
+                              style: const TextStyle(color: Colors.white, fontSize: 10),
+                            ),
+                          ),
+                          title: Text(timeText),
+                          subtitle: Text(PriceUtils.formatPrice(time.price)),
+                          trailing: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              const Icon(Icons.access_time, size: 16),
+                              Text(
+                                'in ${time.startTime.difference(DateTime.now()).inHours}h',
+                                style: Theme.of(context).textTheme.bodySmall,
+                              ),
+                            ],
                           ),
                         ),
-                        title: Text(
-                          '${time.startTime.hour}:00 - ${time.endTime.hour}:00 Uhr',
-                        ),
-                        subtitle: Text('${time.price.toStringAsFixed(2)} ct/kWh'),
-                        trailing: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            const Icon(Icons.access_time, size: 16),
-                            Text(
-                              'in ${time.startTime.difference(DateTime.now()).inHours}h',
-                              style: Theme.of(context).textTheme.bodySmall,
-                            ),
-                          ],
-                        ),
-                      ),
-                    )).toList(),
+                      );
+                    }).toList(),
                   ],
                 ),
               ),

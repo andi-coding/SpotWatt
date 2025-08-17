@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../models/smart_device.dart';
+import '../utils/price_utils.dart';
 
 class DeviceCard extends StatelessWidget {
   final SmartDevice device;
@@ -28,7 +29,7 @@ class DeviceCard extends StatelessWidget {
         title: Text(device.name),
         subtitle: Text(
           device.isAutomated 
-            ? 'Automatisch bei < ${device.targetPrice.toStringAsFixed(2)} ct/kWh'
+            ? 'Automatisch bei < ${PriceUtils.formatPrice(device.targetPrice)}'
             : 'Manuell',
         ),
         trailing: Switch(

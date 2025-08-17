@@ -3,7 +3,9 @@ import 'package:timezone/timezone.dart' as tz;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter/material.dart';
 import '../models/price_data.dart';
+import '../utils/price_utils.dart';
 import 'price_cache_service.dart';
+import 'location_service.dart';
 
 class NotificationService {
   static final NotificationService _instance = NotificationService._internal();
@@ -44,20 +46,18 @@ class NotificationService {
 
   Future<void> scheduleNotifications() async {
     final prefs = await SharedPreferences.getInstance();
-    final notificationsEnabled = prefs.getBool('notifications_enabled') ?? true;
-    
-    if (!notificationsEnabled) return;
     
     final priceCacheService = PriceCacheService();
     final prices = await priceCacheService.getPrices();
     
     if (prices.isEmpty) return;
     
+    // Cancel all notifications to avoid duplicates
     await notifications.cancelAll();
     
     int notificationId = 1;
     
-    final priceThresholdEnabled = prefs.getBool('price_threshold_enabled') ?? true;
+    final priceThresholdEnabled = prefs.getBool('price_threshold_enabled') ?? false;
     final notificationThreshold = prefs.getDouble('notification_threshold') ?? 10.0;
     
     if (priceThresholdEnabled) {
@@ -98,17 +98,36 @@ class NotificationService {
       }
     }
     
+    // Schedule daily summary
+    final dailySummaryEnabled = prefs.getBool('daily_summary_enabled') ?? true;
+    if (dailySummaryEnabled) {
+      await _scheduleDailySummary(prices, notificationId++, prefs);
+    }
+    
     debugPrint('Scheduled ${notificationId - 1} notifications');
   }
 
   Future<void> _schedulePriceNotification(PriceData price, int notificationId) async {
     final notificationTime = price.startTime.subtract(const Duration(minutes: 5));
     
+    // Check location-based settings
+    final prefs = await SharedPreferences.getInstance();
+    final locationBasedNotifications = prefs.getBool('location_based_notifications') ?? false;
+    
+    if (locationBasedNotifications) {
+      final locationService = LocationService();
+      final isAtHome = await locationService.isUserAtHome();
+      if (!isAtHome) {
+        debugPrint('Notification skipped - user not at home');
+        return;
+      }
+    }
+    
     if (notificationTime.isAfter(DateTime.now())) {
       await notifications.zonedSchedule(
         notificationId,
         '💡 Günstiger Strompreis!',
-        'Jetzt nur ${price.price.toStringAsFixed(2)} ct/kWh - Perfekt für energieintensive Geräte!',
+        'Jetzt nur ${PriceUtils.formatPrice(price.price)} - Perfekt für energieintensive Geräte!',
         tz.TZDateTime.from(notificationTime, tz.local),
         const NotificationDetails(
           android: AndroidNotificationDetails(
@@ -138,11 +157,23 @@ class NotificationService {
     final notificationTime = price.startTime.subtract(Duration(minutes: minutesBefore));
     final prefs = await SharedPreferences.getInstance();
     
+    // Check location-based settings
+    final locationBasedNotifications = prefs.getBool('location_based_notifications') ?? false;
+    
+    if (locationBasedNotifications) {
+      final locationService = LocationService();
+      final isAtHome = await locationService.isUserAtHome();
+      if (!isAtHome) {
+        debugPrint('Cheapest time notification skipped - user not at home');
+        return;
+      }
+    }
+    
     if (notificationTime.isAfter(DateTime.now()) && !_isInQuietTime(notificationTime, prefs)) {
       await notifications.zonedSchedule(
         notificationId,
         '⚡ Günstigster Zeitpunkt $day!',
-        'In $minutesBefore Minuten beginnt der günstigste Zeitpunkt des Tages (${price.price.toStringAsFixed(2)} ct/kWh)',
+        'In $minutesBefore Minuten beginnt der günstigste Zeitpunkt des Tages (${PriceUtils.formatPrice(price.price)})',
         tz.TZDateTime.from(notificationTime, tz.local),
         const NotificationDetails(
           android: AndroidNotificationDetails(
@@ -164,10 +195,14 @@ class NotificationService {
   }
 
   bool _isInQuietTime(DateTime time, SharedPreferences prefs) {
+    // Check if quiet time is enabled
+    final quietTimeEnabled = prefs.getBool('quiet_time_enabled') ?? true;
+    if (!quietTimeEnabled) return false;
+    
     // Standard-Ruhezeiten falls nicht gesetzt
     final startHour = prefs.getInt('quiet_time_start_hour') ?? 22;
     final startMinute = prefs.getInt('quiet_time_start_minute') ?? 0;
-    final endHour = prefs.getInt('quiet_time_end_hour') ?? 7;
+    final endHour = prefs.getInt('quiet_time_end_hour') ?? 6;
     final endMinute = prefs.getInt('quiet_time_end_minute') ?? 0;
     
     final timeOfDay = TimeOfDay.fromDateTime(time);
@@ -191,5 +226,110 @@ class NotificationService {
     final priceCacheService = PriceCacheService();
     await priceCacheService.getPrices(forceRefresh: true);
     await scheduleNotifications();
+  }
+  
+  // Find cheapest hours
+  List<PriceData> findCheapestHours(List<PriceData> prices, int count) {
+    if (prices.isEmpty) return [];
+    
+    final sortedPrices = List<PriceData>.from(prices)
+      ..sort((a, b) => a.price.compareTo(b.price));
+    
+    return sortedPrices.take(count).toList()
+      ..sort((a, b) => a.startTime.compareTo(b.startTime));
+  }
+  
+  // Schedule daily summary notification
+  Future<void> _scheduleDailySummary(
+    List<PriceData> prices, 
+    int notificationId,
+    SharedPreferences prefs
+  ) async {
+    final summaryHour = prefs.getInt('daily_summary_hour') ?? 7;
+    final summaryMinute = prefs.getInt('daily_summary_minute') ?? 0;
+    
+    final now = DateTime.now();
+    var notificationTime = DateTime(
+      now.year,
+      now.month,
+      now.day,
+      summaryHour,
+      summaryMinute,
+    );
+    
+    // If time has passed today, schedule for tomorrow
+    bool isForTomorrow = false;
+    if (notificationTime.isBefore(now)) {
+      notificationTime = notificationTime.add(const Duration(days: 1));
+      isForTomorrow = true;
+    }
+    
+    // Find prices for the CURRENT day (today), not the notification day
+    // The summary should always show today's prices when sent
+    final targetDay = isForTomorrow ? now.add(const Duration(days: 1)) : now;
+    final dayPrices = prices.where((p) => 
+      p.startTime.day == targetDay.day &&
+      p.startTime.month == targetDay.month &&
+      p.startTime.year == targetDay.year
+    ).toList();
+    
+    if (dayPrices.isEmpty) return;
+    
+    // Get number of hours from preferences
+    final hoursCount = prefs.getInt('daily_summary_hours') ?? 3;
+    
+    // Find cheapest hours
+    final cheapestHours = findCheapestHours(dayPrices, hoursCount);
+    
+    // Format message - always for "heute" when notification is sent
+    final dayText = 'heute';
+    final buffer = StringBuffer('📊 Die $hoursCount günstigsten Stunden $dayText:\n\n');
+    for (var i = 0; i < cheapestHours.length; i++) {
+      final hour = cheapestHours[i];
+      buffer.write('${i + 1}. ${hour.startTime.hour}:00-${hour.endTime.hour}:00 Uhr: ');
+      buffer.write('${PriceUtils.formatPrice(hour.price)}\n');
+    }
+    
+    // Check location if needed
+    final locationBasedNotifications = prefs.getBool('location_based_notifications') ?? false;
+    if (locationBasedNotifications) {
+      final locationService = LocationService();
+      final isAtHome = await locationService.isUserAtHome();
+      if (!isAtHome) {
+        debugPrint('Daily summary skipped - user not at home');
+        return;
+      }
+    }
+    
+    // Check quiet time
+    if (_isInQuietTime(notificationTime, prefs)) {
+      debugPrint('Daily summary skipped - in quiet time');
+      return;
+    }
+    
+    await notifications.zonedSchedule(
+      notificationId,
+      '📊 Tägliche Strompreis-Übersicht',
+      buffer.toString().trim(),
+      tz.TZDateTime.from(notificationTime, tz.local),
+      const NotificationDetails(
+        android: AndroidNotificationDetails(
+          'daily_summary',
+          'Tägliche Zusammenfassung',
+          channelDescription: 'Tägliche Übersicht der günstigsten Strompreise',
+          importance: Importance.high,
+          priority: Priority.high,
+          styleInformation: BigTextStyleInformation(''),
+        ),
+        iOS: DarwinNotificationDetails(
+          presentAlert: true,
+          presentBadge: true,
+          presentSound: true,
+        ),
+      ),
+      androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+    );
+    
+    debugPrint('Scheduled daily summary for $notificationTime');
   }
 }
