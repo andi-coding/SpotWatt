@@ -6,6 +6,7 @@ import '../utils/price_utils.dart';
 import '../widgets/notification_settings.dart';
 import '../widgets/shelly_login_dialog.dart';
 import '../widgets/location_settings.dart';
+import '../widgets/quiet_time_settings.dart';
 
 class SettingsPage extends StatefulWidget {
   const SettingsPage({Key? key}) : super(key: key);
@@ -25,9 +26,15 @@ class _SettingsPageState extends State<SettingsPage> {
   double notificationThreshold = 5.0;
   int notificationMinutesBefore = 15;
   int dailySummaryHours = 3;
-  TimeOfDay quietTimeStart = const TimeOfDay(hour: 22, minute: 0);
-  TimeOfDay quietTimeEnd = const TimeOfDay(hour: 7, minute: 0);
-  TimeOfDay dailySummaryTime = const TimeOfDay(hour: 7, minute: 0);
+  // Wochentag-Einstellungen (Mo-Fr)
+  TimeOfDay weekdayQuietStart = const TimeOfDay(hour: 22, minute: 0);
+  TimeOfDay weekdayQuietEnd = const TimeOfDay(hour: 7, minute: 0);
+  TimeOfDay weekdaySummaryTime = const TimeOfDay(hour: 7, minute: 0);
+  
+  // Wochenend-Einstellungen (Sa-So)
+  TimeOfDay weekendQuietStart = const TimeOfDay(hour: 23, minute: 0);
+  TimeOfDay weekendQuietEnd = const TimeOfDay(hour: 9, minute: 0);
+  TimeOfDay weekendSummaryTime = const TimeOfDay(hour: 9, minute: 0);
 
   @override
   void initState() {
@@ -47,17 +54,29 @@ class _SettingsPageState extends State<SettingsPage> {
       notificationMinutesBefore = prefs.getInt('notification_minutes_before') ?? 15;
       dailySummaryHours = prefs.getInt('daily_summary_hours') ?? 3;
       
-      final startHour = prefs.getInt('quiet_time_start_hour') ?? 22;
-      final startMinute = prefs.getInt('quiet_time_start_minute') ?? 0;
-      final endHour = prefs.getInt('quiet_time_end_hour') ?? 6;
-      final endMinute = prefs.getInt('quiet_time_end_minute') ?? 0;
+      // Wochentag-Zeiten laden
+      final weekdayStartHour = prefs.getInt('weekday_quiet_start_hour') ?? 22;
+      final weekdayStartMinute = prefs.getInt('weekday_quiet_start_minute') ?? 0;
+      final weekdayEndHour = prefs.getInt('weekday_quiet_end_hour') ?? 7;
+      final weekdayEndMinute = prefs.getInt('weekday_quiet_end_minute') ?? 0;
+      final weekdaySummaryHour = prefs.getInt('weekday_summary_hour') ?? 7;
+      final weekdaySummaryMinute = prefs.getInt('weekday_summary_minute') ?? 0;
       
-      final summaryHour = prefs.getInt('daily_summary_hour') ?? 7;
-      final summaryMinute = prefs.getInt('daily_summary_minute') ?? 0;
+      // Wochenend-Zeiten laden
+      final weekendStartHour = prefs.getInt('weekend_quiet_start_hour') ?? 23;
+      final weekendStartMinute = prefs.getInt('weekend_quiet_start_minute') ?? 0;
+      final weekendEndHour = prefs.getInt('weekend_quiet_end_hour') ?? 9;
+      final weekendEndMinute = prefs.getInt('weekend_quiet_end_minute') ?? 0;
+      final weekendSummaryHour = prefs.getInt('weekend_summary_hour') ?? 9;
+      final weekendSummaryMinute = prefs.getInt('weekend_summary_minute') ?? 0;
       
-      quietTimeStart = TimeOfDay(hour: startHour, minute: startMinute);
-      quietTimeEnd = TimeOfDay(hour: endHour, minute: endMinute);
-      dailySummaryTime = TimeOfDay(hour: summaryHour, minute: summaryMinute);
+      weekdayQuietStart = TimeOfDay(hour: weekdayStartHour, minute: weekdayStartMinute);
+      weekdayQuietEnd = TimeOfDay(hour: weekdayEndHour, minute: weekdayEndMinute);
+      weekdaySummaryTime = TimeOfDay(hour: weekdaySummaryHour, minute: weekdaySummaryMinute);
+      
+      weekendQuietStart = TimeOfDay(hour: weekendStartHour, minute: weekendStartMinute);
+      weekendQuietEnd = TimeOfDay(hour: weekendEndHour, minute: weekendEndMinute);
+      weekendSummaryTime = TimeOfDay(hour: weekendSummaryHour, minute: weekendSummaryMinute);
     });
   }
 
@@ -70,12 +89,21 @@ class _SettingsPageState extends State<SettingsPage> {
     await prefs.setBool('daily_summary_enabled', dailySummaryEnabled);
     await prefs.setDouble('notification_threshold', notificationThreshold);
     await prefs.setInt('notification_minutes_before', notificationMinutesBefore);
-    await prefs.setInt('quiet_time_start_hour', quietTimeStart.hour);
-    await prefs.setInt('quiet_time_start_minute', quietTimeStart.minute);
-    await prefs.setInt('quiet_time_end_hour', quietTimeEnd.hour);
-    await prefs.setInt('quiet_time_end_minute', quietTimeEnd.minute);
-    await prefs.setInt('daily_summary_hour', dailySummaryTime.hour);
-    await prefs.setInt('daily_summary_minute', dailySummaryTime.minute);
+    // Wochentag-Zeiten speichern
+    await prefs.setInt('weekday_quiet_start_hour', weekdayQuietStart.hour);
+    await prefs.setInt('weekday_quiet_start_minute', weekdayQuietStart.minute);
+    await prefs.setInt('weekday_quiet_end_hour', weekdayQuietEnd.hour);
+    await prefs.setInt('weekday_quiet_end_minute', weekdayQuietEnd.minute);
+    await prefs.setInt('weekday_summary_hour', weekdaySummaryTime.hour);
+    await prefs.setInt('weekday_summary_minute', weekdaySummaryTime.minute);
+    
+    // Wochenend-Zeiten speichern
+    await prefs.setInt('weekend_quiet_start_hour', weekendQuietStart.hour);
+    await prefs.setInt('weekend_quiet_start_minute', weekendQuietStart.minute);
+    await prefs.setInt('weekend_quiet_end_hour', weekendQuietEnd.hour);
+    await prefs.setInt('weekend_quiet_end_minute', weekendQuietEnd.minute);
+    await prefs.setInt('weekend_summary_hour', weekendSummaryTime.hour);
+    await prefs.setInt('weekend_summary_minute', weekendSummaryTime.minute);
     await prefs.setInt('daily_summary_hours', dailySummaryHours);
   }
 
@@ -113,8 +141,12 @@ class _SettingsPageState extends State<SettingsPage> {
           NotificationSettings(
             priceThresholdEnabled: priceThresholdEnabled,
             cheapestTimeEnabled: cheapestTimeEnabled,
+            dailySummaryEnabled: dailySummaryEnabled,
             notificationThreshold: notificationThreshold,
             notificationMinutesBefore: notificationMinutesBefore,
+            weekdaySummaryTime: weekdaySummaryTime,
+            weekendSummaryTime: weekendSummaryTime,
+            dailySummaryHours: dailySummaryHours,
             onPriceThresholdEnabledChanged: (value) async {
               setState(() {
                 priceThresholdEnabled = value;
@@ -147,6 +179,34 @@ class _SettingsPageState extends State<SettingsPage> {
               await _notificationService.scheduleNotifications();
               debugPrint('Notification minutes before changed to: ${value.toInt()}');
             },
+            onDailySummaryEnabledChanged: (value) async {
+              setState(() {
+                dailySummaryEnabled = value;
+              });
+              await _saveSettings();
+              await _notificationService.scheduleNotifications();
+            },
+            onWeekdaySummaryTimeChanged: (value) async {
+              setState(() {
+                weekdaySummaryTime = value;
+              });
+              await _saveSettings();
+              await _notificationService.scheduleNotifications();
+            },
+            onWeekendSummaryTimeChanged: (value) async {
+              setState(() {
+                weekendSummaryTime = value;
+              });
+              await _saveSettings();
+              await _notificationService.scheduleNotifications();
+            },
+            onDailySummaryHoursChanged: (value) async {
+              setState(() {
+                dailySummaryHours = value;
+              });
+              await _saveSettings();
+              await _notificationService.scheduleNotifications();
+            },
           ),
           
           const SizedBox(height: 16),
@@ -165,166 +225,49 @@ class _SettingsPageState extends State<SettingsPage> {
           
           const SizedBox(height: 16),
           
-          Card(
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Icon(Icons.summarize, color: Theme.of(context).colorScheme.primary),
-                      const SizedBox(width: 8),
-                      Text(
-                        'Tägliche Zusammenfassung',
-                        style: Theme.of(context).textTheme.titleLarge,
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 16),
-                  SwitchListTile(
-                    title: const Text('Tägliche Übersicht'),
-                    subtitle: Text('Erhalte täglich eine Übersicht der $dailySummaryHours günstigsten Stunden'),
-                    value: dailySummaryEnabled,
-                    onChanged: (value) async {
-                      setState(() {
-                        dailySummaryEnabled = value;
-                      });
-                      await _saveSettings();
-                      await _notificationService.scheduleNotifications();
-                      debugPrint('Daily summary changed to: $value');
-                    },
-                  ),
-                  if (dailySummaryEnabled) ...[
-                    const Divider(),
-                    ListTile(
-                      title: const Text('Benachrichtigungszeit'),
-                      subtitle: Text('${dailySummaryTime.hour}:${dailySummaryTime.minute.toString().padLeft(2, '0')} Uhr'),
-                      trailing: const Icon(Icons.access_time),
-                      onTap: () async {
-                        final time = await showTimePicker(
-                          context: context,
-                          initialTime: dailySummaryTime,
-                        );
-                        if (time != null) {
-                          setState(() {
-                            dailySummaryTime = time;
-                          });
-                          await _saveSettings();
-                          await _notificationService.scheduleNotifications();
-                          debugPrint('Daily summary time changed to: ${time.format(context)}');
-                        }
-                      },
-                    ),
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text('Anzahl Stunden: $dailySummaryHours'),
-                          Slider(
-                            value: dailySummaryHours.toDouble(),
-                            min: 1,
-                            max: 10,
-                            divisions: 9,
-                            label: '$dailySummaryHours',
-                            onChanged: (value) {
-                              setState(() {
-                                dailySummaryHours = value.toInt();
-                              });
-                            },
-                            onChangeEnd: (value) async {
-                              await _saveSettings();
-                              await _notificationService.scheduleNotifications();
-                              debugPrint('Daily summary hours changed to: ${value.toInt()}');
-                            },
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ],
-              ),
-            ),
+          QuietTimeSettings(
+            quietTimeEnabled: quietTimeEnabled,
+            weekdayQuietStart: weekdayQuietStart,
+            weekdayQuietEnd: weekdayQuietEnd,
+            weekendQuietStart: weekendQuietStart,
+            weekendQuietEnd: weekendQuietEnd,
+            onQuietTimeEnabledChanged: (value) async {
+              setState(() {
+                quietTimeEnabled = value;
+              });
+              await _saveSettings();
+              await _notificationService.scheduleNotifications();
+            },
+            onWeekdayQuietStartChanged: (value) async {
+              setState(() {
+                weekdayQuietStart = value;
+              });
+              await _saveSettings();
+              await _notificationService.scheduleNotifications();
+            },
+            onWeekdayQuietEndChanged: (value) async {
+              setState(() {
+                weekdayQuietEnd = value;
+              });
+              await _saveSettings();
+              await _notificationService.scheduleNotifications();
+            },
+            onWeekendQuietStartChanged: (value) async {
+              setState(() {
+                weekendQuietStart = value;
+              });
+              await _saveSettings();
+              await _notificationService.scheduleNotifications();
+            },
+            onWeekendQuietEndChanged: (value) async {
+              setState(() {
+                weekendQuietEnd = value;
+              });
+              await _saveSettings();
+              await _notificationService.scheduleNotifications();
+            },
           ),
           
-          const SizedBox(height: 16),
-          
-          Card(
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Icon(Icons.nights_stay, color: Theme.of(context).colorScheme.primary),
-                      const SizedBox(width: 8),
-                      Text(
-                        'Ruhezeiten',
-                        style: Theme.of(context).textTheme.titleLarge,
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 16),
-                  SwitchListTile(
-                    title: const Text('Ruhezeiten aktivieren'),
-                    subtitle: const Text('Keine Benachrichtigungen während der Ruhezeiten'),
-                    value: quietTimeEnabled,
-                    onChanged: (value) async {
-                      setState(() {
-                        quietTimeEnabled = value;
-                      });
-                      await _saveSettings();
-                      await _notificationService.scheduleNotifications();
-                      debugPrint('Quiet time enabled changed to: $value');
-                    },
-                  ),
-                  if (quietTimeEnabled) ...[
-                    const Divider(),
-                    ListTile(
-                      title: const Text('Ruhezeit Start'),
-                      subtitle: Text('${quietTimeStart.hour}:${quietTimeStart.minute.toString().padLeft(2, '0')} Uhr'),
-                      trailing: const Icon(Icons.access_time),
-                      onTap: () async {
-                        final time = await showTimePicker(
-                          context: context,
-                          initialTime: quietTimeStart,
-                        );
-                        if (time != null) {
-                          setState(() {
-                            quietTimeStart = time;
-                          });
-                          await _saveSettings();
-                          await _notificationService.scheduleNotifications();
-                          debugPrint('Quiet time start changed to: ${time.format(context)}');
-                        }
-                      },
-                    ),
-                    ListTile(
-                      title: const Text('Ruhezeit Ende'),
-                      subtitle: Text('${quietTimeEnd.hour}:${quietTimeEnd.minute.toString().padLeft(2, '0')} Uhr'),
-                      trailing: const Icon(Icons.access_time),
-                      onTap: () async {
-                        final time = await showTimePicker(
-                          context: context,
-                          initialTime: quietTimeEnd,
-                        );
-                        if (time != null) {
-                          setState(() {
-                            quietTimeEnd = time;
-                          });
-                          await _saveSettings();
-                          await _notificationService.scheduleNotifications();
-                          debugPrint('Quiet time end changed to: ${time.format(context)}');
-                        }
-                      },
-                    ),
-                  ],
-                ],
-              ),
-            ),
-          ),
           
           const SizedBox(height: 16),
           

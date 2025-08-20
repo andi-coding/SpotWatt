@@ -1,26 +1,43 @@
 import 'package:flutter/material.dart';
 import '../utils/price_utils.dart';
+import 'daily_summary_settings.dart';
 
 class NotificationSettings extends StatelessWidget {
   final bool priceThresholdEnabled;
   final bool cheapestTimeEnabled;
+  final bool dailySummaryEnabled;
   final double notificationThreshold;
   final int notificationMinutesBefore;
+  final TimeOfDay weekdaySummaryTime;
+  final TimeOfDay weekendSummaryTime;
+  final int dailySummaryHours;
   final ValueChanged<bool> onPriceThresholdEnabledChanged;
   final ValueChanged<bool> onCheapestTimeEnabledChanged;
+  final ValueChanged<bool> onDailySummaryEnabledChanged;
   final ValueChanged<double> onNotificationThresholdChanged;
   final ValueChanged<double> onNotificationMinutesBeforeChanged;
+  final ValueChanged<TimeOfDay> onWeekdaySummaryTimeChanged;
+  final ValueChanged<TimeOfDay> onWeekendSummaryTimeChanged;
+  final ValueChanged<int> onDailySummaryHoursChanged;
 
   const NotificationSettings({
     Key? key,
     required this.priceThresholdEnabled,
     required this.cheapestTimeEnabled,
+    required this.dailySummaryEnabled,
     required this.notificationThreshold,
     required this.notificationMinutesBefore,
+    required this.weekdaySummaryTime,
+    required this.weekendSummaryTime,
+    required this.dailySummaryHours,
     required this.onPriceThresholdEnabledChanged,
     required this.onCheapestTimeEnabledChanged,
+    required this.onDailySummaryEnabledChanged,
     required this.onNotificationThresholdChanged,
     required this.onNotificationMinutesBeforeChanged,
+    required this.onWeekdaySummaryTimeChanged,
+    required this.onWeekendSummaryTimeChanged,
+    required this.onDailySummaryHoursChanged,
   }) : super(key: key);
 
   @override
@@ -91,6 +108,16 @@ class NotificationSettings extends StatelessWidget {
                   ],
                 ),
               ),
+            DailySummarySettings(
+              dailySummaryEnabled: dailySummaryEnabled,
+              weekdaySummaryTime: weekdaySummaryTime,
+              weekendSummaryTime: weekendSummaryTime,
+              dailySummaryHours: dailySummaryHours,
+              onDailySummaryEnabledChanged: onDailySummaryEnabledChanged,
+              onWeekdaySummaryTimeChanged: onWeekdaySummaryTimeChanged,
+              onWeekendSummaryTimeChanged: onWeekendSummaryTimeChanged,
+              onDailySummaryHoursChanged: onDailySummaryHoursChanged,
+            ),
           ],
         ),
       ),
