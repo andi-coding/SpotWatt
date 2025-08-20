@@ -4,23 +4,35 @@ import '../utils/price_utils.dart';
 class NotificationSettings extends StatelessWidget {
   final bool priceThresholdEnabled;
   final bool cheapestTimeEnabled;
+  final bool dailySummaryEnabled;
   final double notificationThreshold;
   final int notificationMinutesBefore;
+  final TimeOfDay dailySummaryTime;
+  final int dailySummaryHours;
   final ValueChanged<bool> onPriceThresholdEnabledChanged;
   final ValueChanged<bool> onCheapestTimeEnabledChanged;
+  final ValueChanged<bool> onDailySummaryEnabledChanged;
   final ValueChanged<double> onNotificationThresholdChanged;
   final ValueChanged<double> onNotificationMinutesBeforeChanged;
+  final ValueChanged<TimeOfDay> onDailySummaryTimeChanged;
+  final ValueChanged<int> onDailySummaryHoursChanged;
 
   const NotificationSettings({
     Key? key,
     required this.priceThresholdEnabled,
     required this.cheapestTimeEnabled,
+    required this.dailySummaryEnabled,
     required this.notificationThreshold,
     required this.notificationMinutesBefore,
+    required this.dailySummaryTime,
+    required this.dailySummaryHours,
     required this.onPriceThresholdEnabledChanged,
     required this.onCheapestTimeEnabledChanged,
+    required this.onDailySummaryEnabledChanged,
     required this.onNotificationThresholdChanged,
     required this.onNotificationMinutesBeforeChanged,
+    required this.onDailySummaryTimeChanged,
+    required this.onDailySummaryHoursChanged,
   }) : super(key: key);
 
   @override
@@ -87,6 +99,53 @@ class NotificationSettings extends StatelessWidget {
                       divisions: 11,
                       label: '$notificationMinutesBefore Min.',
                       onChanged: onNotificationMinutesBeforeChanged,
+                    ),
+                  ],
+                ),
+              ),
+            const Divider(),
+            SwitchListTile(
+              title: const Text('Tägliche Zusammenfassung'),
+              subtitle: Text('Übersicht der $dailySummaryHours günstigsten Stunden'),
+              value: dailySummaryEnabled,
+              onChanged: onDailySummaryEnabledChanged,
+            ),
+            if (dailySummaryEnabled) 
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: Column(
+                  children: [
+                    ListTile(
+                      contentPadding: EdgeInsets.zero,
+                      title: const Text('Benachrichtigungszeit'),
+                      subtitle: Text(
+                        '${dailySummaryTime.hour.toString().padLeft(2, '0')}:${dailySummaryTime.minute.toString().padLeft(2, '0')} Uhr',
+                        style: Theme.of(context).textTheme.titleMedium,
+                      ),
+                      trailing: const Icon(Icons.access_time),
+                      onTap: () async {
+                        final time = await showTimePicker(
+                          context: context,
+                          initialTime: dailySummaryTime,
+                        );
+                        if (time != null) {
+                          onDailySummaryTimeChanged(time);
+                        }
+                      },
+                    ),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('Anzahl günstigste Stunden: $dailySummaryHours'),
+                        Slider(
+                          value: dailySummaryHours.toDouble(),
+                          min: 1,
+                          max: 8,
+                          divisions: 7,
+                          label: dailySummaryHours.toString(),
+                          onChanged: (value) => onDailySummaryHoursChanged(value.round()),
+                        ),
+                      ],
                     ),
                   ],
                 ),
