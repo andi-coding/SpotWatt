@@ -90,7 +90,7 @@ class MinMaxPriceCards extends StatelessWidget {
                   const Icon(Icons.arrow_downward, color: Colors.green),
                   const SizedBox(height: 8),
                   Text(
-                    'Niedrigster Preis',
+                    'Tagesminimum',
                     style: Theme.of(context).textTheme.bodySmall,
                   ),
                   Text(
@@ -121,7 +121,7 @@ class MinMaxPriceCards extends StatelessWidget {
                   const Icon(Icons.arrow_upward, color: Colors.red),
                   const SizedBox(height: 8),
                   Text(
-                    'Höchster Preis',
+                    'Tagesmaximum',
                     style: Theme.of(context).textTheme.bodySmall,
                   ),
                   Text(

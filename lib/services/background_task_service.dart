@@ -7,6 +7,7 @@ import 'package:timezone/timezone.dart' as tz;
 import '../models/price_data.dart';
 import 'notification_service.dart';
 import 'price_cache_service.dart';
+import 'widget_service.dart';
 
 /// Unified Background Task Service
 /// Handles background tasks for both Android and iOS (future)
@@ -63,19 +64,6 @@ class BackgroundTaskService {
     }
     // iOS implementation would go here
   }
-  
-  /// Force a one-time background task execution (for testing)
-  static Future<void> runOnce() async {
-    if (Platform.isAndroid) {
-      await Workmanager().registerOneOffTask(
-        'one-time-update',
-        'updatePricesAndNotifications',
-        constraints: Constraints(
-          networkType: NetworkType.connected,
-        ),
-      );
-    }
-  }
 }
 
 /// Workmanager callback dispatcher (Android only)
@@ -128,6 +116,35 @@ void callbackDispatcher() {
         //schedule notifications if new prices are there
         final notificationService = NotificationService();
         await notificationService.scheduleNotifications();
+      }
+      
+      // Update widget with latest data
+      await WidgetService.updateWidget();
+      debugPrint('[BackgroundTask] Widget updated');
+      
+      // Check if we're close to the hour mark
+      final currentMinute = now.minute;
+      if (currentMinute >= 45 && currentMinute <= 59) {
+        // We're in the last 15 minutes of an hour
+        // Schedule an extra update for the top of the hour
+        final nextHour = now.hour < 23 
+          ? DateTime(now.year, now.month, now.day, now.hour + 1, 0)
+          : DateTime(now.year, now.month, now.day + 1, 0, 0); // Handle midnight
+        final delayToNextHour = nextHour.difference(now);
+        
+        debugPrint('[BackgroundTask] Near hour mark (${now.minute} min), scheduling extra update in ${delayToNextHour.inMinutes} minutes');
+        
+        // Schedule one-time task for the top of the hour
+        if (Platform.isAndroid) {
+          await Workmanager().registerOneOffTask(
+            'hourly-update-${nextHour.hour}',
+            'updatePricesAndNotifications',
+            initialDelay: delayToNextHour,
+            constraints: Constraints(
+              networkType: NetworkType.connected,
+            ),
+          );
+        }
       }
       
       // Always reschedule notifications

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../models/price_data.dart';
 
 class PriceUtils {
   static Color getPriceColor(double price, double minPrice, double maxPrice) {
@@ -34,5 +35,45 @@ class PriceUtils {
 
   static String formatTime(DateTime time) {
     return '${time.hour.toString().padLeft(2, '0')}:${time.minute.toString().padLeft(2, '0')}';
+  }
+
+  static PriceData? getCurrentPrice(List<PriceData> prices) {
+    final now = DateTime.now();
+    try {
+      return prices.firstWhere(
+        (price) => price.startTime.isBefore(now) && price.endTime.isAfter(now),
+      );
+    } catch (e) {
+      return null;
+    }
+  }
+
+  static List<PriceData> getTodayPrices(List<PriceData> prices) {
+    final now = DateTime.now();
+    return prices.where((price) => 
+      price.startTime.day == now.day && 
+      price.startTime.month == now.month &&
+      price.startTime.year == now.year
+    ).toList();
+  }
+  
+  /// Get ALL prices for today (00:00 - 23:59), not just remaining hours
+  /// Used for calculating daily min/max that stays constant throughout the day
+  static List<PriceData> getFullDayPrices(List<PriceData> prices, DateTime targetDay) {
+    return prices.where((price) => 
+      price.startTime.day == targetDay.day && 
+      price.startTime.month == targetDay.month &&
+      price.startTime.year == targetDay.year
+    ).toList();
+  }
+  
+  /// Get tomorrow's prices
+  static List<PriceData> getTomorrowPrices(List<PriceData> prices) {
+    final tomorrow = DateTime.now().add(const Duration(days: 1));
+    return prices.where((price) => 
+      price.startTime.day == tomorrow.day && 
+      price.startTime.month == tomorrow.month &&
+      price.startTime.year == tomorrow.year
+    ).toList();
   }
 }

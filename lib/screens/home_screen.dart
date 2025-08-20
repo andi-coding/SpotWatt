@@ -4,6 +4,7 @@ import 'devices_page.dart';
 import 'settings_page.dart';
 import '../services/notification_service.dart';
 import '../services/price_cache_service.dart';
+import '../services/widget_service.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({Key? key}) : super(key: key);
@@ -32,6 +33,15 @@ class _HomeScreenState extends State<HomeScreen> {
     // Notifications initialisieren
     await _notificationService.initialize(context);
     
+    // Setup widget cslick listener
+    WidgetService.setupWidgetClickListener(() async {
+      debugPrint('[Widget] Widget clicked - opening app');
+      // Just update the widget with cached data
+      await WidgetService.updateWidget();
+      // Optionally reload the current view to show latest cached data
+      setState(() {});
+    });
+    
     // Beim App-Start prüfen ob Update nötig ist
     await _checkForUpdatesOnStartup();
   }
@@ -48,8 +58,11 @@ class _HomeScreenState extends State<HomeScreen> {
         debugPrint('[App Start] Cache stale (${cacheAge?.inMinutes ?? 0} min old), updating...');
         await priceCacheService.getPrices(forceRefresh: true);
         await _notificationService.scheduleNotifications();
+        await WidgetService.updateWidget(); // Update widget with fresh data
       } else {
         debugPrint('[App Start] Cache fresh (${cacheAge.inMinutes} min old)');
+        // Widget trotzdem updaten mit cached data
+        await WidgetService.updateWidget();
         // Nur Notifications neu planen falls nötig
        // await _notificationService.scheduleNotifications();
       }

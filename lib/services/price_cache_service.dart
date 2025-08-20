@@ -100,4 +100,9 @@ class PriceCacheService {
     final cacheTime = DateTime.fromMillisecondsSinceEpoch(timestamp);
     return DateTime.now().difference(cacheTime);
   }
+
+  /// Gibt die gecachten Preise zurück (ohne Refresh)
+  Future<List<PriceData>?> getCachedPrices() async {
+    return await _loadFromCache();
+  }
 }

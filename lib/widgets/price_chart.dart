@@ -185,6 +185,8 @@ class PriceChart extends StatelessWidget {
         lineTouchData: LineTouchData(
           enabled: true,
           touchTooltipData: LineTouchTooltipData(
+            fitInsideHorizontally: true,  // Tooltip bleibt im sichtbaren Bereich
+            fitInsideVertically: true,    // Auch vertikal anpassen
             getTooltipItems: (List<LineBarSpot> touchedBarSpots) {
               return touchedBarSpots.map((barSpot) {
                 final flSpot = barSpot;

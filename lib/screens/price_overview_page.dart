@@ -27,7 +27,9 @@ class _PriceOverviewPageState extends State<PriceOverviewPage> {
   void initState() {
     super.initState();
     loadPrices();
-    _refreshTimer = Timer.periodic(const Duration(minutes: 30), (timer) {
+    // Aktualisiere jede Minute um vergangene Stunden aus dem Graph zu entfernen
+    // und den aktuellen Preis neu zu berechnen (kein API-Call, nur Cache)
+    _refreshTimer = Timer.periodic(const Duration(minutes: 1), (timer) {
       loadPrices();
     });
   }
@@ -67,14 +69,31 @@ class _PriceOverviewPageState extends State<PriceOverviewPage> {
             debugPrint('No current price found, using next price');
           }
           
-          minPrice = prices.map((p) => p.price).reduce((a, b) => a < b ? a : b);
-          maxPrice = prices.map((p) => p.price).reduce((a, b) => a > b ? a : b);
+          // Calculate min/max ONLY for today (full 24 hours)
+          // This ensures values stay constant throughout the day
+          final todayFullPrices = PriceUtils.getFullDayPrices(fetchedPrices, now);
           
-          final cheapest = prices.reduce((a, b) => a.price < b.price ? a : b);
-          cheapestTime = cheapest.startTime;
-          
-          final expensive = prices.reduce((a, b) => a.price > b.price ? a : b);
-          expensiveTime = expensive.startTime;
+          if (todayFullPrices.isNotEmpty) {
+            // Use today's full day prices for min/max
+            minPrice = todayFullPrices.map((p) => p.price).reduce((a, b) => a < b ? a : b);
+            maxPrice = todayFullPrices.map((p) => p.price).reduce((a, b) => a > b ? a : b);
+            
+            final cheapest = todayFullPrices.reduce((a, b) => a.price < b.price ? a : b);
+            cheapestTime = cheapest.startTime;
+            
+            final expensive = todayFullPrices.reduce((a, b) => a.price > b.price ? a : b);
+            expensiveTime = expensive.startTime;
+          } else {
+            // Fallback: if no today prices, use all available prices
+            minPrice = prices.map((p) => p.price).reduce((a, b) => a < b ? a : b);
+            maxPrice = prices.map((p) => p.price).reduce((a, b) => a > b ? a : b);
+            
+            final cheapest = prices.reduce((a, b) => a.price < b.price ? a : b);
+            cheapestTime = cheapest.startTime;
+            
+            final expensive = prices.reduce((a, b) => a.price > b.price ? a : b);
+            expensiveTime = expensive.startTime;
+          }
         }
       });
     } catch (e) {

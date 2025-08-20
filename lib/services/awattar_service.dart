@@ -8,12 +8,14 @@ class AwattarService {
 
   Future<List<PriceData>> fetchPrices() async {
     final now = DateTime.now();
-    final currentHour = DateTime(now.year, now.month, now.day, now.hour);
+    // WICHTIG: Immer ab Tagesbeginn abfragen, damit wir die kompletten Tagespreise haben
+    // für korrekte Min/Max Berechnung
+    final startOfDay = DateTime(now.year, now.month, now.day, 0, 0);
     final end = DateTime(now.year, now.month, now.day + 2);
 
-    final url = Uri.parse('$baseUrl?start=${currentHour.millisecondsSinceEpoch}&end=${end.millisecondsSinceEpoch}');
+    final url = Uri.parse('$baseUrl?start=${startOfDay.millisecondsSinceEpoch}&end=${end.millisecondsSinceEpoch}');
     
-    debugPrint('Fetching prices from: ${currentHour.toIso8601String()} to ${end.toIso8601String()}');
+    debugPrint('Fetching prices from: ${startOfDay.toIso8601String()} to ${end.toIso8601String()}');
     
     try {
       final response = await http.get(url);
