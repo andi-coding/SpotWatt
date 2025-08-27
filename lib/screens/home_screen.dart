@@ -6,6 +6,7 @@ import '../services/notification_service.dart';
 import '../services/price_cache_service.dart';
 import '../services/widget_service.dart';
 import '../services/location_permission_helper.dart';
+import '../services/battery_optimization_helper.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({Key? key}) : super(key: key);
@@ -34,6 +35,8 @@ class _HomeScreenState extends State<HomeScreen> {
     // Notifications initialisieren
     await _notificationService.initialize(context);
     
+    // Battery optimization läuft automatisch optimiert - keine Aktion nötig
+    
     // Location Permissions werden nur angefragt wenn User Location-based Notifications aktiviert
     
     // Setup widget click listener
@@ -47,6 +50,24 @@ class _HomeScreenState extends State<HomeScreen> {
     
     // Beim App-Start prüfen ob Update nötig ist
     await _checkForUpdatesOnStartup();
+  }
+  
+  Future<void> _requestBatteryOptimizationPermission() async {
+    try {
+      debugPrint('[HomeScreen] Checking battery optimization permission...');
+      
+      // Prüfe ob bereits deaktiviert
+      final isExempted = await BatteryOptimizationHelper.isBatteryOptimizationDisabled();
+      
+      if (!isExempted) {
+        debugPrint('[HomeScreen] Battery optimization active - requesting exemption');
+        await BatteryOptimizationHelper.requestBatteryOptimizationExemption(context);
+      } else {
+        debugPrint('[HomeScreen] Battery optimization already disabled');
+      }
+    } catch (e) {
+      debugPrint('[HomeScreen] Error requesting battery optimization permission: $e');
+    }
   }
   
   Future<void> _checkForUpdatesOnStartup() async {
