@@ -20,7 +20,7 @@ class _HomeScreenState extends State<HomeScreen> {
   
   final List<Widget> _pages = [
     const PriceOverviewPage(),
-    const DevicesPage(),
+    // const DevicesPage(), // Hidden for now - keeping code for later
     const SettingsPage(),
   ];
   
@@ -90,10 +90,10 @@ class _HomeScreenState extends State<HomeScreen> {
             icon: Icon(Icons.euro),
             label: 'Preise',
           ),
-          NavigationDestination(
-            icon: Icon(Icons.power),
-            label: 'Geräte',
-          ),
+          // NavigationDestination( // Hidden for now - keeping code for later
+          //   icon: Icon(Icons.power),
+          //   label: 'Geräte',
+          // ),
           NavigationDestination(
             icon: Icon(Icons.settings),
             label: 'Einstellungen',

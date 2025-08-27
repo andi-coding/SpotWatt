@@ -281,12 +281,46 @@ class NotificationService {
     // Find cheapest hours
     final cheapestHours = findCheapestHours(dayPrices, hoursCount);
     
+    // Check for high price warnings
+    final highPriceWarningEnabled = prefs.getBool('high_price_warning_enabled') ?? false;
+    final highPriceThreshold = prefs.getDouble('high_price_threshold') ?? 50.0;
+    
+    String? highPriceWarning;
+    if (highPriceWarningEnabled) {
+      final highPrices = dayPrices.where((p) => p.price > highPriceThreshold).toList();
+      if (highPrices.isNotEmpty) {
+        // Sort high prices by time (chronological order)
+        highPrices.sort((a, b) => a.startTime.compareTo(b.startTime));
+        
+        final warningBuffer = StringBuffer();
+        warningBuffer.write('⚠️ WARNUNG: Heute sehr hohe Preise!\n\n');
+        
+        for (var price in highPrices) {
+          warningBuffer.write('• ${price.startTime.hour.toString().padLeft(2, '0')}:00-');
+          warningBuffer.write('${price.endTime.hour.toString().padLeft(2, '0')}:00: ');
+          warningBuffer.write('${PriceUtils.formatPrice(price.price)}\n');
+        }
+        warningBuffer.write('\n');
+        
+        highPriceWarning = warningBuffer.toString();
+      }
+    }
+    
     // Format message - always for "heute" when notification is sent
     final dayText = 'heute';
-    final buffer = StringBuffer('📊 Die $hoursCount günstigsten Stunden $dayText:\n\n');
+    final buffer = StringBuffer();
+    
+    // Add high price warning first if exists
+    if (highPriceWarning != null) {
+      buffer.write(highPriceWarning);
+      buffer.write('\n'); // Extra line between warning and cheapest hours
+    }
+    
+    // Add cheapest hours section
+    buffer.write('💡 Die $hoursCount günstigsten Stunden $dayText:\n\n');
     for (var i = 0; i < cheapestHours.length; i++) {
       final hour = cheapestHours[i];
-      buffer.write('${i + 1}. ${hour.startTime.hour}:00-${hour.endTime.hour}:00 Uhr: ');
+      buffer.write('• ${hour.startTime.hour}:00-${hour.endTime.hour}:00 Uhr: ');
       buffer.write('${PriceUtils.formatPrice(hour.price)}\n');
     }
     
@@ -307,21 +341,23 @@ class NotificationService {
       return;
     }
     
+    final notificationText = buffer.toString().trim();
+    
     await notifications.zonedSchedule(
       _notificationId++,
       '📊 Tägliche Strompreis-Übersicht',
-      buffer.toString().trim(),
+      notificationText,
       tz.TZDateTime.from(notificationTime, tz.local),
-      const NotificationDetails(
+      NotificationDetails(
         android: AndroidNotificationDetails(
           'daily_summary',
           'Tägliche Zusammenfassung',
           channelDescription: 'Tägliche Übersicht der günstigsten Strompreise',
           importance: Importance.high,
           priority: Priority.high,
-          styleInformation: BigTextStyleInformation(''),
+          styleInformation: BigTextStyleInformation(notificationText),
         ),
-        iOS: DarwinNotificationDetails(
+        iOS: const DarwinNotificationDetails(
           presentAlert: true,
           presentBadge: true,
           presentSound: true,

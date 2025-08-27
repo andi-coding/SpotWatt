@@ -25,7 +25,9 @@ class _SettingsPageState extends State<SettingsPage> {
   bool locationBasedNotifications = false;
   bool dailySummaryEnabled = true;
   bool quietTimeEnabled = true;
+  bool highPriceWarningEnabled = false;
   double notificationThreshold = 5.0;
+  double highPriceThreshold = 50.0;
   int notificationMinutesBefore = 15;
   int dailySummaryHours = 3;
   TimeOfDay quietTimeStart = const TimeOfDay(hour: 22, minute: 0);
@@ -47,7 +49,9 @@ class _SettingsPageState extends State<SettingsPage> {
       locationBasedNotifications = prefs.getBool('location_based_notifications') ?? false;
       dailySummaryEnabled = prefs.getBool('daily_summary_enabled') ?? true;
       quietTimeEnabled = prefs.getBool('quiet_time_enabled') ?? true;
+      highPriceWarningEnabled = prefs.getBool('high_price_warning_enabled') ?? false;
       notificationThreshold = prefs.getDouble('notification_threshold') ?? 5.0;
+      highPriceThreshold = prefs.getDouble('high_price_threshold') ?? 50.0;
       notificationMinutesBefore = prefs.getInt('notification_minutes_before') ?? 15;
       dailySummaryHours = prefs.getInt('daily_summary_hours') ?? 3;
       
@@ -72,7 +76,9 @@ class _SettingsPageState extends State<SettingsPage> {
     await prefs.setBool('cheapest_time_enabled', cheapestTimeEnabled);
     await prefs.setBool('location_based_notifications', locationBasedNotifications);
     await prefs.setBool('daily_summary_enabled', dailySummaryEnabled);
+    await prefs.setBool('high_price_warning_enabled', highPriceWarningEnabled);
     await prefs.setDouble('notification_threshold', notificationThreshold);
+    await prefs.setDouble('high_price_threshold', highPriceThreshold);
     await prefs.setInt('notification_minutes_before', notificationMinutesBefore);
     await prefs.setInt('quiet_time_start_hour', quietTimeStart.hour);
     await prefs.setInt('quiet_time_start_minute', quietTimeStart.minute);
@@ -118,7 +124,9 @@ class _SettingsPageState extends State<SettingsPage> {
             priceThresholdEnabled: priceThresholdEnabled,
             cheapestTimeEnabled: cheapestTimeEnabled,
             dailySummaryEnabled: dailySummaryEnabled,
+            highPriceWarningEnabled: highPriceWarningEnabled,
             notificationThreshold: notificationThreshold,
+            highPriceThreshold: highPriceThreshold,
             notificationMinutesBefore: notificationMinutesBefore,
             dailySummaryTime: dailySummaryTime,
             dailySummaryHours: dailySummaryHours,
@@ -174,6 +182,22 @@ class _SettingsPageState extends State<SettingsPage> {
               });
               await _saveSettings();
               await _notificationService.scheduleNotifications();
+            },
+            onHighPriceWarningEnabledChanged: (value) async {
+              setState(() {
+                highPriceWarningEnabled = value;
+              });
+              await _saveSettings();
+              await _notificationService.scheduleNotifications();
+              debugPrint('High price warning changed to: $value');
+            },
+            onHighPriceThresholdChanged: (value) async {
+              setState(() {
+                highPriceThreshold = value;
+              });
+              await _saveSettings();
+              await _notificationService.scheduleNotifications();
+              debugPrint('High price threshold changed to: ${PriceUtils.formatPrice(value)}');
             },
           ),
           
@@ -257,6 +281,8 @@ class _SettingsPageState extends State<SettingsPage> {
                     subtitle: const Text('Verbunden'),
                     trailing: const Icon(Icons.check_circle, color: Colors.green),
                   ),
+                  // Hidden for now - keeping code for later
+                  /*
                   ListTile(
                     title: const Text('Shelly Cloud'),
                     subtitle: FutureBuilder<bool>(
@@ -276,6 +302,7 @@ class _SettingsPageState extends State<SettingsPage> {
                     trailing: const Icon(Icons.arrow_forward_ios, size: 16),
                     onTap: _showShellyLoginDialog,
                   ),
+                  */
                 ],
               ),
             ),

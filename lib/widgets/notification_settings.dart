@@ -5,14 +5,18 @@ class NotificationSettings extends StatelessWidget {
   final bool priceThresholdEnabled;
   final bool cheapestTimeEnabled;
   final bool dailySummaryEnabled;
+  final bool highPriceWarningEnabled;
   final double notificationThreshold;
+  final double highPriceThreshold;
   final int notificationMinutesBefore;
   final TimeOfDay dailySummaryTime;
   final int dailySummaryHours;
   final ValueChanged<bool> onPriceThresholdEnabledChanged;
   final ValueChanged<bool> onCheapestTimeEnabledChanged;
   final ValueChanged<bool> onDailySummaryEnabledChanged;
+  final ValueChanged<bool> onHighPriceWarningEnabledChanged;
   final ValueChanged<double> onNotificationThresholdChanged;
+  final ValueChanged<double> onHighPriceThresholdChanged;
   final ValueChanged<double> onNotificationMinutesBeforeChanged;
   final ValueChanged<TimeOfDay> onDailySummaryTimeChanged;
   final ValueChanged<int> onDailySummaryHoursChanged;
@@ -22,14 +26,18 @@ class NotificationSettings extends StatelessWidget {
     required this.priceThresholdEnabled,
     required this.cheapestTimeEnabled,
     required this.dailySummaryEnabled,
+    required this.highPriceWarningEnabled,
     required this.notificationThreshold,
+    required this.highPriceThreshold,
     required this.notificationMinutesBefore,
     required this.dailySummaryTime,
     required this.dailySummaryHours,
     required this.onPriceThresholdEnabledChanged,
     required this.onCheapestTimeEnabledChanged,
     required this.onDailySummaryEnabledChanged,
+    required this.onHighPriceWarningEnabledChanged,
     required this.onNotificationThresholdChanged,
+    required this.onHighPriceThresholdChanged,
     required this.onNotificationMinutesBeforeChanged,
     required this.onDailySummaryTimeChanged,
     required this.onDailySummaryHoursChanged,
@@ -106,7 +114,7 @@ class NotificationSettings extends StatelessWidget {
             const Divider(),
             SwitchListTile(
               title: const Text('Tägliche Zusammenfassung'),
-              subtitle: Text('Übersicht der $dailySummaryHours günstigsten Stunden'),
+              subtitle: Text('Übersicht der günstigsten Stunden + Warnung vor teuren Preisen'),
               value: dailySummaryEnabled,
               onChanged: onDailySummaryEnabledChanged,
             ),
@@ -115,6 +123,44 @@ class NotificationSettings extends StatelessWidget {
                 padding: const EdgeInsets.symmetric(horizontal: 16),
                 child: Column(
                   children: [
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('Zeige $dailySummaryHours günstigste Stunden'),
+                        Slider(
+                          value: dailySummaryHours.toDouble(),
+                          min: 1,
+                          max: 8,
+                          divisions: 7,
+                          label: dailySummaryHours.toString(),
+                          onChanged: (value) => onDailySummaryHoursChanged(value.round()),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    SwitchListTile(
+                      title: const Text('Warnung vor teuren Preisen'),
+                      subtitle: const Text('Zusätzlich Warnung wenn Preise über Schwelle'),
+                      value: highPriceWarningEnabled,
+                      onChanged: onHighPriceWarningEnabledChanged,
+                      contentPadding: EdgeInsets.zero,
+                    ),
+                    if (highPriceWarningEnabled)
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text('Warnschwelle: ${PriceUtils.formatPrice(highPriceThreshold)}'),
+                          Slider(
+                            value: highPriceThreshold,
+                            min: 20,
+                            max: 200,
+                            divisions: 18,
+                            label: PriceUtils.formatPrice(highPriceThreshold).replaceAll(' ct/kWh', ''),
+                            onChanged: onHighPriceThresholdChanged,
+                          ),
+                        ],
+                      ),
+                    const SizedBox(height: 16),
                     ListTile(
                       contentPadding: EdgeInsets.zero,
                       title: const Text('Benachrichtigungszeit'),
@@ -132,20 +178,6 @@ class NotificationSettings extends StatelessWidget {
                           onDailySummaryTimeChanged(time);
                         }
                       },
-                    ),
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text('Anzahl günstigste Stunden: $dailySummaryHours'),
-                        Slider(
-                          value: dailySummaryHours.toDouble(),
-                          min: 1,
-                          max: 8,
-                          divisions: 7,
-                          label: dailySummaryHours.toString(),
-                          onChanged: (value) => onDailySummaryHoursChanged(value.round()),
-                        ),
-                      ],
                     ),
                   ],
                 ),
