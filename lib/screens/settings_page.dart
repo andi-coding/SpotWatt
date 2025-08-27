@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../services/notification_service.dart';
+import '../services/location_service.dart';
 import '../services/shelly_service.dart';
+import '../services/location_permission_helper.dart';
 import '../utils/price_utils.dart';
 import '../widgets/notification_settings.dart';
 import '../widgets/shelly_login_dialog.dart';
@@ -16,6 +18,7 @@ class SettingsPage extends StatefulWidget {
 
 class _SettingsPageState extends State<SettingsPage> {
   final NotificationService _notificationService = NotificationService();
+  final LocationService _locationService = LocationService();
   
   bool priceThresholdEnabled = false;
   bool cheapestTimeEnabled = true;
@@ -26,7 +29,7 @@ class _SettingsPageState extends State<SettingsPage> {
   int notificationMinutesBefore = 15;
   int dailySummaryHours = 3;
   TimeOfDay quietTimeStart = const TimeOfDay(hour: 22, minute: 0);
-  TimeOfDay quietTimeEnd = const TimeOfDay(hour: 7, minute: 0);
+  TimeOfDay quietTimeEnd = const TimeOfDay(hour: 6, minute: 0);
   TimeOfDay dailySummaryTime = const TimeOfDay(hour: 7, minute: 0);
 
   @override
@@ -34,6 +37,7 @@ class _SettingsPageState extends State<SettingsPage> {
     super.initState();
     _loadSettings();
   }
+
 
   Future<void> _loadSettings() async {
     final prefs = await SharedPreferences.getInstance();
@@ -181,10 +185,34 @@ class _SettingsPageState extends State<SettingsPage> {
             quietTimeStart: quietTimeStart,
             quietTimeEnd: quietTimeEnd,
             onLocationBasedChanged: (value) async {
+              if (value) {
+                // First request location permissions when enabling
+                debugPrint('Requesting location permissions for geofencing...');
+                final granted = await LocationPermissionHelper.requestLocationPermissions(context);
+                
+                if (!granted) {
+                  // If permission denied, don't enable the feature
+                  debugPrint('Location permissions denied - cannot enable location-based notifications');
+                  return;
+                }
+                
+                debugPrint('Location permissions granted - enabling location-based notifications');
+              }
+              
               setState(() {
                 locationBasedNotifications = value;
               });
               await _saveSettings();
+              
+              // Setup or remove geofencing based on the setting
+              if (value) {
+                debugPrint('Setting up geofence');
+                await _locationService.enableLocationBasedNotifications();
+              } else {
+                debugPrint('Disabling location-based notifications - removing geofence');
+                await _locationService.disableLocationBasedNotifications();
+              }
+              
               await _notificationService.scheduleNotifications();
             },
             onQuietTimeEnabledChanged: (value) async {

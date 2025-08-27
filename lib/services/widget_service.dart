@@ -74,21 +74,6 @@ class WidgetService {
         iOSName: iosWidgetKind,
       );
       print('[WidgetService] HomeWidget.updateWidget result: $updateResult');
-      
-      // Force Android widget update through native channel
-      if (Platform.isAndroid) {
-        try {
-          print('[WidgetService] Calling native forceUpdateWidget...');
-          final result = await _channel.invokeMethod('forceUpdateWidget');
-          print('[WidgetService] Native forceUpdateWidget returned: $result');
-        } catch (e) {
-          print('[WidgetService] ERROR calling forceUpdateWidget: $e');
-          print('[WidgetService] Error type: ${e.runtimeType}');
-          if (e is MissingPluginException) {
-            print('[WidgetService] MethodChannel not properly configured!');
-          }
-        }
-      }
     } catch (e) {
       print('Error updating widget: $e');
     }

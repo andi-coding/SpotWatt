@@ -5,6 +5,7 @@ import 'settings_page.dart';
 import '../services/notification_service.dart';
 import '../services/price_cache_service.dart';
 import '../services/widget_service.dart';
+import '../services/location_permission_helper.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({Key? key}) : super(key: key);
@@ -33,7 +34,9 @@ class _HomeScreenState extends State<HomeScreen> {
     // Notifications initialisieren
     await _notificationService.initialize(context);
     
-    // Setup widget cslick listener
+    // Location Permissions werden nur angefragt wenn User Location-based Notifications aktiviert
+    
+    // Setup widget click listener
     WidgetService.setupWidgetClickListener(() async {
       debugPrint('[Widget] Widget clicked - opening app');
       // Just update the widget with cached data

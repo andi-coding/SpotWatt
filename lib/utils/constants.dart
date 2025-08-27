@@ -12,7 +12,7 @@ class AppConstants {
   static const double defaultNotificationThreshold = 10.0;
   static const int defaultNotificationMinutesBefore = 15;
   static const int defaultQuietTimeStartHour = 22;
-  static const int defaultQuietTimeEndHour = 7;
+  static const int defaultQuietTimeEndHour = 6;
   
   // Storage Keys
   static const String keyNotificationsEnabled = 'notifications_enabled';

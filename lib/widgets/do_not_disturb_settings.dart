@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:geolocator/geolocator.dart';
 import '../services/location_service.dart';
 
 class DoNotDisturbSettings extends StatefulWidget {
@@ -27,22 +28,44 @@ class DoNotDisturbSettings extends StatefulWidget {
   State<DoNotDisturbSettings> createState() => _DoNotDisturbSettingsState();
 }
 
-class _DoNotDisturbSettingsState extends State<DoNotDisturbSettings> {
+class _DoNotDisturbSettingsState extends State<DoNotDisturbSettings> with WidgetsBindingObserver {
   final LocationService _locationService = LocationService();
   bool _hasHomeLocation = false;
   double _homeRadius = 100.0;
   bool _isLoading = false;
   String? _homeAddress;
+  bool _isLocationServiceEnabled = true;
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _checkHomeLocation();
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    super.didChangeAppLifecycleState(state);
+    debugPrint('[DoNotDisturb] App lifecycle changed: $state');
+    
+    if (state == AppLifecycleState.resumed) {
+      debugPrint('[DoNotDisturb] App resumed - refreshing location status');
+      // User returned from background (e.g., from Android Settings)
+      // Refresh location service status
+      _checkHomeLocation();
+    }
   }
 
   Future<void> _checkHomeLocation() async {
     final homeLocation = await _locationService.getHomeLocation();
     final radius = await _locationService.getHomeRadius();
+    final locationServiceEnabled = await Geolocator.isLocationServiceEnabled();
     String? address;
     
     if (homeLocation != null) {
@@ -57,6 +80,7 @@ class _DoNotDisturbSettingsState extends State<DoNotDisturbSettings> {
         _hasHomeLocation = homeLocation != null;
         _homeRadius = radius < 100 ? 100.0 : radius;
         _homeAddress = address;
+        _isLocationServiceEnabled = locationServiceEnabled;
       });
     }
   }
@@ -145,11 +169,11 @@ class _DoNotDisturbSettingsState extends State<DoNotDisturbSettings> {
             SwitchListTile(
               title: const Text('Standortbasierte Benachrichtigungen'),
               subtitle: const Text('Benachrichtigungen nur wenn du zu Hause bist'),
-              value: widget.locationBasedNotifications && _hasHomeLocation,
-              onChanged: _hasHomeLocation ? widget.onLocationBasedChanged : null,
+              value: widget.locationBasedNotifications,
+              onChanged: widget.onLocationBasedChanged,
             ),
             
-            if (widget.locationBasedNotifications || !_hasHomeLocation) ...[
+            if (widget.locationBasedNotifications) ...[
               const SizedBox(height: 8),
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -284,34 +308,83 @@ class _DoNotDisturbSettingsState extends State<DoNotDisturbSettings> {
                       ],
                     ),
                     
-                    if (_hasHomeLocation && widget.locationBasedNotifications) ...[
+                    // Dynamic info boxes based on status
+                    if (widget.locationBasedNotifications) ...[
                       const SizedBox(height: 8),
-                      Container(
-                        padding: const EdgeInsets.all(8),
-                        decoration: BoxDecoration(
-                          color: Theme.of(context).colorScheme.secondaryContainer,
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Row(
-                          children: [
-                            Icon(
-                              Icons.info_outline,
-                              size: 16,
-                              color: Theme.of(context).colorScheme.onSecondaryContainer,
-                            ),
-                            const SizedBox(width: 8),
-                            Expanded(
-                              child: Text(
-                                'Standort-Berechtigung muss aktiviert sein',
+                      
+                      // Smartphone location disabled warning
+                      if (!_isLocationServiceEnabled)
+                        Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: Theme.of(context).colorScheme.surfaceVariant,
+                            border: Border.all(color: Theme.of(context).colorScheme.outline),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  Icon(
+                                    Icons.warning_amber_rounded,
+                                    size: 16,
+                                    color: Colors.deepOrange.shade600,
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                    child: Text(
+                                      'Smartphone-Standort ist deaktiviert',
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w500,
+                                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                'Bitte Standort in Smartphone-Einstellungen aktivieren. Ohne Standort werden alle Benachrichtigungen gesendet.',
                                 style: TextStyle(
                                   fontSize: 11,
-                                  color: Theme.of(context).colorScheme.onSecondaryContainer,
+                                  color: Theme.of(context).colorScheme.onSurfaceVariant,
                                 ),
                               ),
-                            ),
-                          ],
+                            ],
+                          ),
+                        )
+                      
+                      // Home location not set info
+                      else if (!_hasHomeLocation)
+                        Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: Theme.of(context).colorScheme.surfaceVariant,
+                            border: Border.all(color: Theme.of(context).colorScheme.outline),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Row(
+                            children: [
+                              Icon(
+                                Icons.info_outline,
+                                size: 16,
+                                color: Theme.of(context).colorScheme.onSurfaceVariant,
+                              ),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  'Bitte Standort setzen wenn du zuhause bist. Ohne Standort werden alle Benachrichtigungen gesendet.',
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
-                      ),
                     ],
                   ],
                 ),

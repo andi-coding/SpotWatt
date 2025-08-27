@@ -1,73 +1,43 @@
+import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:geocoding/geocoding.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'dart:math' as math;
+import 'geofence_service.dart';
 
 class LocationService {
   static const String _homeLatKey = 'home_latitude';
   static const String _homeLonKey = 'home_longitude';
   static const String _homeRadiusKey = 'home_radius';
-  static const double _defaultRadius = 100.0; // 100 meters default
-
-  // Request location permissions
-  Future<bool> requestLocationPermission() async {
-    bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
-    if (!serviceEnabled) {
-      return false;
-    }
-
-    LocationPermission permission = await Geolocator.checkPermission();
-    if (permission == LocationPermission.denied) {
-      permission = await Geolocator.requestPermission();
-      if (permission == LocationPermission.denied) {
-        return false;
-      }
-    }
-
-    if (permission == LocationPermission.deniedForever) {
-      return false;
-    }
-
-    return true;
-  }
-
-  // Get current location
-  Future<Position?> getCurrentLocation() async {
-    try {
-      if (!await requestLocationPermission()) {
-        return null;
-      }
-
-      return await Geolocator.getCurrentPosition(
-        desiredAccuracy: LocationAccuracy.high,
-        timeLimit: const Duration(seconds: 30),
-      );
-    } catch (e) {
-      print('Error getting location: $e');
-      return null;
-    }
-  }
+  static const double _defaultRadius = 100.0; // 100 meters for reliable detection
+  
+  final GeofenceService _geofenceService = GeofenceService();
 
   // Save home location
   Future<bool> saveHomeLocation() async {
-    final position = await getCurrentLocation();
-    if (position == null) return false;
+    try {
+      // Permissions are already handled when feature is enabled
+      final position = await Geolocator.getCurrentPosition(
+        desiredAccuracy: LocationAccuracy.high,
+        timeLimit: const Duration(seconds: 30),
+      );
 
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setDouble(_homeLatKey, position.latitude);
-    await prefs.setDouble(_homeLonKey, position.longitude);
-    
-    return true;
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setDouble(_homeLatKey, position.latitude);
+      await prefs.setDouble(_homeLonKey, position.longitude);
+      
+      // Setup geofence if location-based notifications are enabled
+      final locationBasedNotifications = prefs.getBool('location_based_notifications') ?? false;
+      if (locationBasedNotifications) {
+        await _setupHomeGeofence(position.latitude, position.longitude);
+      }
+      
+      return true;
+    } catch (e) {
+      debugPrint('Error getting location: $e');
+      return false;
+    }
   }
 
-  // Save custom home location
-  Future<bool> saveCustomHomeLocation(double latitude, double longitude) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setDouble(_homeLatKey, latitude);
-    await prefs.setDouble(_homeLonKey, longitude);
-    
-    return true;
-  }
 
   // Get saved home location
   Future<Map<String, double>?> getHomeLocation() async {
@@ -95,45 +65,6 @@ class LocationService {
     return prefs.getDouble(_homeRadiusKey) ?? _defaultRadius;
   }
 
-  // Check if user is at home
-  Future<bool> isUserAtHome() async {
-    final currentPosition = await getCurrentLocation();
-    if (currentPosition == null) return false;
-
-    final homeLocation = await getHomeLocation();
-    if (homeLocation == null) return false;
-
-    final radius = await getHomeRadius();
-
-    final distance = calculateDistance(
-      currentPosition.latitude,
-      currentPosition.longitude,
-      homeLocation['latitude']!,
-      homeLocation['longitude']!,
-    );
-
-    return distance <= radius;
-  }
-
-  // Calculate distance between two points in meters
-  double calculateDistance(double lat1, double lon1, double lat2, double lon2) {
-    const double earthRadius = 6371000; // Earth radius in meters
-    
-    final dLat = _toRadians(lat2 - lat1);
-    final dLon = _toRadians(lon2 - lon1);
-    
-    final a = math.sin(dLat / 2) * math.sin(dLat / 2) +
-        math.cos(_toRadians(lat1)) * math.cos(_toRadians(lat2)) *
-        math.sin(dLon / 2) * math.sin(dLon / 2);
-    
-    final c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a));
-    
-    return earthRadius * c;
-  }
-
-  double _toRadians(double degree) {
-    return degree * (math.pi / 180);
-  }
 
   // Clear home location
   Future<void> clearHomeLocation() async {
@@ -141,6 +72,50 @@ class LocationService {
     await prefs.remove(_homeLatKey);
     await prefs.remove(_homeLonKey);
     await prefs.remove(_homeRadiusKey);
+    
+    // Remove geofence
+    await _geofenceService.removeHomeGeofence();
+  }
+
+  // Setup geofence with current home location and radius
+  Future<void> _setupHomeGeofence(double latitude, double longitude) async {
+    final prefs = await SharedPreferences.getInstance();
+    final radius = prefs.getDouble(_homeRadiusKey) ?? _defaultRadius;
+    
+    await _geofenceService.initialize();
+    await _geofenceService.setupHomeGeofence(latitude, longitude, radius);
+  }
+
+  // Enable location-based notifications (setup geofence)
+  Future<void> enableLocationBasedNotifications() async {
+    final homeLocation = await getHomeLocation();
+    if (homeLocation != null) {
+      // Request permissions first
+      final hasPermissions = await _geofenceService.requestPermissions();
+      if (hasPermissions) {
+        await _setupHomeGeofence(homeLocation['latitude']!, homeLocation['longitude']!);
+      } else {
+        debugPrint('[LocationService] Geofence permissions not granted');
+      }
+    }
+  }
+
+  // Disable location-based notifications (remove geofence)
+  Future<void> disableLocationBasedNotifications() async {
+    await _geofenceService.removeHomeGeofence();
+  }
+
+  // Update home radius and refresh geofence
+  Future<void> updateHomeRadius(double radius) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setDouble(_homeRadiusKey, radius);
+    
+    final homeLocation = await getHomeLocation();
+    final locationBasedNotifications = prefs.getBool('location_based_notifications') ?? false;
+    
+    if (homeLocation != null && locationBasedNotifications) {
+      await _setupHomeGeofence(homeLocation['latitude']!, homeLocation['longitude']!);
+    }
   }
 
   // Get address from coordinates

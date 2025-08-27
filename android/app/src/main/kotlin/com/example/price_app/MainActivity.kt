@@ -18,18 +18,8 @@ class MainActivity : FlutterActivity() {
         methodChannel = MethodChannel(flutterEngine.dartExecutor.binaryMessenger, CHANNEL)
         methodChannel?.setMethodCallHandler { call, result ->
             android.util.Log.d("MainActivity", "Received method call: ${call.method}")
-            when (call.method) {
-                "forceUpdateWidget" -> {
-                    android.util.Log.d("MainActivity", "Executing forceUpdateWidget")
-                    forceUpdateWidget()
-                    result.success(true)
-                    android.util.Log.d("MainActivity", "forceUpdateWidget completed")
-                }
-                else -> {
-                    android.util.Log.d("MainActivity", "Method not implemented: ${call.method}")
-                    result.notImplemented()
-                }
-            }
+            android.util.Log.d("MainActivity", "Method not implemented: ${call.method}")
+            result.notImplemented()
         }
     }
     
@@ -69,17 +59,4 @@ class MainActivity : FlutterActivity() {
         }
     }
     
-    private fun forceUpdateWidget() {
-        android.util.Log.d("MainActivity", "forceUpdateWidget called")
-        val intent = Intent(this, PriceWidgetProvider::class.java)
-        intent.action = AppWidgetManager.ACTION_APPWIDGET_UPDATE
-        val widgetManager = AppWidgetManager.getInstance(this)
-        val widgetIds = widgetManager.getAppWidgetIds(
-            ComponentName(this, PriceWidgetProvider::class.java)
-        )
-        android.util.Log.d("MainActivity", "Found ${widgetIds.size} widgets to update")
-        intent.putExtra(AppWidgetManager.EXTRA_APPWIDGET_IDS, widgetIds)
-        sendBroadcast(intent)
-        android.util.Log.d("MainActivity", "Broadcast sent to update widgets")
-    }
 }

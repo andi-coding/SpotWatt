@@ -21,7 +21,7 @@ android {
 
     defaultConfig {
         applicationId = "com.example.price_app"
-        minSdk = 21
+        minSdk = 23
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
@@ -41,4 +41,5 @@ flutter {
 
 dependencies {
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")  // Version aktualisiert!
+    implementation("com.google.android.gms:play-services-location:21.3.0")
 }

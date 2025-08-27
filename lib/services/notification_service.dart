@@ -5,7 +5,7 @@ import 'package:flutter/material.dart';
 import '../models/price_data.dart';
 import '../utils/price_utils.dart';
 import 'price_cache_service.dart';
-import 'location_service.dart';
+import 'geofence_service.dart';
 
 class NotificationService {
   static final NotificationService _instance = NotificationService._internal();
@@ -13,6 +13,7 @@ class NotificationService {
   NotificationService._internal();
 
   final FlutterLocalNotificationsPlugin notifications = FlutterLocalNotificationsPlugin();
+  int _notificationId = 1; // Global notification ID counter
 
   Future<void> initialize(BuildContext context) async {
     const androidSettings = AndroidInitializationSettings('@mipmap/ic_launcher');
@@ -55,7 +56,8 @@ class NotificationService {
     // Cancel all notifications to avoid duplicates
     await notifications.cancelAll();
     
-    int notificationId = 1;
+    // Reset notification ID counter
+    _notificationId = 1;
     
     final priceThresholdEnabled = prefs.getBool('price_threshold_enabled') ?? false;
     final notificationThreshold = prefs.getDouble('notification_threshold') ?? 10.0;
@@ -64,7 +66,7 @@ class NotificationService {
       for (var price in prices) {
         if (price.price <= notificationThreshold) {
           if (!_isInQuietTime(price.startTime, prefs)) {
-            await _schedulePriceNotification(price, notificationId++);
+            await _schedulePriceNotification(price);
           }
         }
       }
@@ -75,39 +77,43 @@ class NotificationService {
     
     if (cheapestTimeEnabled) {
       final now = DateTime.now();
-      final todayPrices = prices.where((p) => p.startTime.day == now.day).toList();
-      if (todayPrices.isNotEmpty) {
-        final cheapestToday = todayPrices.reduce((a, b) => a.price < b.price ? a : b);
-        await _scheduleCheapestTimeNotification(
-          cheapestToday, 
-          'heute', 
-          notificationId++, 
-          notificationMinutesBefore
-        );
-      }
+      debugPrint('[NotificationService] Current time: $now');
       
-      final tomorrowPrices = prices.where((p) => p.startTime.day == now.day + 1).toList();
-      if (tomorrowPrices.isNotEmpty) {
-        final cheapestTomorrow = tomorrowPrices.reduce((a, b) => a.price < b.price ? a : b);
-        await _scheduleCheapestTimeNotification(
-          cheapestTomorrow, 
-          'morgen', 
-          notificationId++,
-          notificationMinutesBefore
-        );
+      // Find all available days in the price data
+      final availableDays = prices.map((p) => p.startTime.day).toSet().toList()..sort();
+      debugPrint('[NotificationService] Available days in data: $availableDays');
+      
+      // For each available day, find the cheapest hour of the WHOLE day
+      for (final day in availableDays) {
+        final dayPrices = prices.where((p) => p.startTime.day == day).toList();
+        debugPrint('[NotificationService] Day $day: ${dayPrices.length} hours found');
+        
+        if (dayPrices.length >= 24) { // Only if we have the complete day
+          final cheapestOfDay = dayPrices.reduce((a, b) => a.price < b.price ? a : b);
+          final dayName = day == now.day ? 'today' : day == now.day + 1 ? 'tomorrow' : 'day $day';
+          
+          debugPrint('[NotificationService] Cheapest of $dayName (day $day): ${cheapestOfDay.startTime} - ${PriceUtils.formatPrice(cheapestOfDay.price)}');
+          
+          await _scheduleCheapestTimeNotification(
+            cheapestOfDay, 
+            notificationMinutesBefore
+          );
+        } else {
+          debugPrint('[NotificationService] Skipping day $day - incomplete (only ${dayPrices.length}/24 hours)');
+        }
       }
     }
     
     // Schedule daily summary
     final dailySummaryEnabled = prefs.getBool('daily_summary_enabled') ?? true;
     if (dailySummaryEnabled) {
-      await _scheduleDailySummary(prices, notificationId++, prefs);
+      await _scheduleDailySummary(prices, prefs);
     }
     
-    debugPrint('Scheduled ${notificationId - 1} notifications');
+    debugPrint('Scheduled ${_notificationId - 1} notifications');
   }
 
-  Future<void> _schedulePriceNotification(PriceData price, int notificationId) async {
+  Future<void> _schedulePriceNotification(PriceData price) async {
     final notificationTime = price.startTime.subtract(const Duration(minutes: 5));
     
     // Check location-based settings
@@ -115,8 +121,8 @@ class NotificationService {
     final locationBasedNotifications = prefs.getBool('location_based_notifications') ?? false;
     
     if (locationBasedNotifications) {
-      final locationService = LocationService();
-      final isAtHome = await locationService.isUserAtHome();
+      final geofenceService = GeofenceService();
+      final isAtHome = await geofenceService.isAtHome();
       if (!isAtHome) {
         debugPrint('Notification skipped - user not at home');
         return;
@@ -125,9 +131,9 @@ class NotificationService {
     
     if (notificationTime.isAfter(DateTime.now())) {
       await notifications.zonedSchedule(
-        notificationId,
-        '💡 Günstiger Strompreis!',
-        'Jetzt nur ${PriceUtils.formatPrice(price.price)} - Perfekt für energieintensive Geräte!',
+        _notificationId++,
+        '💡 Günstiger Strompreis in 5 Min!',
+        'Ab ${price.startTime.hour.toString().padLeft(2, '0')}:00 Uhr nur ${PriceUtils.formatPrice(price.price)} - Perfekt für energieintensive Geräte!',
         tz.TZDateTime.from(notificationTime, tz.local),
         const NotificationDetails(
           android: AndroidNotificationDetails(
@@ -150,8 +156,6 @@ class NotificationService {
 
   Future<void> _scheduleCheapestTimeNotification(
     PriceData price, 
-    String day, 
-    int notificationId,
     int minutesBefore
   ) async {
     final notificationTime = price.startTime.subtract(Duration(minutes: minutesBefore));
@@ -161,8 +165,8 @@ class NotificationService {
     final locationBasedNotifications = prefs.getBool('location_based_notifications') ?? false;
     
     if (locationBasedNotifications) {
-      final locationService = LocationService();
-      final isAtHome = await locationService.isUserAtHome();
+      final geofenceService = GeofenceService();
+      final isAtHome = await geofenceService.isAtHome();
       if (!isAtHome) {
         debugPrint('Cheapest time notification skipped - user not at home');
         return;
@@ -170,9 +174,10 @@ class NotificationService {
     }
     
     if (notificationTime.isAfter(DateTime.now()) && !_isInQuietTime(notificationTime, prefs)) {
+      debugPrint('[NotificationService] ✅ Scheduling cheapest time notification for: $notificationTime (price starts: ${price.startTime})');
       await notifications.zonedSchedule(
-        notificationId,
-        '⚡ Günstigster Zeitpunkt $day!',
+        _notificationId++,
+        '⚡ Günstigster Zeitpunkt!',
         'In $minutesBefore Minuten beginnt der günstigste Zeitpunkt des Tages (${PriceUtils.formatPrice(price.price)})',
         tz.TZDateTime.from(notificationTime, tz.local),
         const NotificationDetails(
@@ -191,6 +196,8 @@ class NotificationService {
         ),
         androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
       );
+    } else {
+      debugPrint('[NotificationService] ❌ Skipping cheapest time notification for: $notificationTime (price starts: ${price.startTime}) - already past or in quiet time');
     }
   }
 
@@ -221,12 +228,6 @@ class NotificationService {
     await notifications.cancelAll();
   }
   
-  /// Aktualisiert die Preise und plant Notifications neu
-  Future<void> refreshPricesAndSchedule() async {
-    final priceCacheService = PriceCacheService();
-    await priceCacheService.getPrices(forceRefresh: true);
-    await scheduleNotifications();
-  }
   
   // Find cheapest hours
   List<PriceData> findCheapestHours(List<PriceData> prices, int count) {
@@ -242,7 +243,6 @@ class NotificationService {
   // Schedule daily summary notification
   Future<void> _scheduleDailySummary(
     List<PriceData> prices, 
-    int notificationId,
     SharedPreferences prefs
   ) async {
     final summaryHour = prefs.getInt('daily_summary_hour') ?? 7;
@@ -293,8 +293,8 @@ class NotificationService {
     // Check location if needed
     final locationBasedNotifications = prefs.getBool('location_based_notifications') ?? false;
     if (locationBasedNotifications) {
-      final locationService = LocationService();
-      final isAtHome = await locationService.isUserAtHome();
+      final geofenceService = GeofenceService();
+      final isAtHome = await geofenceService.isAtHome();
       if (!isAtHome) {
         debugPrint('Daily summary skipped - user not at home');
         return;
@@ -308,7 +308,7 @@ class NotificationService {
     }
     
     await notifications.zonedSchedule(
-      notificationId,
+      _notificationId++,
       '📊 Tägliche Strompreis-Übersicht',
       buffer.toString().trim(),
       tz.TZDateTime.from(notificationTime, tz.local),

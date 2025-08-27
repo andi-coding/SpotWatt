@@ -8,7 +8,7 @@ import '../models/price_data.dart';
 import 'notification_service.dart';
 import 'price_cache_service.dart';
 import 'widget_service.dart';
-import 'location_service.dart';
+import 'geofence_service.dart';
 
 /// Unified Background Task Service
 /// Handles background tasks for both Android and iOS (future)
@@ -123,9 +123,6 @@ void callbackDispatcher() {
       await WidgetService.updateWidget();
       debugPrint('[BackgroundTask] Widget updated');
       
-      // Check location-based notifications
-      await _checkLocationBasedNotifications();
-      debugPrint('[BackgroundTask] Location-based notifications checked');
       
       // Check if we're close to the hour mark
       final currentMinute = now.minute;
@@ -166,46 +163,3 @@ void callbackDispatcher() {
   });
 }
 
-/// Check location-based notifications and update accordingly
-Future<void> _checkLocationBasedNotifications() async {
-  try {
-    final prefs = await SharedPreferences.getInstance();
-    final locationBasedNotifications = prefs.getBool('location_based_notifications') ?? false;
-    
-    // Skip if location-based notifications are disabled
-    if (!locationBasedNotifications) {
-      debugPrint('[BackgroundTask] Location-based notifications disabled');
-      return;
-    }
-    
-    final locationService = LocationService();
-    final currentlyAtHome = await locationService.isUserAtHome();
-    final wasAtHome = prefs.getBool('was_at_home') ?? true; // Default to home
-    
-    debugPrint('[BackgroundTask] Location check - Currently: $currentlyAtHome, Was: $wasAtHome');
-    
-    // Check if location status changed
-    if (currentlyAtHome != wasAtHome) {
-      debugPrint('[BackgroundTask] Location status changed!');
-      
-      final notificationService = NotificationService();
-      
-      if (currentlyAtHome) {
-        // Just arrived home - reschedule notifications for remaining time
-        debugPrint('[BackgroundTask] User came home - rescheduling notifications');
-        await notificationService.scheduleNotifications();
-      } else {
-        // Just left home - cancel all notifications
-        debugPrint('[BackgroundTask] User left home - canceling notifications');
-        await notificationService.cancelAllNotifications();
-      }
-      
-      // Update stored location status
-      await prefs.setBool('was_at_home', currentlyAtHome);
-    } else {
-      debugPrint('[BackgroundTask] Location status unchanged');
-    }
-  } catch (e) {
-    debugPrint('[BackgroundTask] Location check failed: $e');
-  }
-}

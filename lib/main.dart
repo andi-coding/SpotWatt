@@ -3,6 +3,8 @@ import 'package:timezone/data/latest_all.dart' as tz;
 import 'package:timezone/timezone.dart' as tz;
 import 'screens/home_screen.dart';
 import 'services/background_task_service.dart';
+import 'services/geofence_service.dart';
+import 'services/location_permission_helper.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -13,6 +15,11 @@ void main() async {
   // Background Tasks initialisieren (Workmanager für Android)
   // Läuft immer - egal ob App offen oder geschlossen
   await BackgroundTaskService.initialize();
+  
+  // Geofence Service beim App-Start initialisieren
+  await GeofenceService().initialize();
+  
+  // Location Permissions werden beim ersten Screen-Load angefragt (mit Context)
   
   runApp(const WattWiseApp());
 }

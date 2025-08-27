@@ -38,6 +38,26 @@
                 android:resource="@xml/price_widget_info" />
         </receiver>
         
+        <!-- Screen Unlock Receiver for Widget Updates -->
+        <receiver android:name=".ScreenUnlockReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.intent.action.USER_PRESENT" />
+            </intent-filter>
+        </receiver>
+        
+        <!-- Used by plugin: native_geofence -->
+        <receiver android:name="com.chunkytofustudios.native_geofence.receivers.NativeGeofenceBroadcastReceiver"
+                  android:exported="true"/>
+        <receiver android:name="com.chunkytofustudios.native_geofence.receivers.NativeGeofenceRebootBroadcastReceiver"
+                  android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED"></action>
+            </intent-filter>
+        </receiver>
+        <service android:name="com.chunkytofustudios.native_geofence.NativeGeofenceForegroundService"
+                  android:permission="android.permission.BIND_JOB_SERVICE" android:exported="true"/>
+            
         <activity
             android:name=".MainActivity"
             android:exported="true"

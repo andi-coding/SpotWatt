@@ -3,9 +3,11 @@ package com.example.price_app
 import android.app.PendingIntent
 import android.appwidget.AppWidgetManager
 import android.appwidget.AppWidgetProvider
+import android.content.BroadcastReceiver
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
+import android.content.IntentFilter
 import android.widget.RemoteViews
 import android.content.SharedPreferences
 import es.antonborri.home_widget.HomeWidgetPlugin
@@ -14,7 +16,8 @@ class PriceWidgetProvider : AppWidgetProvider() {
     
     companion object {
         const val ACTION_WIDGET_CLICK = "com.example.price_app.WIDGET_CLICK"
-        
+        private var userPresentReceiver: BroadcastReceiver? = null
+
         fun forceUpdate(context: Context) {
             val intent = Intent(context, PriceWidgetProvider::class.java)
             intent.action = AppWidgetManager.ACTION_APPWIDGET_UPDATE
@@ -72,11 +75,48 @@ class PriceWidgetProvider : AppWidgetProvider() {
     }
 
     override fun onEnabled(context: Context) {
-        // Enter relevant functionality for when the first widget is created
+        super.onEnabled(context)
+        android.util.Log.d("PriceWidget", "Widget enabled - registering USER_PRESENT receiver")
+        
+        try {
+            val filter = IntentFilter().apply {
+                addAction(Intent.ACTION_USER_PRESENT)
+            }
+            
+            userPresentReceiver = object : BroadcastReceiver() {
+                override fun onReceive(context: Context?, intent: Intent?) {
+                    android.util.Log.e("PriceWidget", "USER_PRESENT received in onEnabled receiver!")
+                    android.util.Log.e("PriceWidget", "Action: ${intent?.action}")
+                    
+                    if (intent?.action == Intent.ACTION_USER_PRESENT) {
+                        android.util.Log.e("PriceWidget", "Updating widget from USER_PRESENT")
+                        context?.let { ctx ->
+                            forceUpdate(ctx)
+                        }
+                    }
+                }
+            }
+            
+            context.applicationContext.registerReceiver(userPresentReceiver, filter)
+            android.util.Log.e("PriceWidget", "USER_PRESENT receiver registered successfully in onEnabled")
+        } catch (e: Exception) {
+            android.util.Log.e("PriceWidget", "Failed to register USER_PRESENT receiver in onEnabled", e)
+        }
     }
 
     override fun onDisabled(context: Context) {
-        // Enter relevant functionality for when the last widget is disabled
+        super.onDisabled(context)
+        android.util.Log.d("PriceWidget", "Widget disabled - unregistering USER_PRESENT receiver")
+        
+        try {
+            userPresentReceiver?.let { receiver ->
+                context.applicationContext.unregisterReceiver(receiver)
+                android.util.Log.d("PriceWidget", "USER_PRESENT receiver unregistered successfully")
+                userPresentReceiver = null
+            }
+        } catch (e: Exception) {
+            android.util.Log.e("PriceWidget", "Failed to unregister USER_PRESENT receiver", e)
+        }
     }
 
     private fun createRemoteViews(context: Context, widgetData: SharedPreferences): RemoteViews {
