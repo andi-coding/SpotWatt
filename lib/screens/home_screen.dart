@@ -35,7 +35,8 @@ class _HomeScreenState extends State<HomeScreen> {
     // Notifications initialisieren
     await _notificationService.initialize(context);
     
-    // Battery optimization läuft automatisch optimiert - keine Aktion nötig
+    // Battery Optimization Permission beim ersten Start abfragen
+    await _requestBatteryOptimizationPermission();
     
     // Location Permissions werden nur angefragt wenn User Location-based Notifications aktiviert
     
