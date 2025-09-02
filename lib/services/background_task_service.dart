@@ -110,13 +110,17 @@ void callbackDispatcher() {
       
       // Cache älter als 24h? Sicherheits-Update
       final cacheAge = await priceCacheService.getCacheAge();
+      debugPrint('[BackgroundTask] Cache age: ${cacheAge?.inHours ?? 'null'} hours (${cacheAge?.inMinutes ?? 'null'} minutes)');
+      
       if (cacheAge == null || cacheAge.inHours >= 24) {
         //if tomorrow prices fetched, schedule notifications
-        debugPrint('[BackgroundTask] Cache expired, updating...');
+        debugPrint('[BackgroundTask] Cache expired or missing, updating...');
         await priceCacheService.getPrices(forceRefresh: true);
         //schedule notifications if new prices are there
         final notificationService = NotificationService();
         await notificationService.scheduleNotifications();
+      } else {
+        debugPrint('[BackgroundTask] Cache still fresh, skipping update');
       }
       
       // Update widget with latest data

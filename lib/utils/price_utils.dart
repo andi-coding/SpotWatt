@@ -2,6 +2,45 @@ import 'package:flutter/material.dart';
 import '../models/price_data.dart';
 
 class PriceUtils {
+  /// Calculate quartiles from a list of prices
+  static Map<String, double> calculateQuartiles(List<PriceData> prices) {
+    if (prices.isEmpty) return {'q1': 0, 'q2': 0, 'q3': 0};
+    
+    final sortedPrices = prices.map((p) => p.price).toList()..sort();
+    final length = sortedPrices.length;
+    
+    final q1Index = (length * 0.25).floor();
+    final q2Index = (length * 0.5).floor();
+    final q3Index = (length * 0.75).floor();
+    
+    return {
+      'q1': sortedPrices[q1Index],
+      'q2': sortedPrices[q2Index],
+      'q3': sortedPrices[q3Index],
+    };
+  }
+
+  /// Median-based color calculation with symmetric ranges around median
+  static Color getPriceColorMedian(double price, List<PriceData> prices, [Color? lastColor]) {
+    if (prices.isEmpty) return Colors.green;
+    
+    final sortedPrices = prices.map((p) => p.price).toList()..sort();
+    final length = sortedPrices.length;
+    final medianIndex = (length / 2).floor();
+    final median = sortedPrices[medianIndex]; // Simple: always take the middle element
+    
+    // Create symmetric ranges around median (±15%)
+    final range15 = median * 0.15;
+    final greenThreshold = median - range15;   // Median - 15%
+    final orangeThreshold = median + range15;  // Median + 15%
+    
+    // Color logic based on symmetric ranges
+    if (price < greenThreshold) return Colors.green;      // < Median - 15%
+    if (price < orangeThreshold) return Colors.orange;    // Median ± 15%
+    return Colors.red;                                    // > Median + 15%
+  }
+
+  @deprecated
   static Color getPriceColor(double price, double minPrice, double maxPrice) {
     final range = maxPrice - minPrice;
     if (range == 0) return Colors.green;
@@ -13,6 +52,16 @@ class PriceUtils {
     return Colors.red;
   }
 
+  /// Quartile-based icon selection  
+  static IconData getPriceIconQuartile(double price, List<PriceData> prices) {
+    final color = getPriceColorMedian(price, prices);
+    
+    if (color == Colors.green) return Icons.lightbulb; // Glühbirne für günstig
+    if (color == Colors.orange) return Icons.schedule; // Uhr für mittel (warten)
+    return Icons.warning_amber; // Warnung für teuer
+  }
+
+  @deprecated
   static IconData getPriceIcon(double price, double minPrice, double maxPrice) {
     final range = maxPrice - minPrice;
     if (range == 0) return Icons.lightbulb;

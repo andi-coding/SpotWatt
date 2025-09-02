@@ -91,7 +91,7 @@ class GeofenceService {
       }
       
       // Show debug notification that geofence was created
-      final notificationService = NotificationService();
+     /* final notificationService = NotificationService();
       await notificationService.notifications.show(
         9997,
         '🎯 DEBUG: Geofence erstellt',
@@ -106,7 +106,7 @@ class GeofenceService {
             color: Colors.blue,
           ),
         ),
-      );
+      );*/
       
       debugPrint('[GeofenceService] ✅ Home geofence successfully created');
     } catch (e) {

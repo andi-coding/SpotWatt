@@ -5,8 +5,23 @@ import '../utils/price_utils.dart';
 
 class PriceChart extends StatelessWidget {
   final List<PriceData> prices;
+  final List<PriceData> allPricesForColors;
 
-  const PriceChart({Key? key, required this.prices}) : super(key: key);
+  const PriceChart({
+    Key? key, 
+    required this.prices,
+    required this.allPricesForColors,
+  }) : super(key: key);
+
+  double _calculateYInterval(double range) {
+    // Calculate appropriate interval with nice round numbers
+    if (range <= 2) return 0.5;      // Small range: 0.5ct increments
+    if (range <= 5) return 1.0;      // Small-medium range: 1ct increments  
+    if (range <= 10) return 2.0;     // Medium range: 2ct increments
+    if (range <= 25) return 5.0;     // Larger range: 5ct increments
+    if (range <= 50) return 10.0;    // Big range: 10ct increments
+    return 20.0;                     // Very large range: 20ct increments
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -30,7 +45,7 @@ class PriceChart extends StatelessWidget {
           show: true,
           drawVerticalLine: true,
           drawHorizontalLine: true,
-          horizontalInterval: (maxY - minY) / 5,
+          horizontalInterval: _calculateYInterval(maxY - minY),
           verticalInterval: 3,
           getDrawingHorizontalLine: (value) {
             return FlLine(
@@ -62,14 +77,40 @@ class PriceChart extends StatelessWidget {
             axisNameSize: 16,
             sideTitles: SideTitles(
               showTitles: true,
-              reservedSize: 45,
+              reservedSize: 30,
+              interval: _calculateYInterval(maxY - minY),
               getTitlesWidget: (value, meta) {
-                return Text(
-                  '${value.toStringAsFixed(1)}',
-                  style: TextStyle(
-                    color: isDarkMode ? Colors.white70 : Colors.black87,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w500,
+                final interval = _calculateYInterval(maxY - minY);
+                
+                // Only show labels that are nice round numbers according to our interval
+                final remainder = value % interval;
+                if (remainder.abs() > 0.01) {  // Not a clean multiple of our interval
+                  return const SizedBox.shrink();
+                }
+                
+                // Y-Labels: Show clean multiples of interval
+                
+                // Avoid labels too close to chart edges
+                final chartMin = minY - padding;
+                final chartMax = maxY + padding;
+                final edgeMargin = interval * 0.1; // Reduced from 0.3 to 0.1
+                
+                if (value < chartMin + edgeMargin || value > chartMax - edgeMargin) {
+                  return const SizedBox.shrink();
+                }
+                
+                // Format with one decimal place for consistency
+                String label = value.toStringAsFixed(1);
+                
+                return Padding(
+                  padding: const EdgeInsets.only(right: 3),
+                  child: Text(
+                    label,
+                    style: TextStyle(
+                      color: isDarkMode ? Colors.white70 : Colors.black87,
+                      fontSize: 11,
+                      fontWeight: FontWeight.w500,
+                    ),
                   ),
                 );
               },
@@ -111,7 +152,7 @@ class PriceChart extends StatelessWidget {
                     isDayBoundary = true;
                   }
 
-                  // Always show the day boundary
+                  // Always show the day boundary with subtle emphasis
                   if (isDayBoundary) {
                     return Padding(
                       padding: const EdgeInsets.only(top: 1.0),
@@ -119,21 +160,22 @@ class PriceChart extends StatelessWidget {
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           Text(
-                            hour == 0 ? '0h' : '${hour}h',
+                            '0h',
                             style: TextStyle(
-                              fontSize: 10,
-                              fontWeight: FontWeight.w500,
+                              fontSize: 12, // Etwas größer
+                              fontWeight: FontWeight.bold, // Fetter
                               height: 1.0,
-                              color: isDarkMode ? Colors.white70 : Colors.black87,
+                              color: isDarkMode ? Colors.white : Colors.black87,
                             ),
                           ),
+                          const SizedBox(height: 1),
                           Text(
                             'Morgen',
                             style: TextStyle(
-                              fontSize: 7,
+                              fontSize: 9,
                               height: 0.9,
-                              color: Colors.blue,
-                              fontWeight: FontWeight.bold,
+                              color: Colors.blue.withOpacity(0.7), // Dezenter
+                              fontWeight: FontWeight.w500,
                             ),
                           ),
                         ],
@@ -141,8 +183,19 @@ class PriceChart extends StatelessWidget {
                     );
                   }
                   
-                  // Only show labels every 3 hours, but always at day boundary
-                  if (index % 3 != 0 && !isDayBoundary) {
+                  // Check if there's a 0h day boundary anywhere in the data
+                  bool hasDayBoundary = prices.any((p) => 
+                    p.startTime.hour == 0 && 
+                    (p.startTime.day != now.day || p.startTime.month != now.month || p.startTime.year != now.year)
+                  );
+                  
+                  // If we have a day boundary, skip 23h and 1h labels to avoid crowding around 0h
+                  if (hasDayBoundary && (hour == 23 || hour == 1)) {
+                    return const SizedBox.shrink();
+                  }
+                  
+                  // Show every 3 hours based on actual hour, not index
+                  if (hour % 3 != 0) {
                     return const SizedBox.shrink();
                   }
 
@@ -220,15 +273,17 @@ class PriceChart extends StatelessWidget {
               show: true,
               getDotPainter: (spot, percent, barData, index) {
                 Color dotColor;
-                final priceRange = maxY - minY;
-                final relativePrice = (spot.y - minY) / priceRange;
-                
-                if (relativePrice < 0.33) {
-                  dotColor = Colors.green;
-                } else if (relativePrice < 0.66) {
-                  dotColor = Colors.orange;
+                if (index < prices.length) {
+                  final priceData = prices[index];
+                  // Use all available prices for stable color calculation, not just future prices
+                  // This prevents colors from jumping as hours pass
+                  // Fallback to display prices if allPricesForColors is empty
+                  final pricesForColorCalc = allPricesForColors.isNotEmpty ? allPricesForColors : prices;
+                  dotColor = PriceUtils.getPriceColorMedian(priceData.price, pricesForColorCalc);
+                  
+                  // Color calculation using median ±15% for stable colors across all price data
                 } else {
-                  dotColor = Colors.red;
+                  dotColor = Colors.green;
                 }
                 
                 return FlDotCirclePainter(
@@ -252,6 +307,45 @@ class PriceChart extends StatelessWidget {
             ),
           ),
         ],
+        extraLinesData: ExtraLinesData(
+          verticalLines: prices.asMap().entries
+            .where((entry) {
+              final index = entry.key;
+              final price = entry.value;
+              final now = DateTime.now();
+              
+              // Nur 0h-Stunden prüfen
+              if (price.startTime.hour != 0) return false;
+              
+              // Wenn es die erste Stunde in den Daten ist, prüfen ob es morgen ist
+              if (index == 0) {
+                return price.startTime.day != now.day ||
+                       price.startTime.month != now.month ||
+                       price.startTime.year != now.year;
+              }
+              
+              // Prüfen ob es einen Tageswechsel gibt (vorherige Stunde war heute, diese ist morgen)
+              final prevPrice = prices[index - 1];
+              final prevIsToday = prevPrice.startTime.day == now.day &&
+                                 prevPrice.startTime.month == now.month &&
+                                 prevPrice.startTime.year == now.year;
+              final currentIsToday = price.startTime.day == now.day &&
+                                    price.startTime.month == now.month &&
+                                    price.startTime.year == now.year;
+              
+              // Tagesgrenze: vorherige Stunde war heute, aktuelle ist nicht heute
+              return prevIsToday && !currentIsToday;
+            })
+            .map((entry) => VerticalLine(
+              x: entry.key.toDouble(),
+              color: isDarkMode 
+                ? Colors.white.withOpacity(0.3)
+                : Colors.black.withOpacity(0.3),
+              strokeWidth: 1.5,
+              dashArray: [4, 4],
+            ))
+            .toList(),
+        ),
       ),
     );
   }

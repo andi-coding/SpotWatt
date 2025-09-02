@@ -15,6 +15,7 @@ class PriceOverviewPage extends StatefulWidget {
 
 class _PriceOverviewPageState extends State<PriceOverviewPage> {
   List<PriceData> prices = [];
+  List<PriceData> allPricesForColors = []; // All available prices for stable color calculations
   bool isLoading = true;
   double currentPrice = 0.0;
   double minPrice = 0.0;
@@ -49,11 +50,14 @@ class _PriceOverviewPageState extends State<PriceOverviewPage> {
         final now = DateTime.now();
         final currentHour = DateTime(now.year, now.month, now.day, now.hour);
         
-        // Filter out past hours - only keep current hour and future hours
+        // Filter out past hours - only keep current hour and future hours for display
         prices = fetchedPrices.where((price) => 
           price.startTime.isAtSameMomentAs(currentHour) || 
           price.startTime.isAfter(currentHour)
         ).toList();
+        
+        // Keep all fetched prices for stable color calculations
+        allPricesForColors = fetchedPrices;
         
         isLoading = false;
         
@@ -120,10 +124,15 @@ class _PriceOverviewPageState extends State<PriceOverviewPage> {
       price.startTime.isAfter(currentHour)
     ).toList();
     
-    final sorted = List<PriceData>.from(futurePrices)
+    // Sort by price to find the 3 cheapest
+    final sortedByPrice = List<PriceData>.from(futurePrices)
       ..sort((a, b) => a.price.compareTo(b.price));
     
-    return sorted.take(3).toList();
+    // Take the 3 cheapest, then sort them chronologically
+    final cheapest3 = sortedByPrice.take(3).toList()
+      ..sort((a, b) => a.startTime.compareTo(b.startTime));
+    
+    return cheapest3;
   }
   
   String _getChartTitle() {
@@ -168,6 +177,7 @@ class _PriceOverviewPageState extends State<PriceOverviewPage> {
                       currentPrice: currentPrice,
                       minPrice: minPrice,
                       maxPrice: maxPrice,
+                      allPrices: allPricesForColors,
                     ),
                     const SizedBox(height: 16),
                     MinMaxPriceCards(
@@ -184,7 +194,10 @@ class _PriceOverviewPageState extends State<PriceOverviewPage> {
                     const SizedBox(height: 16),
                     SizedBox(
                       height: 200,
-                      child: PriceChart(prices: prices),
+                      child: PriceChart(
+                        prices: prices,
+                        allPricesForColors: allPricesForColors,
+                      ),
                     ),
                     const SizedBox(height: 24),
                     Text(

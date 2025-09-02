@@ -44,8 +44,8 @@ class WidgetService {
       final minTime = DateFormat('HH:mm').format(minPriceData.startTime);
       final maxTime = DateFormat('HH:mm').format(maxPriceData.startTime);
       
-      // Determine price status (low, medium, high)
-      final priceStatus = _getPriceStatus(currentPrice.price, minPrice, maxPrice);
+      // Determine price status using median logic (low, medium, high)
+      final priceStatus = _getPriceStatusMedian(currentPrice.price, prices);
       
       // Calculate trend for next hours
       final priceTrend = _getPriceTrend(prices, now);
@@ -79,6 +79,26 @@ class WidgetService {
     }
   }
   
+  static String _getPriceStatusMedian(double current, List<PriceData> prices) {
+    if (prices.isEmpty) return 'medium';
+    
+    // Use same median-based logic as the app (±15% around median)
+    final sortedPrices = prices.map((p) => p.price).toList()..sort();
+    final length = sortedPrices.length;
+    final medianIndex = (length / 2).floor();
+    final median = sortedPrices[medianIndex]; // Simple: always take the middle element
+    
+    // Create symmetric ranges around median (±15%) - same as app
+    final range15 = median * 0.15;
+    final greenThreshold = median - range15;   // Median - 15%
+    final orangeThreshold = median + range15;  // Median + 15%
+    
+    if (current < greenThreshold) return 'low';      // < Median - 15%
+    if (current < orangeThreshold) return 'medium';  // Median ± 15%
+    return 'high';                                   // > Median + 15%
+  }
+  
+  @deprecated
   static String _getPriceStatus(double current, double min, double max) {
     final range = max - min;
     final position = current - min;

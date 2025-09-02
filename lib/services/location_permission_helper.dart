@@ -67,69 +67,84 @@ class LocationPermissionHelper {
   static Future<void> _showBackgroundLocationDialog(BuildContext context) async {
     return showDialog<void>(
       context: context,
-      barrierDismissible: false, // User muss Button klicken
+      barrierDismissible: false,
       builder: (BuildContext context) {
+        final screenHeight = MediaQuery.of(context).size.height;
+        final isSmallScreen = screenHeight < 600;
+        
         return AlertDialog(
-          title: const Row(
+          title: Row(
             children: [
-              Icon(Icons.location_on, color: Colors.blue),
-              SizedBox(width: 8),
-              Text('Standort-Berechtigung'),
+              Icon(Icons.location_on, color: Colors.blue, size: isSmallScreen ? 18 : 20),
+              const SizedBox(width: 8),
+              const Expanded(child: Text('Standort-Berechtigung')),
             ],
           ),
-          content: const Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Für standortbasierte Benachrichtigungen benötigt SpottWatt Zugriff auf Ihren Standort.',
-                style: TextStyle(fontSize: 16),
-              ),
-              SizedBox(height: 16),
-              Text(
-                'Bitte wählen Sie in den Einstellungen:',
-                style: TextStyle(fontWeight: FontWeight.bold),
-              ),
-              SizedBox(height: 8),
-              Row(
+          content: ConstrainedBox(
+            constraints: BoxConstraints(
+              maxHeight: screenHeight * 0.6,
+            ),
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Icon(Icons.radio_button_checked, color: Colors.green, size: 20),
-                  SizedBox(width: 8),
-                  Flexible(
-                    child: Text(
-                      '"Immer zulassen"',
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        color: Colors.green,
+                  Text(
+                    'Für standortbasierte Benachrichtigungen benötigt die App Zugriff auf Ihren Standort.',
+                    style: TextStyle(fontSize: isSmallScreen ? 12 : 14),
+                  ),
+                  SizedBox(height: isSmallScreen ? 8 : 12),
+                  Text(
+                    'Bitte wählen Sie in den Einstellungen:',
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold, 
+                      fontSize: isSmallScreen ? 12 : 14,
+                    ),
+                  ),
+                  SizedBox(height: isSmallScreen ? 6 : 8),
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Icon(Icons.radio_button_checked, color: Colors.green, size: isSmallScreen ? 16 : 18),
+                      const SizedBox(width: 6),
+                      Expanded(
+                        child: Text(
+                          '"Immer zulassen"',
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            color: Colors.green,
+                            fontSize: isSmallScreen ? 11 : 13,
+                          ),
+                        ),
                       ),
-                    ),
+                    ],
+                  ),
+                  const SizedBox(height: 4),
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Icon(Icons.radio_button_unchecked, color: Colors.grey, size: isSmallScreen ? 16 : 18),
+                      const SizedBox(width: 6),
+                      Expanded(
+                        child: Text(
+                          '"Zugriff nur während der Nutzung der App zulassen"',
+                          style: TextStyle(
+                            color: Colors.grey, 
+                            fontSize: isSmallScreen ? 11 : 13,
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ],
               ),
-              SizedBox(height: 4),
-              Row(
-                children: [
-                  Icon(Icons.radio_button_unchecked, color: Colors.grey, size: 20),
-                  SizedBox(width: 8),
-                  Flexible(
-                    child: Text(
-                      '"Zugriff nur während der Nutzung der App zulassen"',
-                      style: TextStyle(color: Colors.grey),
-                    ),
-                  ),
-                ],
-              ),
-            ],
+            ),
           ),
           actions: <Widget>[
             TextButton(
-              child: const Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(Icons.settings),
-                  SizedBox(width: 4),
-                  Text('Zu Einstellungen'),
-                ],
+              child: Text(
+                'Zu Einstellungen',
+                style: TextStyle(fontSize: isSmallScreen ? 12 : 14),
               ),
               onPressed: () {
                 Navigator.of(context).pop();

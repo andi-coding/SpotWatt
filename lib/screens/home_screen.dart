@@ -55,7 +55,7 @@ class _HomeScreenState extends State<HomeScreen> {
       
       final priceCacheService = PriceCacheService();
       final cacheAge = await priceCacheService.getCacheAge();
-      
+ 
       // Nur updaten wenn: Kein Cache ODER Cache älter als 24 Stunden
       if (cacheAge == null || cacheAge.inHours >= 24) {
         debugPrint('[App Start] Cache stale (${cacheAge?.inMinutes ?? 0} min old), updating...');

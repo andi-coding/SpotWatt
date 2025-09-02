@@ -203,7 +203,7 @@ class NotificationService {
 
   bool _isInQuietTime(DateTime time, SharedPreferences prefs) {
     // Check if quiet time is enabled
-    final quietTimeEnabled = prefs.getBool('quiet_time_enabled') ?? true;
+    final quietTimeEnabled = prefs.getBool('quiet_time_enabled') ?? false;
     if (!quietTimeEnabled) return false;
     
     // Standard-Ruhezeiten falls nicht gesetzt

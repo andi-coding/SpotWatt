@@ -10,6 +10,7 @@ import android.content.Intent
 import android.content.IntentFilter
 import android.widget.RemoteViews
 import android.content.SharedPreferences
+import android.content.res.Configuration
 import es.antonborri.home_widget.HomeWidgetPlugin
 
 class PriceWidgetProvider : AppWidgetProvider() {
@@ -121,6 +122,7 @@ class PriceWidgetProvider : AppWidgetProvider() {
 
     private fun createRemoteViews(context: Context, widgetData: SharedPreferences): RemoteViews {
         val views = RemoteViews(context.packageName, R.layout.price_widget_layout)
+        val isDarkMode = (context.resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES
         
         val currentPrice = widgetData.getString("current_price", "-- ct/kWh") ?: "-- ct/kWh"
         android.util.Log.d("PriceWidget", "Current price from SharedPrefs: $currentPrice")
@@ -139,12 +141,12 @@ class PriceWidgetProvider : AppWidgetProvider() {
         views.setTextViewText(R.id.max_time, "um $maxTime Uhr")
         views.setTextViewText(R.id.last_update, lastUpdate)
         
-        // Set price color based on status
+        // Set price color based on status and dark mode
         val priceColor = when (priceStatus) {
-            "low" -> 0xFF4CAF50.toInt() // Green
-            "medium" -> 0xFFFF9800.toInt() // Orange
-            "high" -> 0xFFF44336.toInt() // Red
-            else -> 0xFF757575.toInt() // Grey
+            "low" -> if (isDarkMode) 0xFF66BB6A.toInt() else 0xFF4CAF50.toInt() // Light/Dark Green
+            "medium" -> if (isDarkMode) 0xFFFFB74D.toInt() else 0xFFFF9800.toInt() // Light/Dark Orange
+            "high" -> if (isDarkMode) 0xFFEF5350.toInt() else 0xFFF44336.toInt() // Light/Dark Red
+            else -> if (isDarkMode) 0xFFAAAAAA.toInt() else 0xFF757575.toInt() // Light/Dark Grey
         }
         views.setTextColor(R.id.current_price, priceColor)
         
@@ -158,13 +160,13 @@ class PriceWidgetProvider : AppWidgetProvider() {
         }
         views.setTextViewText(R.id.price_trend, trendText)
         
-        // Set trend color based on direction and strength
+        // Set trend color based on direction, strength and dark mode
         val trendColor = when (priceTrend) {
-            "strongly_rising" -> 0xFFD32F2F.toInt()  // Dunkelrot für stark steigend
-            "slightly_rising" -> 0xFFFF9800.toInt()  // Orange für leicht steigend
-            "slightly_falling" -> 0xFF66BB6A.toInt() // Hellgrün für leicht fallend
-            "strongly_falling" -> 0xFF388E3C.toInt() // Dunkelgrün für stark fallend
-            else -> 0xFF666666.toInt()               // Grau für stabil
+            "strongly_rising" -> if (isDarkMode) 0xFFEF5350.toInt() else 0xFFD32F2F.toInt()  // Light/Dark Red
+            "slightly_rising" -> if (isDarkMode) 0xFFFFB74D.toInt() else 0xFFFF9800.toInt()  // Light/Dark Orange
+            "slightly_falling" -> if (isDarkMode) 0xFF66BB6A.toInt() else 0xFF66BB6A.toInt() // Light Green (same)
+            "strongly_falling" -> if (isDarkMode) 0xFF4CAF50.toInt() else 0xFF388E3C.toInt() // Light/Dark Green
+            else -> if (isDarkMode) 0xFFAAAAAA.toInt() else 0xFF666666.toInt()               // Light/Dark Grey
         }
         views.setTextColor(R.id.price_trend, trendColor)
         

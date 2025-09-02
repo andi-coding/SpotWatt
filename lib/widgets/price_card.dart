@@ -1,16 +1,19 @@
 import 'package:flutter/material.dart';
 import '../utils/price_utils.dart';
+import '../models/price_data.dart';
 
 class CurrentPriceCard extends StatelessWidget {
   final double currentPrice;
   final double minPrice;
   final double maxPrice;
+  final List<PriceData> allPrices;
 
   const CurrentPriceCard({
     Key? key,
     required this.currentPrice,
     required this.minPrice,
     required this.maxPrice,
+    required this.allPrices,
   }) : super(key: key);
 
   @override
@@ -36,7 +39,7 @@ class CurrentPriceCard extends StatelessWidget {
                     Text(
                       PriceUtils.formatPrice(currentPrice),
                       style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                        color: PriceUtils.getPriceColor(currentPrice, minPrice, maxPrice),
+                        color: PriceUtils.getPriceColorMedian(currentPrice, allPrices),
                         fontWeight: FontWeight.bold,
                       ),
                     ),
@@ -49,8 +52,8 @@ class CurrentPriceCard extends StatelessWidget {
                   ],
                 ),
                 Icon(
-                  PriceUtils.getPriceIcon(currentPrice, minPrice, maxPrice),
-                  color: PriceUtils.getPriceColor(currentPrice, minPrice, maxPrice),
+                  PriceUtils.getPriceIconQuartile(currentPrice, allPrices),
+                  color: PriceUtils.getPriceColorMedian(currentPrice, allPrices),
                   size: 32,
                 ),
               ],
@@ -78,32 +81,47 @@ class MinMaxPriceCards extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    
     return Row(
       children: [
         Expanded(
           child: Card(
-            color: Colors.green.shade50,
+            color: isDarkMode 
+              ? Colors.green.withOpacity(0.1)
+              : Colors.green.shade50,
             child: Padding(
               padding: const EdgeInsets.all(16),
               child: Column(
                 children: [
-                  const Icon(Icons.arrow_downward, color: Colors.green),
+                  Icon(
+                    Icons.arrow_downward, 
+                    color: isDarkMode ? Colors.green.shade300 : Colors.green,
+                  ),
                   const SizedBox(height: 8),
                   Text(
                     'Tagesminimum',
-                    style: Theme.of(context).textTheme.bodySmall,
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: isDarkMode 
+                        ? Colors.white.withOpacity(0.9)
+                        : null,
+                    ),
                   ),
                   Text(
                     PriceUtils.formatPrice(minPrice),
                     style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                      color: Colors.green,
+                      color: isDarkMode ? Colors.green.shade300 : Colors.green,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
                   if (cheapestTime != null)
                     Text(
                       '${cheapestTime!.hour}:${cheapestTime!.minute.toString().padLeft(2, '0')} Uhr',
-                      style: Theme.of(context).textTheme.bodySmall,
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: isDarkMode 
+                          ? Colors.white.withOpacity(0.7)
+                          : null,
+                      ),
                     ),
                 ],
               ),
@@ -113,28 +131,41 @@ class MinMaxPriceCards extends StatelessWidget {
         const SizedBox(width: 8),
         Expanded(
           child: Card(
-            color: Colors.red.shade50,
+            color: isDarkMode 
+              ? Colors.red.withOpacity(0.1)
+              : Colors.red.shade50,
             child: Padding(
               padding: const EdgeInsets.all(16),
               child: Column(
                 children: [
-                  const Icon(Icons.arrow_upward, color: Colors.red),
+                  Icon(
+                    Icons.arrow_upward, 
+                    color: isDarkMode ? Colors.red.shade300 : Colors.red,
+                  ),
                   const SizedBox(height: 8),
                   Text(
                     'Tagesmaximum',
-                    style: Theme.of(context).textTheme.bodySmall,
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: isDarkMode 
+                        ? Colors.white.withOpacity(0.9)
+                        : null,
+                    ),
                   ),
                   Text(
                     PriceUtils.formatPrice(maxPrice),
                     style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                      color: Colors.red,
+                      color: isDarkMode ? Colors.red.shade300 : Colors.red,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
                   if (expensiveTime != null)
                     Text(
                       '${expensiveTime!.hour}:${expensiveTime!.minute.toString().padLeft(2, '0')} Uhr',
-                      style: Theme.of(context).textTheme.bodySmall,
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: isDarkMode 
+                          ? Colors.white.withOpacity(0.7)
+                          : null,
+                      ),
                     ),
                 ],
               ),

@@ -194,8 +194,8 @@ class _DoNotDisturbSettingsState extends State<DoNotDisturbSettings> with Widget
                           width: double.infinity,
                           padding: const EdgeInsets.all(12),
                           decoration: BoxDecoration(
-                            color: Colors.grey.shade50,
-                            border: Border.all(color: Colors.grey.shade300),
+                            color: Theme.of(context).colorScheme.surfaceVariant,
+                            border: Border.all(color: Theme.of(context).colorScheme.outline),
                             borderRadius: BorderRadius.circular(8),
                           ),
                           child: Column(
@@ -205,13 +205,13 @@ class _DoNotDisturbSettingsState extends State<DoNotDisturbSettings> with Widget
                                 if (_homeAddress != null) ...[
                                   Row(
                                     children: [
-                                      Icon(Icons.location_on, size: 16, color: Colors.grey.shade600),
+                                      Icon(Icons.location_on, size: 16, color: Theme.of(context).colorScheme.onSurfaceVariant),
                                       const SizedBox(width: 6),
                                       Expanded(
                                         child: Text(
                                           _homeAddress!,
                                           style: TextStyle(
-                                            color: Colors.grey.shade800,
+                                            color: Theme.of(context).colorScheme.onSurfaceVariant,
                                             fontSize: 13,
                                           ),
                                           maxLines: 2,
@@ -225,12 +225,12 @@ class _DoNotDisturbSettingsState extends State<DoNotDisturbSettings> with Widget
                                 if (widget.locationBasedNotifications) ...[
                                   Row(
                                     children: [
-                                      Icon(Icons.radio_button_unchecked, size: 16, color: Colors.grey.shade600),
+                                      Icon(Icons.radio_button_unchecked, size: 16, color: Theme.of(context).colorScheme.onSurfaceVariant),
                                       const SizedBox(width: 6),
                                       Text(
                                         'Radius: ${_homeRadius.toInt()} Meter',
                                         style: TextStyle(
-                                          color: Colors.grey.shade700,
+                                          color: Theme.of(context).colorScheme.onSurfaceVariant,
                                           fontSize: 12,
                                         ),
                                       ),
@@ -256,12 +256,12 @@ class _DoNotDisturbSettingsState extends State<DoNotDisturbSettings> with Widget
                               ] else ...[
                                 Row(
                                   children: [
-                                    Icon(Icons.location_off, size: 16, color: Colors.grey.shade600),
+                                    Icon(Icons.location_off, size: 16, color: Theme.of(context).colorScheme.onSurfaceVariant),
                                     const SizedBox(width: 6),
                                     Text(
                                       'Kein Standort gesetzt',
                                       style: TextStyle(
-                                        color: Colors.grey.shade600,
+                                        color: Theme.of(context).colorScheme.onSurfaceVariant,
                                         fontSize: 13,
                                       ),
                                     ),
@@ -413,7 +413,7 @@ class _DoNotDisturbSettingsState extends State<DoNotDisturbSettings> with Widget
                         child: Container(
                           padding: const EdgeInsets.all(12),
                           decoration: BoxDecoration(
-                            border: Border.all(color: Colors.grey.shade300),
+                            border: Border.all(color: Theme.of(context).colorScheme.outline),
                             borderRadius: BorderRadius.circular(8),
                           ),
                           child: Column(
@@ -423,7 +423,7 @@ class _DoNotDisturbSettingsState extends State<DoNotDisturbSettings> with Widget
                                 'Von',
                                 style: TextStyle(
                                   fontSize: 12,
-                                  color: Colors.grey.shade600,
+                                  color: Theme.of(context).colorScheme.onSurfaceVariant,
                                 ),
                               ),
                               const SizedBox(height: 4),
@@ -447,7 +447,7 @@ class _DoNotDisturbSettingsState extends State<DoNotDisturbSettings> with Widget
                         child: Container(
                           padding: const EdgeInsets.all(12),
                           decoration: BoxDecoration(
-                            border: Border.all(color: Colors.grey.shade300),
+                            border: Border.all(color: Theme.of(context).colorScheme.outline),
                             borderRadius: BorderRadius.circular(8),
                           ),
                           child: Column(
@@ -457,7 +457,7 @@ class _DoNotDisturbSettingsState extends State<DoNotDisturbSettings> with Widget
                                 'Bis',
                                 style: TextStyle(
                                   fontSize: 12,
-                                  color: Colors.grey.shade600,
+                                  color: Theme.of(context).colorScheme.onSurfaceVariant,
                                 ),
                               ),
                               const SizedBox(height: 4),
