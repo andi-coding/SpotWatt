@@ -81,24 +81,19 @@ class PriceCacheService {
     
     if (!hasNetwork) {
       print('[Cache] No network available');
-      // Fallback: return cached data even if invalid
-      if (cachedPrices != null) {
-        print('[Cache] Using cached data as fallback');
-        return cachedPrices;
-      }
       throw NetworkException('Für aktuelle Preise wird eine Internetverbindung benötigt. Bitte WiFi oder Mobile Daten aktivieren.');
-    }
-    
-    print('[Cache] Network available, making API call');
-    try {
-      final prices = await _awattarService.fetchPrices();
-      await _saveToCache(prices);
-      print('[Cache] API call successful, got ${prices.length} prices');
-      return prices;
-    } catch (e, stackTrace) {
-      print('[Cache] API call failed: $e');
-      print('[Cache] StackTrace: $stackTrace');
-      rethrow;
+    } else {
+      print('[Cache] Network available, making API call');
+      try {
+        final prices = await _awattarService.fetchPrices();
+        await _saveToCache(prices);
+        print('[Cache] API call successful, got ${prices.length} prices');
+        return prices;
+      } catch (e, stackTrace) {
+        print('[Cache] API call failed: $e');
+        print('[Cache] StackTrace: $stackTrace');
+        rethrow;
+      }
     }
   }
   
