@@ -82,45 +82,33 @@ void callbackDispatcher() {
       final prefs = await SharedPreferences.getInstance();
       final priceCacheService = PriceCacheService();
       
-      // Einfache Logik: Zwischen 13-15 Uhr versuchen neue Preise zu holen
-      // Nur als "erledigt" markieren wenn Morgen-Daten da sind
-      if (now.hour >= 13 && now.hour <= 15) {
-        final gotTomorrowPrices = prefs.getBool('got_tomorrow_prices_${now.day}') ?? false;
+      // After 13h: Check for tomorrow prices and schedule notifications once per day
+      if (now.hour >= 13) {
+        final lastNotificationDate = prefs.getString('last_notification_scheduled_date');
+        final todayString = '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
         
-        if (!gotTomorrowPrices) {
-          debugPrint('[BackgroundTask] Checking for tomorrow prices...');
-          final prices = await priceCacheService.getPrices(forceRefresh: true);
+        if (lastNotificationDate != todayString) {
+          debugPrint('[BackgroundTask] Checking for tomorrow prices (notifications not yet scheduled today)...');
+          final prices = await priceCacheService.getPrices(); // Smart cache validation
           
-          // Einfacher Check: Gibt es Preise für morgen?
           final tomorrow = now.add(const Duration(days: 1));
-          final hasTomorrowPrices = prices.any((p) => p.startTime.day == tomorrow.day);
+          final hasTomorrowPrices = prices.any((p) => 
+            p.startTime.day == tomorrow.day && 
+            p.startTime.month == tomorrow.month && 
+            p.startTime.year == tomorrow.year
+          );
           
           if (hasTomorrowPrices) {
-            await prefs.setBool('got_tomorrow_prices_${now.day}', true);
-            debugPrint('[BackgroundTask] ✓ Got tomorrow prices');
-            
-            //if tomorrow prices fetched, schedule notifications
+            debugPrint('[BackgroundTask] ✓ Got tomorrow prices - scheduling notifications');
             final notificationService = NotificationService();
             await notificationService.scheduleNotifications();
+            await prefs.setString('last_notification_scheduled_date', todayString);
           } else {
-            debugPrint('[BackgroundTask] No tomorrow prices yet, retry in 15 min');
+            debugPrint('[BackgroundTask] No tomorrow prices yet, will retry in 15 min');
           }
+        } else {
+          debugPrint('[BackgroundTask] Notifications already scheduled today');
         }
-      }
-      
-      // Cache älter als 24h? Sicherheits-Update
-      final cacheAge = await priceCacheService.getCacheAge();
-      debugPrint('[BackgroundTask] Cache age: ${cacheAge?.inHours ?? 'null'} hours (${cacheAge?.inMinutes ?? 'null'} minutes)');
-      
-      if (cacheAge == null || cacheAge.inHours >= 24) {
-        //if tomorrow prices fetched, schedule notifications
-        debugPrint('[BackgroundTask] Cache expired or missing, updating...');
-        await priceCacheService.getPrices(forceRefresh: true);
-        //schedule notifications if new prices are there
-        final notificationService = NotificationService();
-        await notificationService.scheduleNotifications();
-      } else {
-        debugPrint('[BackgroundTask] Cache still fresh, skipping update');
       }
       
       // Update widget with latest data

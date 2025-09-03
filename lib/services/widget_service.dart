@@ -1,6 +1,5 @@
 import 'package:flutter/services.dart';
 import 'package:home_widget/home_widget.dart';
-import 'package:price_app/services/awattar_service.dart';
 import 'package:price_app/services/price_cache_service.dart';
 import 'package:price_app/utils/price_utils.dart';
 import 'package:price_app/models/price_data.dart';
@@ -14,16 +13,10 @@ class WidgetService {
   
   static Future<void> updateWidget() async {
     try {
-      final awattarService = AwattarService();
       final cacheService = PriceCacheService();
       
-      // Get current prices
-      var prices = await cacheService.getCachedPrices();
-      if (prices == null || prices.isEmpty) {
-        // Try to fetch fresh data
-        prices = await awattarService.fetchPrices();
-        if (prices.isEmpty) return;
-      }
+      // Get current prices using same logic as app (with cache validation)
+      final prices = await cacheService.getPrices();
       
       final now = DateTime.now();
       final currentPrice = PriceUtils.getCurrentPrice(prices);
@@ -74,8 +67,9 @@ class WidgetService {
         iOSName: iosWidgetKind,
       );
       print('[WidgetService] HomeWidget.updateWidget result: $updateResult');
-    } catch (e) {
-      print('Error updating widget: $e');
+    } catch (e, stackTrace) {
+      print('[WidgetService] Error updating widget: $e');
+      print('[WidgetService] StackTrace: $stackTrace');
     }
   }
   

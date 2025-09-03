@@ -44,34 +44,6 @@ class _HomeScreenState extends State<HomeScreen> {
       // Optionally reload the current view to show latest cached data
       setState(() {});
     });
-    
-    // Beim App-Start prüfen ob Update nötig ist
-    await _checkForUpdatesOnStartup();
-  }
-  
-  Future<void> _checkForUpdatesOnStartup() async {
-    try {
-      debugPrint('[App Start] Quick check for updates...');
-      
-      final priceCacheService = PriceCacheService();
-      final cacheAge = await priceCacheService.getCacheAge();
- 
-      // Nur updaten wenn: Kein Cache ODER Cache älter als 24 Stunden
-      if (cacheAge == null || cacheAge.inHours >= 24) {
-        debugPrint('[App Start] Cache stale (${cacheAge?.inMinutes ?? 0} min old), updating...');
-        await priceCacheService.getPrices(forceRefresh: true);
-        await _notificationService.scheduleNotifications();
-        await WidgetService.updateWidget(); // Update widget with fresh data
-      } else {
-        debugPrint('[App Start] Cache fresh (${cacheAge.inMinutes} min old)');
-        // Widget trotzdem updaten mit cached data
-        await WidgetService.updateWidget();
-        // Nur Notifications neu planen falls nötig
-       // await _notificationService.scheduleNotifications();
-      }
-    } catch (e) {
-      debugPrint('[App Start] Update check failed: $e');
-    }
   }
 
   @override

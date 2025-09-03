@@ -41,10 +41,40 @@ class _PriceOverviewPageState extends State<PriceOverviewPage> {
     super.dispose();
   }
 
-  Future<void> loadPrices({bool forceRefresh = false}) async {
+  String _getErrorMessage(dynamic error) {
+    final errorStr = error.toString().toLowerCase();
+    
+    // Network errors - most common
+    if (errorStr.contains('socketexception') || 
+        errorStr.contains('failed host lookup') ||
+        errorStr.contains('connection refused') ||
+        errorStr.contains('timeoutexception') ||
+        errorStr.contains('clientexception') ||
+        errorStr.contains('httpexception')) {
+      return 'Keine Internetverbindung verfügbar. Bitte WiFi oder Mobile Daten aktivieren.';
+    }
+    
+    // Our custom network exception
+    if (errorStr.contains('internetverbindung')) {
+      return error.toString().replaceAll('NetworkException: ', '').replaceAll('Exception: ', '');
+    }
+    
+    // Data/parsing errors
+    if (errorStr.contains('formatexception') ||
+        errorStr.contains('json') ||
+        errorStr.contains('cast') ||
+        errorStr.contains('null check')) {
+      return 'Die Preisdaten konnten nicht gelesen werden. Versuchen Sie es später erneut.';
+    }
+    
+    // Generic fallback - never show technical errors
+    return 'Ein unerwarteter Fehler ist aufgetreten. Bitte versuchen Sie es später erneut.';
+  }
+
+  Future<void> loadPrices() async {
     try {
       final priceCacheService = PriceCacheService();
-      final fetchedPrices = await priceCacheService.getPrices(forceRefresh: forceRefresh);
+      final fetchedPrices = await priceCacheService.getPrices();
       
       setState(() {
         final now = DateTime.now();
@@ -100,13 +130,57 @@ class _PriceOverviewPageState extends State<PriceOverviewPage> {
           }
         }
       });
-    } catch (e) {
+    } catch (e, stackTrace) {
       setState(() {
         isLoading = false;
       });
+      // Detailed error logging
+      print('[PriceOverview] Error in loadPrices(): $e');
+      print('[PriceOverview] StackTrace: $stackTrace');
       if (mounted) {
+        final message = _getErrorMessage(e);
+        final isNetworkError = message.contains('Internetverbindung') || 
+                              message.contains('WiFi') ||
+                              message.contains('Mobile Daten');
+        
+        final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+        
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Fehler beim Laden der Preise: $e')),
+          SnackBar(
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  message,
+                  style: TextStyle(
+                    color: isDarkMode ? Colors.white : Colors.black87,
+                  ),
+                ),
+                if (isNetworkError) ...[
+                  SizedBox(height: 8),
+                  Align(
+                    alignment: Alignment.centerRight,
+                    child: TextButton(
+                      onPressed: () => loadPrices(),
+                      child: Text(
+                        'Erneut versuchen',
+                        style: TextStyle(
+                          color: isDarkMode ? Colors.blue[300] : Colors.blue[700],
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ],
+            ),
+            backgroundColor: isDarkMode 
+                ? Colors.grey[800] 
+                : Colors.grey[100],
+            duration: Duration(seconds: 5),
+            action: null, // No action needed anymore
+          ),
         );
       }
     }
@@ -160,7 +234,7 @@ class _PriceOverviewPageState extends State<PriceOverviewPage> {
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh),
-            onPressed: () => loadPrices(forceRefresh: true),
+            onPressed: () => loadPrices(),
           ),
         ],
       ),
