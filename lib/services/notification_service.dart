@@ -267,19 +267,22 @@ class NotificationService {
     // Find prices for the CURRENT day (today), not the notification day
     // The summary should always show today's prices when sent
     final targetDay = isForTomorrow ? now.add(const Duration(days: 1)) : now;
-    final dayPrices = prices.where((p) => 
+    
+    // Only get FUTURE hours of the target day (from notification time onwards)
+    final futurePrices = prices.where((p) => 
       p.startTime.day == targetDay.day &&
       p.startTime.month == targetDay.month &&
-      p.startTime.year == targetDay.year
+      p.startTime.year == targetDay.year &&
+      p.startTime.isAfter(notificationTime) // Only hours after the notification time
     ).toList();
     
-    if (dayPrices.isEmpty) return;
+    if (futurePrices.isEmpty) return;
     
     // Get number of hours from preferences
     final hoursCount = prefs.getInt('daily_summary_hours') ?? 3;
     
-    // Find cheapest hours
-    final cheapestHours = findCheapestHours(dayPrices, hoursCount);
+    // Find cheapest hours from FUTURE prices only
+    final cheapestHours = findCheapestHours(futurePrices, hoursCount);
     
     // Check for high price warnings
     final highPriceWarningEnabled = prefs.getBool('high_price_warning_enabled') ?? false;
@@ -287,7 +290,8 @@ class NotificationService {
     
     String? highPriceWarning;
     if (highPriceWarningEnabled) {
-      final highPrices = dayPrices.where((p) => p.price > highPriceThreshold).toList();
+      // Only warn about FUTURE high prices
+      final highPrices = futurePrices.where((p) => p.price > highPriceThreshold).toList();
       if (highPrices.isNotEmpty) {
         // Sort high prices by time (chronological order)
         highPrices.sort((a, b) => a.startTime.compareTo(b.startTime));
