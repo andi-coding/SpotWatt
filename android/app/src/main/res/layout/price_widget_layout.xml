@@ -7,13 +7,37 @@
     android:padding="16dp"
     android:background="@drawable/widget_background">
 
-    <!-- Header with Title -->
+    <!-- Header with Logo and Title -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:layout_marginBottom="4dp">
+        
+        <ImageView
+            android:layout_width="24dp"
+            android:layout_height="24dp"
+            android:src="@drawable/spotwatt_logo_widget_header"
+            android:layout_marginEnd="8dp" />
+            
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="SpotWatt"
+            android:textSize="16sp"
+            android:textStyle="bold"
+            android:textColor="#333333" />
+    </LinearLayout>
+
+    <!-- Original Widget Title -->
     <TextView
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:text="Aktueller Strompreis"
         android:textSize="12sp"
         android:textColor="#666666"
+        android:layout_marginTop="8dp"
         android:layout_marginBottom="4dp" />
 
     <!-- Current Price with Icon and Trend -->

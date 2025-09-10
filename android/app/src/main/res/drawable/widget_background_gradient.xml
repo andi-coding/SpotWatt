@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Gradient background -->
+    <item>
+        <shape android:shape="rectangle">
+            <gradient
+                android:startColor="#FF1E3A8A"
+                android:endColor="#FF3B82F6"
+                android:angle="135"
+                android:type="linear" />
+            <corners android:radius="16dp" />
+        </shape>
+    </item>
+    
+    <!-- Watermark logo positioned in bottom right -->
+    <item
+        android:gravity="bottom|end"
+        android:right="8dp"
+        android:bottom="8dp">
+        <bitmap
+            android:src="@drawable/spotwatt_logo_watermark"
+            android:gravity="bottom|end" />
+    </item>
+</layer-list>

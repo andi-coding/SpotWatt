@@ -1,0 +1,444 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Features - SpotWatt App</title>
+    <meta name="description" content="Alle Features der SpotWatt App im Detail. Entdecken Sie, wie Sie mit intelligenten Funktionen Stromkosten sparen.">
+    <link rel="stylesheet" href="styles.css">
+    <style>
+        .features-hero {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 60px 0;
+            text-align: center;
+        }
+        .features-hero h1 {
+            font-size: 2.5rem;
+            margin-bottom: 1rem;
+        }
+        .features-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 60px 20px;
+        }
+        .feature-detail {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 60px;
+            align-items: center;
+            margin-bottom: 80px;
+        }
+        .feature-detail:nth-child(even) {
+            direction: rtl;
+        }
+        .feature-detail:nth-child(even) .feature-info {
+            direction: ltr;
+        }
+        .feature-info h2 {
+            color: var(--primary-color);
+            font-size: 2rem;
+            margin-bottom: 1rem;
+        }
+        .feature-info p {
+            font-size: 1.1rem;
+            line-height: 1.8;
+            margin-bottom: 1.5rem;
+        }
+        .feature-benefits {
+            list-style: none;
+            padding: 0;
+        }
+        .feature-benefits li {
+            padding: 0.75rem 0;
+            padding-left: 2rem;
+            position: relative;
+        }
+        .feature-benefits li::before {
+            content: "✓";
+            position: absolute;
+            left: 0;
+            color: var(--secondary-color);
+            font-weight: bold;
+            font-size: 1.2rem;
+        }
+        .feature-visual {
+            background: var(--light-color);
+            border-radius: var(--border-radius);
+            padding: 2rem;
+            box-shadow: var(--shadow);
+            text-align: center;
+            min-height: 300px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .comparison-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 2rem 0;
+        }
+        .comparison-table th {
+            background: var(--primary-color);
+            color: white;
+            padding: 1rem;
+            text-align: left;
+        }
+        .comparison-table td {
+            padding: 1rem;
+            border-bottom: 1px solid var(--light-color);
+        }
+        .comparison-table tr:hover {
+            background: var(--light-color);
+        }
+        .check-mark {
+            color: var(--secondary-color);
+            font-size: 1.2rem;
+        }
+        .cross-mark {
+            color: var(--danger-color);
+            font-size: 1.2rem;
+        }
+        .tech-specs {
+            background: var(--light-color);
+            padding: 3rem;
+            border-radius: var(--border-radius);
+            margin: 3rem 0;
+        }
+        .specs-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 2rem;
+            margin-top: 2rem;
+        }
+        .spec-item {
+            background: white;
+            padding: 1.5rem;
+            border-radius: var(--border-radius);
+        }
+        .spec-item h4 {
+            color: var(--primary-color);
+            margin-bottom: 0.5rem;
+        }
+        @media (max-width: 768px) {
+            .feature-detail {
+                grid-template-columns: 1fr;
+            }
+            .feature-detail:nth-child(even) {
+                direction: ltr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar">
+        <div class="container">
+            <div class="nav-brand">
+                <h1>⚡ SpotWatt</h1>
+            </div>
+            <ul class="nav-menu">
+                <li><a href="index.html">Start</a></li>
+                <li><a href="features.html">Features</a></li>
+                <li><a href="guide.html">Anleitung</a></li>
+                <li><a href="index.html#pricing">Preise</a></li>
+                <li><a href="index.html#download">Download</a></li>
+            </ul>
+            <div class="nav-toggle" id="navToggle">
+                <span></span>
+                <span></span>
+                <span></span>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Features Hero -->
+    <div class="features-hero">
+        <h1>Alle Features im Detail</h1>
+        <p>Entdecken Sie die intelligenten Funktionen von SpotWatt</p>
+    </div>
+
+    <!-- Features Details -->
+    <div class="features-container">
+        
+        <!-- Echtzeit-Preise -->
+        <div class="feature-detail">
+            <div class="feature-info">
+                <h2>📊 Echtzeit-Strompreise</h2>
+                <p>
+                    Verfolgen Sie die aktuellen Spotmarkt-Preise in Echtzeit. 
+                    Unsere App aktualisiert sich automatisch stündlich und zeigt Ihnen immer die neuesten Preise 
+                    für Ihre Region.
+                </p>
+                <ul class="feature-benefits">
+                    <li>Stündliche Aktualisierung der Börsenpreise</li>
+                    <li>Historische Daten der letzten 30 Tage</li>
+                    <li>Farbcodierung für schnelle Preisbewertung</li>
+                    <li>Vergleich mit Tagesdurchschnitt</li>
+                    <li>Trend-Indikatoren für Preisentwicklung</li>
+                </ul>
+            </div>
+            <div class="feature-visual">
+                <div style="text-align: center;">
+                    <div style="font-size: 4rem;">📈</div>
+                    <p style="margin-top: 1rem; color: var(--text-color);">
+                        Live-Preise<br>
+                        Immer aktuell
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Smart Notifications -->
+        <div class="feature-detail">
+            <div class="feature-info">
+                <h2>🔔 Intelligente Benachrichtigungen</h2>
+                <p>
+                    Lassen Sie sich automatisch informieren, wenn die Strompreise Ihre definierten Schwellenwerte 
+                    erreichen. Verpassen Sie nie wieder günstige Zeiten zum Waschen, Laden oder Heizen.
+                </p>
+                <ul class="feature-benefits">
+                    <li>Individuelle Preisschwellen definierbar</li>
+                    <li>Zeitfenster für Benachrichtigungen wählbar</li>
+                    <li>Tägliche Zusammenfassung mit besten Zeiten</li>
+                    <li>Warnungen vor Hochpreisphasen</li>
+                    <li>Silent Mode für Ruhezeiten</li>
+                </ul>
+            </div>
+            <div class="feature-visual">
+                <div style="text-align: center;">
+                    <div style="font-size: 4rem;">🔔</div>
+                    <p style="margin-top: 1rem; color: var(--text-color);">
+                        Push-Nachrichten<br>
+                        Immer informiert
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Prognosen -->
+        <div class="feature-detail">
+            <div class="feature-info">
+                <h2>🔮 24-Stunden-Prognose</h2>
+                <p>
+                    Planen Sie voraus mit unserer detaillierten Preisvorschau für die nächsten 24 Stunden. 
+                    Sobald die Börsenpreise gegen 13 Uhr veröffentlicht werden, sehen Sie alle Preise des Folgetages.
+                </p>
+                <ul class="feature-benefits">
+                    <li>Komplette Tagesvorschau ab 13 Uhr</li>
+                    <li>Beste und schlechteste Stunden markiert</li>
+                    <li>Durchschnittspreis des kommenden Tages</li>
+                    <li>Empfehlungen für optimale Verbrauchszeiten</li>
+                    <li>Export der Prognosedaten möglich (Pro)</li>
+                </ul>
+            </div>
+            <div class="feature-visual">
+                <div style="text-align: center;">
+                    <div style="font-size: 4rem;">📅</div>
+                    <p style="margin-top: 1rem; color: var(--text-color);">
+                        Vorausplanung<br>
+                        24h im Voraus
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Widget -->
+        <div class="feature-detail">
+            <div class="feature-info">
+                <h2>🏠 Homescreen Widget</h2>
+                <p>
+                    Behalten Sie die Strompreise immer im Blick - direkt auf Ihrem Homescreen. 
+                    Das Widget zeigt die wichtigsten Informationen ohne die App öffnen zu müssen.
+                </p>
+                <ul class="feature-benefits">
+                    <li>Aktueller Preis auf einen Blick</li>
+                    <li>Nächste günstige Stunde angezeigt</li>
+                    <li>Mini-Chart der kommenden Stunden</li>
+                    <li>Verschiedene Widget-Größen verfügbar</li>
+                    <li>Dark Mode Unterstützung</li>
+                </ul>
+            </div>
+            <div class="feature-visual">
+                <div style="text-align: center;">
+                    <div style="font-size: 4rem;">📱</div>
+                    <p style="margin-top: 1rem; color: var(--text-color);">
+                        Widget<br>
+                        Immer sichtbar
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Statistiken -->
+        <div class="feature-detail">
+            <div class="feature-info">
+                <h2>📈 Erweiterte Statistiken (Pro)</h2>
+                <p>
+                    Analysieren Sie Ihre Verbrauchsmuster und identifizieren Sie Einsparpotenziale mit 
+                    unseren detaillierten Statistiken und Auswertungen.
+                </p>
+                <ul class="feature-benefits">
+                    <li>Monats- und Jahresübersichten</li>
+                    <li>Durchschnittspreise nach Wochentag</li>
+                    <li>Beste Verbrauchszeiten-Analyse</li>
+                    <li>Sparpotenzial-Berechnung</li>
+                    <li>CSV/Excel Export für eigene Analysen</li>
+                </ul>
+            </div>
+            <div class="feature-visual">
+                <div style="text-align: center;">
+                    <div style="font-size: 4rem;">📊</div>
+                    <p style="margin-top: 1rem; color: var(--text-color);">
+                        Analysen<br>
+                        Datenbasiert sparen
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Comparison Table -->
+    <div class="container">
+        <h2 style="text-align: center; margin-bottom: 2rem;">Feature-Vergleich: Basic vs. Pro</h2>
+        <table class="comparison-table">
+            <thead>
+                <tr>
+                    <th>Feature</th>
+                    <th>Basic (Kostenlos)</th>
+                    <th>Pro (2,99€/Monat)</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>Aktuelle Strompreise</td>
+                    <td class="check-mark">✓</td>
+                    <td class="check-mark">✓</td>
+                </tr>
+                <tr>
+                    <td>24h Prognose</td>
+                    <td class="check-mark">✓</td>
+                    <td class="check-mark">✓</td>
+                </tr>
+                <tr>
+                    <td>Basis-Benachrichtigungen</td>
+                    <td class="check-mark">✓</td>
+                    <td class="check-mark">✓</td>
+                </tr>
+                <tr>
+                    <td>Widget</td>
+                    <td class="check-mark">✓</td>
+                    <td class="check-mark">✓</td>
+                </tr>
+                <tr>
+                    <td>Unbegrenzte Benachrichtigungen</td>
+                    <td class="cross-mark">✗</td>
+                    <td class="check-mark">✓</td>
+                </tr>
+                <tr>
+                    <td>Erweiterte Statistiken</td>
+                    <td class="cross-mark">✗</td>
+                    <td class="check-mark">✓</td>
+                </tr>
+                <tr>
+                    <td>Daten-Export (CSV/Excel)</td>
+                    <td class="cross-mark">✗</td>
+                    <td class="check-mark">✓</td>
+                </tr>
+                <tr>
+                    <td>Mehrere Standorte</td>
+                    <td class="cross-mark">✗</td>
+                    <td class="check-mark">✓</td>
+                </tr>
+                <tr>
+                    <td>API-Zugang</td>
+                    <td class="cross-mark">✗</td>
+                    <td class="check-mark">✓</td>
+                </tr>
+                <tr>
+                    <td>Priority Support</td>
+                    <td class="cross-mark">✗</td>
+                    <td class="check-mark">✓</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Technical Specifications -->
+    <div class="container">
+        <div class="tech-specs">
+            <h2 style="text-align: center; margin-bottom: 1rem;">Technische Spezifikationen</h2>
+            <div class="specs-grid">
+                <div class="spec-item">
+                    <h4>Plattformen</h4>
+                    <p>Android 5.0+<br>iOS 12.0+<br>Widget Support</p>
+                </div>
+                <div class="spec-item">
+                    <h4>Datenquellen</h4>
+                    <p>EPEX Spot (DE)<br>EXAA (AT)<br>Stündliche Updates</p>
+                </div>
+                <div class="spec-item">
+                    <h4>Sprachen</h4>
+                    <p>Deutsch<br>Englisch (coming soon)</p>
+                </div>
+                <div class="spec-item">
+                    <h4>Datenschutz</h4>
+                    <p>DSGVO-konform<br>Lokale Datenspeicherung<br>Keine Tracker</p>
+                </div>
+                <div class="spec-item">
+                    <h4>Offline-Modus</h4>
+                    <p>24h Cache<br>Letzte Preise verfügbar<br>Auto-Sync</p>
+                </div>
+                <div class="spec-item">
+                    <h4>Performance</h4>
+                    <p>< 10MB App-Größe<br>Batterie-optimiert<br>Schnelle Ladezeiten</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- CTA Section -->
+    <section style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 60px 0; text-align: center; color: white;">
+        <div class="container">
+            <h2 style="font-size: 2rem; margin-bottom: 1rem;">Bereit zum Sparen?</h2>
+            <p style="font-size: 1.2rem; margin-bottom: 2rem;">
+                Laden Sie SpotWatt jetzt herunter und beginnen Sie noch heute, Ihre Stromkosten zu optimieren.
+            </p>
+            <div style="display: flex; gap: 1rem; justify-content: center;">
+                <a href="index.html#download" class="btn btn-primary">Jetzt downloaden</a>
+                <a href="guide.html" class="btn btn-secondary">Zur Anleitung</a>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-content">
+                <div class="footer-section">
+                    <h4>SpotWatt</h4>
+                    <p>Die intelligente Strompreis-App für Deutschland und Österreich.</p>
+                </div>
+                <div class="footer-section">
+                    <h4>Links</h4>
+                    <ul>
+                        <li><a href="index.html">Startseite</a></li>
+                        <li><a href="guide.html">Anleitung</a></li>
+                        <li><a href="privacy.html">Datenschutz</a></li>
+                        <li><a href="imprint.html">Impressum</a></li>
+                    </ul>
+                </div>
+                <div class="footer-section">
+                    <h4>Kontakt</h4>
+                    <p>support@spotwatt.de</p>
+                </div>
+            </div>
+            <div class="footer-bottom">
+                <p>&copy; 2025 SpotWatt. Alle Rechte vorbehalten.</p>
+            </div>
+        </div>
+    </footer>
+
+    <script src="script.js"></script>
+</body>
+</html>

@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Anleitung - SpotWatt App</title>
+    <meta name="description" content="Komplette Anleitung zur SpotWatt App. Lernen Sie alle Features kennen und nutzen Sie die App optimal.">
+    <link rel="stylesheet" href="styles.css">
+    <style>
+        .guide-content {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 40px 20px;
+        }
+        .guide-section {
+            margin-bottom: 3rem;
+        }
+        .guide-section h2 {
+            color: var(--primary-color);
+            margin-bottom: 1rem;
+            padding-bottom: 0.5rem;
+            border-bottom: 2px solid var(--light-color);
+        }
+        .guide-section h3 {
+            color: var(--dark-color);
+            margin: 1.5rem 0 1rem;
+        }
+        .guide-tip {
+            background: #f0fdf4;
+            border-left: 4px solid var(--secondary-color);
+            padding: 1rem;
+            margin: 1rem 0;
+            border-radius: 0 var(--border-radius) var(--border-radius) 0;
+        }
+        .guide-warning {
+            background: #fef2f2;
+            border-left: 4px solid var(--danger-color);
+            padding: 1rem;
+            margin: 1rem 0;
+            border-radius: 0 var(--border-radius) var(--border-radius) 0;
+        }
+        .guide-steps {
+            counter-reset: step-counter;
+            list-style: none;
+            padding-left: 0;
+        }
+        .guide-steps li {
+            counter-increment: step-counter;
+            margin-bottom: 1rem;
+            padding-left: 2.5rem;
+            position: relative;
+        }
+        .guide-steps li::before {
+            content: counter(step-counter);
+            position: absolute;
+            left: 0;
+            top: 0;
+            background: var(--primary-color);
+            color: white;
+            width: 1.8rem;
+            height: 1.8rem;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+        }
+        .screenshot {
+            margin: 1.5rem 0;
+            text-align: center;
+        }
+        .screenshot img {
+            max-width: 100%;
+            border-radius: var(--border-radius);
+            box-shadow: var(--shadow);
+        }
+        .faq-item {
+            margin-bottom: 1.5rem;
+            padding: 1.5rem;
+            background: var(--light-color);
+            border-radius: var(--border-radius);
+        }
+        .faq-question {
+            font-weight: 600;
+            color: var(--dark-color);
+            margin-bottom: 0.5rem;
+        }
+    </style>
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar">
+        <div class="container">
+            <div class="nav-brand">
+                <h1>⚡ SpotWatt</h1>
+            </div>
+            <ul class="nav-menu">
+                <li><a href="index.html">Start</a></li>
+                <li><a href="index.html#features">Features</a></li>
+                <li><a href="guide.html">Anleitung</a></li>
+                <li><a href="index.html#pricing">Preise</a></li>
+                <li><a href="index.html#download">Download</a></li>
+            </ul>
+            <div class="nav-toggle" id="navToggle">
+                <span></span>
+                <span></span>
+                <span></span>
+            </div>
+        </div>
+    </nav>
+
+    <div class="guide-content">
+        <h1>SpotWatt Benutzerhandbuch</h1>
+        <p>Willkommen bei SpotWatt! Diese Anleitung hilft Ihnen, alle Funktionen der App optimal zu nutzen.</p>
+
+        <!-- Erste Schritte -->
+        <div class="guide-section">
+            <h2>🚀 Erste Schritte</h2>
+            
+            <h3>Installation</h3>
+            <ol class="guide-steps">
+                <li>Öffnen Sie den Google Play Store oder Apple App Store</li>
+                <li>Suchen Sie nach "SpotWatt"</li>
+                <li>Tippen Sie auf "Installieren" und warten Sie den Download ab</li>
+                <li>Öffnen Sie die App nach der Installation</li>
+            </ol>
+
+            <h3>Ersteinrichtung</h3>
+            <ol class="guide-steps">
+                <li><strong>Land wählen:</strong> Wählen Sie Deutschland oder Österreich</li>
+                <li><strong>Preiszone auswählen:</strong> 
+                    <ul>
+                        <li>Deutschland: Einheitliche Zone</li>
+                        <li>Österreich: Wählen Sie Ihre Region</li>
+                    </ul>
+                </li>
+                <li><strong>Benachrichtigungen erlauben:</strong> Aktivieren Sie Push-Benachrichtigungen für Preiswarnungen</li>
+                <li><strong>Widget einrichten:</strong> Optional - fügen Sie das Widget zum Homescreen hinzu</li>
+            </ol>
+
+            <div class="guide-tip">
+                <strong>💡 Tipp:</strong> Aktivieren Sie Benachrichtigungen, um keine günstigen Preise zu verpassen!
+            </div>
+        </div>
+
+        <!-- Hauptfunktionen -->
+        <div class="guide-section">
+            <h2>📱 Hauptfunktionen</h2>
+
+            <h3>Preisübersicht</h3>
+            <p>Der Hauptbildschirm zeigt Ihnen:</p>
+            <ul>
+                <li><strong>Aktueller Preis:</strong> Der aktuelle Strompreis in ct/kWh</li>
+                <li><strong>Farbcodierung:</strong>
+                    <ul>
+                        <li>🟢 Grün: Günstiger Preis (unter Tagesdurchschnitt)</li>
+                        <li>🟡 Gelb: Mittlerer Preis</li>
+                        <li>🔴 Rot: Hoher Preis (über Tagesdurchschnitt)</li>
+                    </ul>
+                </li>
+                <li><strong>24h-Vorschau:</strong> Stundenweise Preise für den nächsten Tag</li>
+                <li><strong>Preisdiagramm:</strong> Grafische Darstellung der Preisentwicklung</li>
+            </ul>
+
+            <h3>Benachrichtigungen einrichten</h3>
+            <ol class="guide-steps">
+                <li>Öffnen Sie die Einstellungen (⚙️ Symbol)</li>
+                <li>Wählen Sie "Benachrichtigungen"</li>
+                <li>Aktivieren Sie gewünschte Benachrichtigungstypen:
+                    <ul>
+                        <li><strong>Tägliche Übersicht:</strong> Erhalten Sie jeden Morgen eine Zusammenfassung</li>
+                        <li><strong>Niedrigpreis-Alarm:</strong> Benachrichtigung bei günstigen Preisen</li>
+                        <li><strong>Hochpreis-Warnung:</strong> Warnung vor teuren Stunden</li>
+                    </ul>
+                </li>
+                <li>Stellen Sie Ihre persönlichen Preisschwellen ein</li>
+                <li>Wählen Sie Ihre bevorzugten Benachrichtigungszeiten</li>
+            </ol>
+
+            <div class="guide-warning">
+                <strong>⚠️ Wichtig:</strong> Stellen Sie sicher, dass die App-Benachrichtigungen in Ihren Systemeinstellungen aktiviert sind!
+            </div>
+
+            <h3>Widget verwenden</h3>
+            <p>So fügen Sie das SpotWatt Widget hinzu:</p>
+            <ol class="guide-steps">
+                <li>Halten Sie einen freien Bereich auf Ihrem Homescreen gedrückt</li>
+                <li>Wählen Sie "Widgets" aus dem Menü</li>
+                <li>Suchen Sie nach "SpotWatt"</li>
+                <li>Ziehen Sie das Widget auf Ihren Homescreen</li>
+                <li>Passen Sie optional die Größe an</li>
+            </ol>
+
+            <p>Das Widget zeigt:</p>
+            <ul>
+                <li>Aktuellen Strompreis</li>
+                <li>Trend-Indikator (steigend/fallend)</li>
+                <li>Nächste günstige Stunde</li>
+                <li>Mini-Diagramm der nächsten 6 Stunden</li>
+            </ul>
+        </div>
+
+        <!-- Erweiterte Funktionen -->
+        <div class="guide-section">
+            <h2>⚡ Erweiterte Funktionen</h2>
+
+            <h3>Verbrauchsplanung</h3>
+            <p>Nutzen Sie die Preisvorhersage optimal:</p>
+            <ul>
+                <li><strong>Waschmaschine & Trockner:</strong> Planen Sie für günstige Nachtstunden</li>
+                <li><strong>E-Auto laden:</strong> Programmieren Sie das Laden auf Niedrigpreiszeiten</li>
+                <li><strong>Wärmepumpe:</strong> Nutzen Sie thermische Speicher in günstigen Stunden</li>
+                <li><strong>Geschirrspüler:</strong> Verwenden Sie die Zeitvorwahl für optimale Preise</li>
+            </ul>
+
+            <h3>Statistiken & Analysen</h3>
+            <p>In der Pro-Version verfügbar:</p>
+            <ul>
+                <li><strong>Monatsübersicht:</strong> Durchschnittspreise und Trends</li>
+                <li><strong>Verbrauchsmuster:</strong> Erkennen Sie Ihre teuersten Verbrauchszeiten</li>
+                <li><strong>Sparpotenzial:</strong> Berechnung möglicher Einsparungen</li>
+                <li><strong>Export-Funktion:</strong> CSV/Excel Export für eigene Analysen</li>
+            </ul>
+
+            <h3>Mehrere Standorte (Pro)</h3>
+            <ol class="guide-steps">
+                <li>Öffnen Sie Einstellungen → Standorte</li>
+                <li>Tippen Sie auf "Standort hinzufügen"</li>
+                <li>Wählen Sie Land und Region</li>
+                <li>Vergeben Sie einen Namen (z.B. "Ferienhaus")</li>
+                <li>Wechseln Sie zwischen Standorten über das Dropdown-Menü</li>
+            </ol>
+        </div>
+
+        <!-- Tipps & Tricks -->
+        <div class="guide-section">
+            <h2>💡 Tipps & Tricks</h2>
+
+            <div class="guide-tip">
+                <strong>Optimale Nutzungszeiten:</strong>
+                <ul>
+                    <li>Nachts zwischen 2-5 Uhr sind Preise oft am günstigsten</li>
+                    <li>Wochenenden haben generell niedrigere Preise</li>
+                    <li>Vermeiden Sie Verbrauch zwischen 17-20 Uhr (Spitzenlastzeiten)</li>
+                </ul>
+            </div>
+
+            <div class="guide-tip">
+                <strong>Automatisierung mit Smart Home:</strong>
+                <p>Verbinden Sie SpotWatt-Daten mit Ihrer Smart Home Zentrale:</p>
+                <ul>
+                    <li>Nutzen Sie IFTTT oder Zapier Integration (Pro)</li>
+                    <li>Erstellen Sie Regeln basierend auf Preisschwellen</li>
+                    <li>Automatisieren Sie Geräte nach Strompreisen</li>
+                </ul>
+            </div>
+
+            <div class="guide-tip">
+                <strong>Batterie-Optimierung:</strong>
+                <p>SpotWatt ist energieeffizient optimiert:</p>
+                <ul>
+                    <li>Daten werden gebündelt aktualisiert</li>
+                    <li>Dark Mode spart Akku bei OLED-Displays</li>
+                    <li>Widget-Updates nur bei Preisänderungen</li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- FAQ -->
+        <div class="guide-section">
+            <h2>❓ Häufig gestellte Fragen</h2>
+
+            <div class="faq-item">
+                <div class="faq-question">Woher kommen die Preisdaten?</div>
+                <div class="faq-answer">Die Daten stammen direkt von den Strombörsen EPEX Spot (Deutschland) und EXAA (Österreich) und werden stündlich aktualisiert.</div>
+            </div>
+
+            <div class="faq-item">
+                <div class="faq-question">Sind die angezeigten Preise meine tatsächlichen Stromkosten?</div>
+                <div class="faq-answer">Die App zeigt die reinen Börsenpreise. Ihre tatsächlichen Kosten hängen von Ihrem Tarif ab. Bei dynamischen Tarifen kommen noch Netzgebühren, Steuern und Anbietermargen hinzu.</div>
+            </div>
+
+            <div class="faq-item">
+                <div class="faq-question">Wann werden die Preise für den nächsten Tag veröffentlicht?</div>
+                <div class="faq-answer">Die Preise für den Folgetag werden täglich gegen 13:00 Uhr veröffentlicht und sind dann in der App verfügbar.</div>
+            </div>
+
+            <div class="faq-item">
+                <div class="faq-question">Funktioniert die App auch offline?</div>
+                <div class="faq-answer">Ja, einmal geladene Preise bleiben 24 Stunden im Cache verfügbar. Für aktuelle Updates wird eine Internetverbindung benötigt.</div>
+            </div>
+
+            <div class="faq-item">
+                <div class="faq-question">Wie kann ich von der kostenlosen zur Pro-Version wechseln?</div>
+                <div class="faq-answer">Öffnen Sie Einstellungen → Pro-Version und folgen Sie den Anweisungen. Die Zahlung erfolgt über den App Store.</div>
+            </div>
+        </div>
+
+        <!-- Support -->
+        <div class="guide-section">
+            <h2>🆘 Support & Kontakt</h2>
+            
+            <p><strong>Bei Problemen oder Fragen:</strong></p>
+            <ul>
+                <li>E-Mail: <a href="mailto:support@spotwatt.de">support@spotwatt.de</a></li>
+                <li>In-App Feedback: Einstellungen → Feedback senden</li>
+                <li>Website: <a href="index.html">www.spotwatt.de</a></li>
+            </ul>
+
+            <div class="guide-tip">
+                <strong>Hilfreiche Informationen für Support-Anfragen:</strong>
+                <ul>
+                    <li>App-Version (Einstellungen → Über)</li>
+                    <li>Gerätetyp und Betriebssystem-Version</li>
+                    <li>Beschreibung des Problems mit Screenshots</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-content">
+                <div class="footer-section">
+                    <h4>SpotWatt</h4>
+                    <p>Die intelligente Strompreis-App für Deutschland und Österreich.</p>
+                </div>
+                <div class="footer-section">
+                    <h4>Links</h4>
+                    <ul>
+                        <li><a href="index.html">Startseite</a></li>
+                        <li><a href="features.html">Features</a></li>
+                        <li><a href="privacy.html">Datenschutz</a></li>
+                        <li><a href="imprint.html">Impressum</a></li>
+                    </ul>
+                </div>
+                <div class="footer-section">
+                    <h4>Kontakt</h4>
+                    <p>support@spotwatt.de</p>
+                </div>
+            </div>
+            <div class="footer-bottom">
+                <p>&copy; 2025 SpotWatt. Alle Rechte vorbehalten.</p>
+            </div>
+        </div>
+    </footer>
+
+    <script src="script.js"></script>
+</body>
+</html>

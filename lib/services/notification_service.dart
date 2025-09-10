@@ -16,7 +16,7 @@ class NotificationService {
   int _notificationId = 1; // Global notification ID counter
 
   Future<void> initialize(BuildContext context) async {
-    const androidSettings = AndroidInitializationSettings('@mipmap/ic_launcher');
+    const androidSettings = AndroidInitializationSettings('@drawable/ic_notification_small');
     const iosSettings = DarwinInitializationSettings(
       requestAlertPermission: true,
       requestBadgePermission: true,
@@ -148,6 +148,7 @@ class NotificationService {
             channelDescription: 'Benachrichtigungen bei günstigen Strompreisen',
             importance: Importance.high,
             priority: Priority.high,
+            largeIcon: DrawableResourceAndroidBitmap('@drawable/ic_notification_large'),
           ),
           iOS: DarwinNotificationDetails(
             presentAlert: true,
@@ -193,6 +194,7 @@ class NotificationService {
             channelDescription: 'Benachrichtigung zum günstigsten Zeitpunkt',
             importance: Importance.max,
             priority: Priority.max,
+            largeIcon: DrawableResourceAndroidBitmap('@drawable/ic_notification_large'),
           ),
           iOS: DarwinNotificationDetails(
             presentAlert: true,
@@ -366,6 +368,7 @@ class NotificationService {
           importance: Importance.high,
           priority: Priority.high,
           styleInformation: BigTextStyleInformation(notificationText),
+          largeIcon: DrawableResourceAndroidBitmap('@drawable/ic_notification_large'),
         ),
         iOS: const DarwinNotificationDetails(
           presentAlert: true,
