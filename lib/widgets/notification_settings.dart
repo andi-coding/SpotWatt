@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import '../utils/price_utils.dart';
 
-class NotificationSettings extends StatelessWidget {
+class NotificationSettings extends StatefulWidget {
   final bool priceThresholdEnabled;
   final bool cheapestTimeEnabled;
   final bool dailySummaryEnabled;
@@ -44,6 +44,42 @@ class NotificationSettings extends StatelessWidget {
   }) : super(key: key);
 
   @override
+  State<NotificationSettings> createState() => _NotificationSettingsState();
+}
+
+class _NotificationSettingsState extends State<NotificationSettings> {
+  late double _tempNotificationThreshold;
+  late double _tempHighPriceThreshold;
+  late int _tempNotificationMinutesBefore;
+  late int _tempDailySummaryHours;
+
+  @override
+  void initState() {
+    super.initState();
+    _tempNotificationThreshold = widget.notificationThreshold;
+    _tempHighPriceThreshold = widget.highPriceThreshold;
+    _tempNotificationMinutesBefore = widget.notificationMinutesBefore;
+    _tempDailySummaryHours = widget.dailySummaryHours;
+  }
+
+  @override
+  void didUpdateWidget(NotificationSettings oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.notificationThreshold != widget.notificationThreshold) {
+      _tempNotificationThreshold = widget.notificationThreshold;
+    }
+    if (oldWidget.highPriceThreshold != widget.highPriceThreshold) {
+      _tempHighPriceThreshold = widget.highPriceThreshold;
+    }
+    if (oldWidget.notificationMinutesBefore != widget.notificationMinutesBefore) {
+      _tempNotificationMinutesBefore = widget.notificationMinutesBefore;
+    }
+    if (oldWidget.dailySummaryHours != widget.dailySummaryHours) {
+      _tempDailySummaryHours = widget.dailySummaryHours;
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Card(
       child: Padding(
@@ -62,63 +98,15 @@ class NotificationSettings extends StatelessWidget {
               ],
             ),
             const SizedBox(height: 16),
-            SwitchListTile(
-              title: const Text('Preis-Schwellwert'),
-              subtitle: const Text('Stündliche Benachrichtigung wenn Preis unterhalb von Schwellwert liegt'),
-              value: priceThresholdEnabled,
-              onChanged: onPriceThresholdEnabledChanged,
-            ),
-            if (priceThresholdEnabled)
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text('Schwellwert: ${PriceUtils.formatPrice(notificationThreshold)}'),
-                    Slider(
-                      value: notificationThreshold,
-                      min: -10,
-                      max: 30,
-                      divisions: 80,
-                      label: PriceUtils.formatPrice(notificationThreshold).replaceAll(' ct/kWh', ''),
-                      onChanged: onNotificationThresholdChanged,
-                    ),
-                  ],
-                ),
-              ),
-            const Divider(),
-            SwitchListTile(
-              title: const Text('Günstigste Zeit des Tages'),
-              subtitle: const Text('Benachrichtigung vor dem günstigsten Zeitpunkt des Tages'),
-              value: cheapestTimeEnabled,
-              onChanged: onCheapestTimeEnabledChanged,
-            ),
-            if (cheapestTimeEnabled)
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text('Vorlaufzeit: $notificationMinutesBefore Minuten'),
-                    Slider(
-                      value: notificationMinutesBefore.toDouble(),
-                      min: 5,
-                      max: 60,
-                      divisions: 11,
-                      label: '$notificationMinutesBefore Min.',
-                      onChanged: onNotificationMinutesBeforeChanged,
-                    ),
-                  ],
-                ),
-              ),
-            const Divider(),
+            
+            // 1. Tägliche Zusammenfassung (erste Position)
             SwitchListTile(
               title: const Text('Tägliche Zusammenfassung'),
               subtitle: Text('Übersicht der günstigsten Stunden + Warnung vor teuren Preisen'),
-              value: dailySummaryEnabled,
-              onChanged: onDailySummaryEnabledChanged,
+              value: widget.dailySummaryEnabled,
+              onChanged: widget.onDailySummaryEnabledChanged,
             ),
-            if (dailySummaryEnabled) 
+            if (widget.dailySummaryEnabled) 
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16),
                 child: Column(
@@ -126,57 +114,145 @@ class NotificationSettings extends StatelessWidget {
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text('Zeige $dailySummaryHours günstigste Stunden'),
+                        Text('Zeige $_tempDailySummaryHours günstigste Stunden'),
                         Slider(
-                          value: dailySummaryHours.toDouble(),
+                          value: _tempDailySummaryHours.toDouble(),
                           min: 1,
                           max: 8,
                           divisions: 7,
-                          label: dailySummaryHours.toString(),
-                          onChanged: (value) => onDailySummaryHoursChanged(value.round()),
+                          label: _tempDailySummaryHours.toString(),
+                          onChanged: (value) {
+                            setState(() {
+                              _tempDailySummaryHours = value.round();
+                            });
+                          },
+                          onChangeEnd: (value) {
+                            widget.onDailySummaryHoursChanged(value.round());
+                          },
                         ),
                       ],
                     ),
                     const SizedBox(height: 8),
-                    SwitchListTile(
-                      title: const Text('Warnung vor teuren Preisen'),
-                      subtitle: const Text('Zusätzlich Warnung wenn Preise über Schwelle'),
-                      value: highPriceWarningEnabled,
-                      onChanged: onHighPriceWarningEnabledChanged,
-                      contentPadding: EdgeInsets.zero,
-                    ),
-                    if (highPriceWarningEnabled)
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text('Warnschwelle: ${PriceUtils.formatPrice(highPriceThreshold)}'),
-                          Slider(
-                            value: highPriceThreshold,
-                            min: 20,
-                            max: 200,
-                            divisions: 18,
-                            label: PriceUtils.formatPrice(highPriceThreshold).replaceAll(' ct/kWh', ''),
-                            onChanged: onHighPriceThresholdChanged,
+                    // Hohe Preis Warnschwelle (nur Slider, kein Switch)
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          _tempHighPriceThreshold < 200 
+                            ? 'Warnung bei Preisen > ${PriceUtils.formatPrice(_tempHighPriceThreshold)}'
+                            : 'Warnung vor teuren Preisen deaktiviert',
+                          style: TextStyle(
+                            color: _tempHighPriceThreshold < 200 
+                              ? Theme.of(context).colorScheme.onSurface
+                              : Theme.of(context).colorScheme.onSurfaceVariant,
                           ),
-                        ],
-                      ),
+                        ),
+                        Slider(
+                          value: _tempHighPriceThreshold,
+                          min: 20,
+                          max: 200,
+                          divisions: 18,
+                          label: _tempHighPriceThreshold < 200 
+                            ? PriceUtils.formatPrice(_tempHighPriceThreshold).replaceAll(' ct/kWh', '')
+                            : 'Aus',
+                          onChanged: (value) {
+                            setState(() {
+                              _tempHighPriceThreshold = value;
+                            });
+                          },
+                          onChangeEnd: (value) {
+                            widget.onHighPriceThresholdChanged(value);
+                          },
+                        ),
+                      ],
+                    ),
                     const SizedBox(height: 16),
                     ListTile(
                       contentPadding: EdgeInsets.zero,
                       title: const Text('Benachrichtigungszeit'),
                       subtitle: Text(
-                        '${dailySummaryTime.hour.toString().padLeft(2, '0')}:${dailySummaryTime.minute.toString().padLeft(2, '0')} Uhr',
+                        '${widget.dailySummaryTime.hour.toString().padLeft(2, '0')}:${widget.dailySummaryTime.minute.toString().padLeft(2, '0')} Uhr',
                         style: Theme.of(context).textTheme.titleMedium,
                       ),
                       trailing: const Icon(Icons.access_time),
                       onTap: () async {
                         final time = await showTimePicker(
                           context: context,
-                          initialTime: dailySummaryTime,
+                          initialTime: widget.dailySummaryTime,
                         );
                         if (time != null) {
-                          onDailySummaryTimeChanged(time);
+                          widget.onDailySummaryTimeChanged(time);
                         }
+                      },
+                    ),
+                  ],
+                ),
+              ),
+            
+            const Divider(),
+            
+            // 2. Günstigste Zeit des Tages (zweite Position)
+            SwitchListTile(
+              title: const Text('Günstigste Zeit des Tages'),
+              subtitle: const Text('Benachrichtigung vor dem günstigsten Zeitpunkt des Tages'),
+              value: widget.cheapestTimeEnabled,
+              onChanged: widget.onCheapestTimeEnabledChanged,
+            ),
+            if (widget.cheapestTimeEnabled)
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('Vorlaufzeit: $_tempNotificationMinutesBefore Minuten'),
+                    Slider(
+                      value: _tempNotificationMinutesBefore.toDouble(),
+                      min: 5,
+                      max: 60,
+                      divisions: 11,
+                      label: '$_tempNotificationMinutesBefore Min.',
+                      onChanged: (value) {
+                        setState(() {
+                          _tempNotificationMinutesBefore = value.toInt();
+                        });
+                      },
+                      onChangeEnd: (value) {
+                        widget.onNotificationMinutesBeforeChanged(value);
+                      },
+                    ),
+                  ],
+                ),
+              ),
+            
+            const Divider(),
+            
+            // 3. Preis-Schwellwert (dritte Position)
+            SwitchListTile(
+              title: const Text('Günstige Preise'),
+              subtitle: Text('Benachrichtigung wenn Preis unterhalb von ${PriceUtils.formatPrice(_tempNotificationThreshold)} liegt'),
+              value: widget.priceThresholdEnabled,
+              onChanged: widget.onPriceThresholdEnabledChanged,
+            ),
+            if (widget.priceThresholdEnabled)
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    //Text('Schwellwert: ${PriceUtils.formatPrice(notificationThreshold)}'),
+                    Slider(
+                      value: _tempNotificationThreshold,
+                      min: -10,
+                      max: 30,
+                      divisions: 40,
+                      label: PriceUtils.formatPrice(_tempNotificationThreshold).replaceAll(' ct/kWh', ''),
+                      onChanged: (value) {
+                        setState(() {
+                          _tempNotificationThreshold = value;
+                        });
+                      },
+                      onChangeEnd: (value) {
+                        widget.onNotificationThresholdChanged(value);
                       },
                     ),
                   ],

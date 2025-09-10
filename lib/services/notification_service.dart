@@ -45,6 +45,12 @@ class NotificationService {
     }
   }
 
+  Future<void> rescheduleNotifications() async {
+    debugPrint('[NotificationService] Rescheduling notifications due to settings change');
+    await notifications.cancelAll();
+    await scheduleNotifications();
+  }
+
   Future<void> scheduleNotifications() async {
     final prefs = await SharedPreferences.getInstance();
     

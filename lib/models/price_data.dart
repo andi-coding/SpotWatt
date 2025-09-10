@@ -1,7 +1,7 @@
 class PriceData {
   final DateTime startTime;
   final DateTime endTime;
-  final double price;
+  final double price; // Either SPOT price or full cost price depending on settings
 
   PriceData({
     required this.startTime,
@@ -23,5 +23,14 @@ class PriceData {
       'end_timestamp': endTime.millisecondsSinceEpoch,
       'marketprice': price * 10.0, // Convert back from ct/kWh
     };
+  }
+  
+  // Create a copy with a new price (used for full cost calculation)
+  PriceData withPrice(double newPrice) {
+    return PriceData(
+      startTime: startTime,
+      endTime: endTime,
+      price: newPrice,
+    );
   }
 }

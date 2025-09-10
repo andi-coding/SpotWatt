@@ -5,6 +5,7 @@ import 'dart:io';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import '../models/price_data.dart';
 import 'awattar_service.dart';
+import 'full_cost_calculator.dart';
 
 class NetworkException implements Exception {
   final String message;
@@ -20,6 +21,7 @@ class PriceCacheService {
   //static const Duration _cacheValidity = Duration(hours: 6); // Cache für 6 Stunden gültig
   
   final AwattarService _awattarService = AwattarService();
+  final FullCostCalculator _fullCostCalculator = FullCostCalculator();
   
   /// Tests actual internet connectivity with DNS lookup
   Future<bool> _testInternetConnectivity() async {
@@ -64,17 +66,28 @@ class PriceCacheService {
   /// - Cache vorhanden und nicht älter als 6 Stunden
   /// - Cache enthält Preise für heute und morgen (falls nach 13:00)
   Future<List<PriceData>> getPrices() async {
+    List<PriceData> prices;
+    
     final cachedPrices = await _loadFromCache();
     if (cachedPrices != null) {
       final isValid = await _isCacheValid(cachedPrices);
       print('[Cache] Found cached prices: ${cachedPrices.length}, valid: $isValid');
       if (isValid) {
-        return cachedPrices;
+        prices = cachedPrices;
+      } else {
+        prices = await _fetchFreshPrices();
       }
     } else {
       print('[Cache] No cached prices found - making API call');
+      prices = await _fetchFreshPrices();
     }
     
+    // Apply full cost calculations if enabled
+    final fullCostPrices = await _fullCostCalculator.addFullCostToPrices(prices);
+    return fullCostPrices;
+  }
+  
+  Future<List<PriceData>> _fetchFreshPrices() async {
     // Cache invalid - wait for network before API call
     print('[Cache] Waiting for network...');
     final hasNetwork = await _waitForNetwork();

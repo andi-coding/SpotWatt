@@ -1,4 +1,4 @@
-package com.example.price_app
+package com.example.spotwatt
 
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
@@ -9,7 +9,7 @@ import android.appwidget.AppWidgetManager
 import android.content.ComponentName
 
 class MainActivity : FlutterActivity() {
-    private val CHANNEL = "com.example.price_app/widget"
+    private val CHANNEL = "com.example.spotwatt/widget"
     private var methodChannel: MethodChannel? = null
     
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {

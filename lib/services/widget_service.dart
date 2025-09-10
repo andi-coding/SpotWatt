@@ -1,15 +1,15 @@
 import 'package:flutter/services.dart';
 import 'package:home_widget/home_widget.dart';
-import 'package:price_app/services/price_cache_service.dart';
-import 'package:price_app/utils/price_utils.dart';
-import 'package:price_app/models/price_data.dart';
+import 'package:spotwatt/services/price_cache_service.dart';
+import 'package:spotwatt/utils/price_utils.dart';
+import 'package:spotwatt/models/price_data.dart';
 import 'package:intl/intl.dart';
 import 'dart:io';
 
 class WidgetService {
   static const String androidWidgetName = 'PriceWidgetProvider';
   static const String iosWidgetKind = 'PriceWidget';
-  static const MethodChannel _channel = MethodChannel('com.example.price_app/widget');
+  static const MethodChannel _channel = MethodChannel('com.example.spotwatt/widget');
   
   static Future<void> updateWidget() async {
     try {

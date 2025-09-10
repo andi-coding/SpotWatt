@@ -13,7 +13,7 @@ class PriceOverviewPage extends StatefulWidget {
   State<PriceOverviewPage> createState() => _PriceOverviewPageState();
 }
 
-class _PriceOverviewPageState extends State<PriceOverviewPage> {
+class _PriceOverviewPageState extends State<PriceOverviewPage> with WidgetsBindingObserver {
   List<PriceData> prices = [];
   List<PriceData> allPricesForColors = []; // All available prices for stable color calculations
   bool isLoading = true;
@@ -23,10 +23,12 @@ class _PriceOverviewPageState extends State<PriceOverviewPage> {
   DateTime? cheapestTime;
   DateTime? expensiveTime;
   Timer? _refreshTimer;
+  AppLifecycleState _appLifecycleState = AppLifecycleState.resumed;
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     loadPrices();
     // Aktualisiere jede Minute um vergangene Stunden aus dem Graph zu entfernen
     // und den aktuellen Preis neu zu berechnen (kein API-Call, nur Cache)
@@ -37,8 +39,17 @@ class _PriceOverviewPageState extends State<PriceOverviewPage> {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _refreshTimer?.cancel();
     super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    setState(() {
+      _appLifecycleState = state;
+    });
+    print('[PriceOverview] App lifecycle state changed to: $state');
   }
 
   String _getErrorMessage(dynamic error) {
@@ -137,7 +148,8 @@ class _PriceOverviewPageState extends State<PriceOverviewPage> {
       // Detailed error logging
       print('[PriceOverview] Error in loadPrices(): $e');
       print('[PriceOverview] StackTrace: $stackTrace');
-      if (mounted) {
+      // Only show error if app is in foreground
+      if (mounted && _appLifecycleState == AppLifecycleState.resumed) {
         final message = _getErrorMessage(e);
         final isNetworkError = message.contains('Internetverbindung') || 
                               message.contains('WiFi') ||

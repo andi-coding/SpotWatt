@@ -53,10 +53,10 @@ class GeofenceService {
           GeofenceEvent.exit,
         },
         iosSettings: const IosGeofenceSettings(
-          initialTrigger: false,
+          initialTrigger: true,  // Trigger initial event if already in area
         ),
         androidSettings: const AndroidGeofenceSettings(
-          initialTriggers: {},
+          initialTriggers: {GeofenceEvent.enter},  // Trigger enter event if already in area
         ),
       );
 

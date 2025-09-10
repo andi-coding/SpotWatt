@@ -1,4 +1,4 @@
-package com.example.price_app
+package com.example.spotwatt
 
 import android.app.PendingIntent
 import android.appwidget.AppWidgetManager
@@ -16,7 +16,7 @@ import es.antonborri.home_widget.HomeWidgetPlugin
 class PriceWidgetProvider : AppWidgetProvider() {
     
     companion object {
-        const val ACTION_WIDGET_CLICK = "com.example.price_app.WIDGET_CLICK"
+        const val ACTION_WIDGET_CLICK = "com.example.spotwatt.WIDGET_CLICK"
         private var userPresentReceiver: BroadcastReceiver? = null
 
         fun forceUpdate(context: Context) {
@@ -183,7 +183,7 @@ class PriceWidgetProvider : AppWidgetProvider() {
         // Set price icon (same as in app)
         val iconText = when (priceStatus) {
             "low" -> "💡" // Glühbirne für günstig
-            "medium" -> "🕐" // Uhr für mittel
+            "medium" -> "" // Häkchen für mittel (akzeptabel)
             "high" -> "⚠️" // Warnung für teuer
             else -> ""
         }

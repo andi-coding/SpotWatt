@@ -23,7 +23,6 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
   bool locationBasedNotifications = false;
   bool dailySummaryEnabled = true;
   bool quietTimeEnabled = false;
-  bool highPriceWarningEnabled = false;
   double notificationThreshold = 5.0;
   double highPriceThreshold = 50.0;
   int notificationMinutesBefore = 15;
@@ -46,7 +45,6 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
       locationBasedNotifications = prefs.getBool('location_based_notifications') ?? false;
       dailySummaryEnabled = prefs.getBool('daily_summary_enabled') ?? true;
       quietTimeEnabled = prefs.getBool('quiet_time_enabled') ?? false;
-      highPriceWarningEnabled = prefs.getBool('high_price_warning_enabled') ?? false;
       notificationThreshold = prefs.getDouble('notification_threshold') ?? 5.0;
       highPriceThreshold = prefs.getDouble('high_price_threshold') ?? 50.0;
       notificationMinutesBefore = prefs.getInt('notification_minutes_before') ?? 15;
@@ -73,7 +71,6 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
     await prefs.setBool('cheapest_time_enabled', cheapestTimeEnabled);
     await prefs.setBool('location_based_notifications', locationBasedNotifications);
     await prefs.setBool('daily_summary_enabled', dailySummaryEnabled);
-    await prefs.setBool('high_price_warning_enabled', highPriceWarningEnabled);
     await prefs.setDouble('notification_threshold', notificationThreshold);
     await prefs.setDouble('high_price_threshold', highPriceThreshold);
     await prefs.setInt('notification_minutes_before', notificationMinutesBefore);
@@ -99,7 +96,7 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
             priceThresholdEnabled: priceThresholdEnabled,
             cheapestTimeEnabled: cheapestTimeEnabled,
             dailySummaryEnabled: dailySummaryEnabled,
-            highPriceWarningEnabled: highPriceWarningEnabled,
+            highPriceWarningEnabled: false,  // Not used anymore, controlled by slider value
             notificationThreshold: notificationThreshold,
             highPriceThreshold: highPriceThreshold,
             notificationMinutesBefore: notificationMinutesBefore,
@@ -159,12 +156,7 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
               await _notificationService.scheduleNotifications();
             },
             onHighPriceWarningEnabledChanged: (value) async {
-              setState(() {
-                highPriceWarningEnabled = value;
-              });
-              await _saveSettings();
-              await _notificationService.scheduleNotifications();
-              debugPrint('High price warning changed to: $value');
+              // Not used anymore, keeping for compatibility
             },
             onHighPriceThresholdChanged: (value) async {
               setState(() {

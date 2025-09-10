@@ -52,7 +52,7 @@ class _SettingsPageState extends State<SettingsPage> {
           Card(
             child: ListTile(
               leading: Icon(Icons.notifications, color: Theme.of(context).colorScheme.primary),
-              title: const Text('Benachrichtigungen'),
+              title: const Text('Benachrichtigungs-Einstellungen'),
               subtitle: const Text('Preisalarme, Ruhezeiten & Standort-Einstellungen'),
               trailing: const Icon(Icons.arrow_forward_ios, size: 16),
               onTap: () {
@@ -85,51 +85,10 @@ class _SettingsPageState extends State<SettingsPage> {
             ),
           ),
           
-          const SizedBox(height: 16),
           
-          Card(
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'API Einstellungen',
-                    style: Theme.of(context).textTheme.titleLarge,
-                  ),
-                  const SizedBox(height: 16),
-                  ListTile(
-                    title: const Text('aWATTar API'),
-                    subtitle: const Text('Verbunden'),
-                    trailing: const Icon(Icons.check_circle, color: Colors.green),
-                  ),
-                  // Hidden for now - keeping code for later
-                  /*
-                  ListTile(
-                    title: const Text('Shelly Cloud'),
-                    subtitle: FutureBuilder<bool>(
-                      future: _checkShellyAuth(),
-                      builder: (context, snapshot) {
-                        if (snapshot.data == true) {
-                          return FutureBuilder<String?>(
-                            future: _getShellyEmail(),
-                            builder: (context, emailSnapshot) {
-                              return Text('Verbunden als ${emailSnapshot.data ?? '...'}');
-                            },
-                          );
-                        }
-                        return const Text('Nicht verbunden');
-                      },
-                    ),
-                    trailing: const Icon(Icons.arrow_forward_ios, size: 16),
-                    onTap: _showShellyLoginDialog,
-                  ),
-                  */
-                ],
-              ),
-            ),
-          ),
+          // API Einstellungen entfernt - jetzt in Preis-Einstellungen integriert
           
+          /*
           const SizedBox(height: 16),
           
           Card(
@@ -164,6 +123,7 @@ class _SettingsPageState extends State<SettingsPage> {
               ),
             ),
           ),
+          */
         ],
       ),
     );

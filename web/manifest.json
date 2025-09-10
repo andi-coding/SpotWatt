@@ -1,6 +1,6 @@
 {
-    "name": "price_app",
-    "short_name": "price_app",
+    "name": "SpotWatt",
+    "short_name": "SpotWatt",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",

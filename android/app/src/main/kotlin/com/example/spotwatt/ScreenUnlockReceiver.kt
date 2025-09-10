@@ -1,4 +1,4 @@
-package com.example.price_app
+package com.example.spotwatt
 
 import android.content.BroadcastReceiver
 import android.content.Context

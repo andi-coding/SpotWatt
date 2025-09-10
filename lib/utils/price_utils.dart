@@ -24,6 +24,7 @@ class PriceUtils {
   static Color getPriceColorMedian(double price, List<PriceData> prices, [Color? lastColor]) {
     if (prices.isEmpty) return Colors.green;
     
+    // Prices already contain either spot or full cost depending on settings
     final sortedPrices = prices.map((p) => p.price).toList()..sort();
     final length = sortedPrices.length;
     final medianIndex = (length / 2).floor();
@@ -57,7 +58,7 @@ class PriceUtils {
     final color = getPriceColorMedian(price, prices);
     
     if (color == Colors.green) return Icons.lightbulb; // Glühbirne für günstig
-    if (color == Colors.orange) return Icons.schedule; // Uhr für mittel (warten)
+    if (color == Colors.orange) return Icons.remove; // Uhr für mittel (warten)
     return Icons.warning_amber; // Warnung für teuer
   }
 

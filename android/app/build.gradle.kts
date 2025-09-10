@@ -5,7 +5,7 @@ plugins {
 }
 
 android {
-    namespace = "com.example.price_app"
+    namespace = "com.example.spotwatt"
     compileSdk = flutter.compileSdkVersion
     ndkVersion = "27.0.12077973"
 
@@ -20,7 +20,7 @@ android {
     }
 
     defaultConfig {
-        applicationId = "com.example.price_app"
+        applicationId = "com.example.spotwatt"
         minSdk = 23
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
