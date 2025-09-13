@@ -121,10 +121,13 @@ class PriceWidgetProvider : AppWidgetProvider() {
     }
 
     private fun createRemoteViews(context: Context, widgetData: SharedPreferences): RemoteViews {
+        // Widget always follows system theme - app theme settings only affect the app itself
+        val isSystemDarkMode = (context.resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES
         val views = RemoteViews(context.packageName, R.layout.price_widget_layout)
-        val isDarkMode = (context.resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES
+        android.util.Log.d("PriceWidget", "Using system theme, system is dark: $isSystemDarkMode")
         
         val currentPrice = widgetData.getString("current_price", "-- ct/kWh") ?: "-- ct/kWh"
+        val timeSlot = widgetData.getString("time_slot", "17:00") ?: "17:00"
         android.util.Log.d("PriceWidget", "Current price from SharedPrefs: $currentPrice")
         val minPrice = widgetData.getString("min_price", "--") ?: "--"
         val maxPrice = widgetData.getString("max_price", "--") ?: "--"
@@ -135,21 +138,36 @@ class PriceWidgetProvider : AppWidgetProvider() {
         val lastUpdate = widgetData.getString("last_update", "") ?: ""
         
         views.setTextViewText(R.id.current_price, currentPrice)
-        views.setTextViewText(R.id.min_price, "Min: $minPrice ct")
-        views.setTextViewText(R.id.max_price, "Max: $maxPrice ct")
-        views.setTextViewText(R.id.min_time, "um $minTime Uhr")
-        views.setTextViewText(R.id.max_time, "um $maxTime Uhr")
-        views.setTextViewText(R.id.last_update, lastUpdate)
+
+        // Update AKTUELL label with dynamic time slot
+        try {
+            val aktuelLabel = "AKTUELL (bis $timeSlot):"
+            views.setTextViewText(R.id.aktuell_label, aktuelLabel)
+        } catch (e: Exception) {
+            android.util.Log.e("PriceWidget", "Error updating AKTUELL label", e)
+            // Fallback to just "AKTUELL" if time slot update fails
+            views.setTextViewText(R.id.aktuell_label, "AKTUELL")
+        }
+        // MIN/MAX display temporarily removed to reduce text clutter
+        // views.setTextViewText(R.id.min_price, "$minPrice ct")
+        // views.setTextViewText(R.id.max_price, "$maxPrice ct")
+        // views.setTextViewText(R.id.min_time, "$minTime Uhr")
+        // views.setTextViewText(R.id.max_time, "$maxTime Uhr")
+        // Add "Aktualisiert:" prefix to the time
+        val updateText = if (lastUpdate.isNotEmpty()) "Aktualisiert: $lastUpdate" else ""
+        views.setTextViewText(R.id.last_update, updateText)
+
+        // No time slot needed anymore - moved to "Jetzt" label
         
-        // Set price color based on status and dark mode
+        // Set price color based on status and system dark mode
         val priceColor = when (priceStatus) {
-            "low" -> if (isDarkMode) 0xFF66BB6A.toInt() else 0xFF4CAF50.toInt() // Light/Dark Green
-            "medium" -> if (isDarkMode) 0xFFFFB74D.toInt() else 0xFFFF9800.toInt() // Light/Dark Orange
-            "high" -> if (isDarkMode) 0xFFEF5350.toInt() else 0xFFF44336.toInt() // Light/Dark Red
-            else -> if (isDarkMode) 0xFFAAAAAA.toInt() else 0xFF757575.toInt() // Light/Dark Grey
+            "low" -> if (isSystemDarkMode) 0xFF66BB6A.toInt() else 0xFF4CAF50.toInt() // Light/Dark Green
+            "medium" -> if (isSystemDarkMode) 0xFFFFB74D.toInt() else 0xFFFF9800.toInt() // Light/Dark Orange
+            "high" -> if (isSystemDarkMode) 0xFFEF5350.toInt() else 0xFFF44336.toInt() // Light/Dark Red
+            else -> if (isSystemDarkMode) 0xFFAAAAAA.toInt() else 0xFF757575.toInt() // Light/Dark Grey
         }
         views.setTextColor(R.id.current_price, priceColor)
-        
+
         // Set trend arrow with 5 levels
         val trendText = when (priceTrend) {
             "strongly_rising" -> "↑"     // Stark steigend
@@ -159,32 +177,35 @@ class PriceWidgetProvider : AppWidgetProvider() {
             else -> "→"                  // Stabil
         }
         views.setTextViewText(R.id.price_trend, trendText)
-        
-        // Set trend color based on direction, strength and dark mode
+
+        // Set trend color based on direction, strength and system dark mode
         val trendColor = when (priceTrend) {
-            "strongly_rising" -> if (isDarkMode) 0xFFEF5350.toInt() else 0xFFD32F2F.toInt()  // Light/Dark Red
-            "slightly_rising" -> if (isDarkMode) 0xFFFFB74D.toInt() else 0xFFFF9800.toInt()  // Light/Dark Orange
-            "slightly_falling" -> if (isDarkMode) 0xFF66BB6A.toInt() else 0xFF66BB6A.toInt() // Light Green (same)
-            "strongly_falling" -> if (isDarkMode) 0xFF4CAF50.toInt() else 0xFF388E3C.toInt() // Light/Dark Green
-            else -> if (isDarkMode) 0xFFAAAAAA.toInt() else 0xFF666666.toInt()               // Light/Dark Grey
+            "strongly_rising" -> if (isSystemDarkMode) 0xFFEF5350.toInt() else 0xFFD32F2F.toInt()  // Light/Dark Red
+            "slightly_rising" -> if (isSystemDarkMode) 0xFFFFB74D.toInt() else 0xFFFF9800.toInt()  // Light/Dark Orange
+            "slightly_falling" -> if (isSystemDarkMode) 0xFF66BB6A.toInt() else 0xFF66BB6A.toInt() // Light Green (same)
+            "strongly_falling" -> if (isSystemDarkMode) 0xFF4CAF50.toInt() else 0xFF388E3C.toInt() // Light/Dark Green
+            else -> if (isSystemDarkMode) 0xFFAAAAAA.toInt() else 0xFF666666.toInt()               // Light/Dark Grey
         }
         views.setTextColor(R.id.price_trend, trendColor)
-        
-        // Set status indicator
+
+        // Note: Static text colors are handled automatically by Android using layout/layout-night
+        // Only dynamic colors (price status, trend) need to be set programmatically
+
+        // Set status indicator with emoji smileys
         val statusText = when (priceStatus) {
-            "low" -> "✓ Günstig"
-            "medium" -> "○ Mittel"
-            "high" -> "✗ Teuer"
+            "low" -> "😊"     // Grün-lachend für günstig
+            "medium" -> "😐"  // Orange-neutral für mittel
+            "high" -> "😞"    // Rot-traurig für teuer
             else -> ""
         }
         views.setTextViewText(R.id.price_status, statusText)
         views.setTextColor(R.id.price_status, priceColor)
         
-        // Set price icon (same as in app)
+        // Set price icon with spacing
         val iconText = when (priceStatus) {
-            "low" -> "💡" // Glühbirne für günstig
-            "medium" -> "" // Häkchen für mittel (akzeptabel)
-            "high" -> "⚠️" // Warnung für teuer
+            "low" -> "💡 " // Glühbirne mit Leerzeichen für günstig
+            "medium" -> "" // Kein Icon für mittel
+            "high" -> "" // Kein Warnsymbol - redundant zu "✗ Teuer"
             else -> ""
         }
         views.setTextViewText(R.id.price_icon, iconText)

@@ -84,91 +84,91 @@
             identifiziert werden können.
         </p>
 
-        <h3>Datenerfassung in unserer App</h3>
+        <h3>Verantwortlicher und Datenverarbeitung</h3>
         <p>
-            <strong>Wer ist verantwortlich für die Datenerfassung?</strong><br>
-            Die Datenverarbeitung erfolgt durch den Betreiber der App. Die Kontaktdaten können Sie dem Impressum entnehmen.
+            <strong>Wer ist verantwortlich?</strong><br>
+            Verantwortlich für die SpotWatt App: [Ihr Name/Unternehmen]<br>
+            Kontakt: support@spotwatt.de
+        </p>
+        <p>
+            <strong>Hinweis:</strong> SpotWatt sammelt selbst keine personenbezogenen Daten. 
+            Diese Datenschutzerklärung informiert über die Datenübertragungen an externe Server, wie etwa beim Preisabruf.
         </p>
 
         <p>
-            <strong>Wie erfassen wir Ihre Daten?</strong><br>
-            Ihre Daten werden zum einen dadurch erhoben, dass Sie uns diese mitteilen (z.B. durch Eingabe in der App). 
-            Andere Daten werden automatisch beim Nutzen der App durch unsere IT-Systeme erfasst (technische Daten).
+            <strong>Wie werden Daten verarbeitet?</strong><br>
+            Die meisten Daten werden ausschließlich lokal auf Ihrem Gerät verarbeitet. 
+            Nur beim Abruf der Strompreise wird Ihre IP-Adresse an aWATTar GmbH übertragen.
         </p>
 
         <p>
             <strong>Wofür nutzen wir Ihre Daten?</strong><br>
-            Die Daten werden erhoben, um die App-Funktionalität zu gewährleisten und Ihnen personalisierte 
-            Benachrichtigungen zu senden.
+            Die wenigen Daten werden nur zur App-Funktionalität verwendet: Strompreise abrufen, 
+            lokale Benachrichtigungen senden und Einstellungen speichern.
         </p>
 
         <h2>2. Welche Daten werden erfasst?</h2>
         
-        <h3>2.1 Standortdaten</h3>
-        <p>
-            Wenn Sie die Standortfunktion aktivieren, erfassen wir Ihren ungefähren Standort, um:
-        </p>
+        <h3>2.1 Lokale Datenverarbeitung (auf Ihrem Gerät)</h3>
+        <p>SpotWatt verarbeitet folgende Daten <strong>ausschließlich lokal</strong> - sie verlassen Ihr Gerät nicht:</p>
         <ul>
-            <li>Die korrekten regionalen Strompreise anzuzeigen</li>
-            <li>Automatische Standortwechsel zu ermöglichen</li>
-            <li>Relevante lokale Benachrichtigungen zu senden</li>
-        </ul>
-        <p>
-            <strong>Rechtsgrundlage:</strong> Ihre Einwilligung (Art. 6 Abs. 1 lit. a DSGVO)<br>
-            <strong>Speicherdauer:</strong> Nur während der App-Nutzung, keine dauerhafte Speicherung
-        </p>
-
-        <h3>2.2 Nutzungsdaten</h3>
-        <p>Wir erfassen anonymisierte Nutzungsdaten zur Verbesserung der App:</p>
-        <ul>
-            <li>App-Version und Gerätetyp</li>
-            <li>Gewählte Preisregion</li>
-            <li>Nutzungshäufigkeit von Features</li>
-            <li>Fehlerberichte (Crashes)</li>
-        </ul>
-        <p>
-            <strong>Rechtsgrundlage:</strong> Berechtigtes Interesse (Art. 6 Abs. 1 lit. f DSGVO)<br>
-            <strong>Speicherdauer:</strong> Maximal 12 Monate
-        </p>
-
-        <h3>2.3 Benachrichtigungseinstellungen</h3>
-        <p>Ihre Benachrichtigungseinstellungen werden lokal auf Ihrem Gerät gespeichert:</p>
-        <ul>
-            <li>Preisschwellen für Benachrichtigungen</li>
-            <li>Bevorzugte Benachrichtigungszeiten</li>
-            <li>Aktivierte Benachrichtigungstypen</li>
+            <li><strong>Strompreisdaten:</strong> Von aWATTar abgerufene EPEX Spot Preise (24-48h gecacht)</li>
+            <li><strong>App-Einstellungen:</strong> Preisschwellen, Benachrichtigungszeiten, gewählte Region</li>
+            <li><strong>Standortdaten (optional):</strong> Nur für Geofencing ("nur zu Hause benachrichtigen")</li>
+            <li><strong>Push-Token:</strong> Vom Betriebssystem automatisch generiert für lokale Benachrichtigungen</li>
         </ul>
         <p>
             <strong>Speicherort:</strong> Ausschließlich auf Ihrem Gerät<br>
-            <strong>Übertragung:</strong> Keine Übertragung an Server
+            <strong>Übertragung:</strong> <span style="color: #4CAF50; font-weight: bold;">Keine Übertragung an SpotWatt-Server</span>
         </p>
 
-        <h2>3. Datenweitergabe</h2>
-        
-        <h3>3.1 Drittanbieter</h3>
-        <p>Wir geben Ihre personenbezogenen Daten nur in folgenden Fällen weiter:</p>
+        <h3>2.2 Datenübertragung an Dritte</h3>
+        <p>SpotWatt überträgt <strong>nur minimal notwendige Daten</strong> an Dritte:</p>
         <ul>
-            <li><strong>Preisdaten-Anbieter:</strong> Awattar API (nur Preiszone, keine persönlichen Daten)</li>
-            <li><strong>Push-Benachrichtigungen:</strong> Firebase Cloud Messaging (nur anonyme Geräte-Token)</li>
-            <li><strong>Zahlungsabwicklung (Pro-Version):</strong> Google Play / Apple App Store</li>
+            <li><strong>An aWATTar API:</strong> Nur Ihre IP-Adresse (technisch notwendig für Internet-Requests)</li>
+            <li><strong>Zweck:</strong> Abruf aktueller EPEX Spot Strompreise für Deutschland und Österreich</li>
+            <li><strong>Häufigkeit:</strong> 1-2x täglich nach 13:00 Uhr</li>
         </ul>
-
-        <h3>3.2 Internationale Datenübertragung</h3>
         <p>
-            Bei der Nutzung von Firebase (Google) können Daten in die USA übertragen werden. 
-            Google ist unter dem EU-US Data Privacy Framework zertifiziert.
+            <strong>Rechtsgrundlage:</strong> Berechtigtes Interesse zur App-Funktionalität<br>
+            <strong>aWATTar Datenschutz:</strong> <a href="https://www.awattar.de/datenschutz" target="_blank">awattar.de/datenschutz</a>
+        </p>
+
+        <h2>3. Was SpotWatt NICHT sammelt</h2>
+        
+        <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; margin: 20px 0;">
+            <h3 style="color: #e74c3c; margin-top: 0;">❌ SpotWatt sammelt und überträgt NICHT:</h3>
+            <ul>
+                <li>Nutzungsdaten oder Analytics</li>
+                <li>Persönliche Profile oder Accounts</li>
+                <li>Standortdaten an externe Server</li>
+                <li>App-Einstellungen oder Präferenzen</li>
+                <li>Crash-Reports oder Fehlerberichte</li>
+                <li>Geräte-IDs oder Hardware-Informationen</li>
+                <li>Cookies oder Tracking-Daten</li>
+            </ul>
+        </div>
+
+        <h3>3.1 Internationale Datenübertragung</h3>
+        <p>
+            <strong>Keine Server von SpotWatt:</strong> Da SpotWatt keine eigenen Server betreibt und keine Nutzerdaten sammelt, 
+            findet keine internationale Datenübertragung durch uns statt.
+        </p>
+        <p>
+            <strong>aWATTar (Deutschland):</strong> Die Strompreisdaten werden von aWATTar bezogen, einem deutschen Unternehmen. 
+            Ihre IP-Adresse wird dabei nur für den technischen Request verwendet.
         </p>
 
         <h2>4. Ihre Rechte</h2>
         
-        <p>Sie haben folgende Rechte bezüglich Ihrer personenbezogenen Daten:</p>
+        <p>Nach der EU-Datenschutzgrundverordnung (DSGVO) haben Sie folgende Rechte:</p>
         <ul>
-            <li><strong>Auskunftsrecht:</strong> Sie können Auskunft über Ihre gespeicherten Daten verlangen</li>
-            <li><strong>Berichtigungsrecht:</strong> Sie können die Berichtigung unrichtiger Daten verlangen</li>
-            <li><strong>Löschungsrecht:</strong> Sie können die Löschung Ihrer Daten verlangen</li>
-            <li><strong>Einschränkungsrecht:</strong> Sie können die Einschränkung der Verarbeitung verlangen</li>
-            <li><strong>Widerspruchsrecht:</strong> Sie können der Verarbeitung widersprechen</li>
-            <li><strong>Datenübertragbarkeit:</strong> Sie können Ihre Daten in einem gängigen Format erhalten</li>
+            <li><strong>Auskunftsrecht:</strong> Da wir keine personenbezogenen Daten speichern, können wir nur bestätigen, dass keine Daten verarbeitet werden</li>
+            <li><strong>Berichtigungsrecht:</strong> Lokale App-Daten können Sie jederzeit selbst in den Einstellungen ändern</li>
+            <li><strong>Löschungsrecht:</strong> Alle Daten sind lokal - Deinstallation der App löscht alles</li>
+            <li><strong>Einschränkungsrecht:</strong> Sie können einzelne App-Funktionen jederzeit deaktivieren</li>
+            <li><strong>Widerspruchsrecht:</strong> Sie können der Datenverarbeitung durch Deinstallation widersprechen</li>
+            <li><strong>Datenübertragbarkeit:</strong> Lokale Daten gehören bereits Ihnen</li>
         </ul>
 
         <h2>5. Datensicherheit</h2>
@@ -221,22 +221,37 @@
             [Hier würde die zuständige Landesdatenschutzbehörde eingetragen]
         </p>
 
-        <h2>11. Pro-Version Spezifika</h2>
+        <!--<h2>11. Pro-Version Spezifika</h2>
         
         <p>Bei Nutzung der Pro-Version werden zusätzlich folgende Daten verarbeitet:</p>
         <ul>
             <li><strong>Zahlungsinformationen:</strong> Werden ausschließlich von Google Play / Apple App Store verarbeitet</li>
             <li><strong>Abonnement-Status:</strong> Zur Freischaltung der Pro-Features</li>
             <li><strong>Mehrere Standorte:</strong> Werden verschlüsselt auf Ihrem Gerät gespeichert</li>
-        </ul>
+        </ul>-->
 
-        <h2>12. Löschung Ihrer Daten</h2>
+        <h2>12. Externe Links</h2>
+
+        <p>
+            Unsere App enthält Links zu externen Websites (z.B. Ko-fi Spendenseite).
+            Beim Klicken auf solche Links verlassen Sie unsere App und gelangen zu externen Anbietern.
+        </p>
+        <ul>
+            <li><strong>Ko-fi:</strong> Freiwilliger Link zur Unterstützung der App-Entwicklung</li>
+            <li><strong>Keine Datenübertragung:</strong> Beim Klick werden keine Daten von uns übertragen</li>
+            <li><strong>Externe Datenschutzrichtlinien:</strong> Es gelten die Datenschutzbestimmungen der jeweiligen Website</li>
+        </ul>
+        <p>
+            Wir haben keinen Einfluss auf den Inhalt und die Datenverarbeitung dieser externen Websites
+            und übernehmen keine Verantwortung dafür.
+        </p>
+
+        <h2>13. Löschung Ihrer Daten</h2>
         
         <p>Sie können Ihre Daten jederzeit löschen:</p>
         <ul>
             <li><strong>App-Daten löschen:</strong> Einstellungen → Daten löschen</li>
             <li><strong>App deinstallieren:</strong> Löscht alle lokalen Daten</li>
-            <li><strong>Account löschen:</strong> Kontaktieren Sie uns per E-Mail</li>
         </ul>
     </div>
 

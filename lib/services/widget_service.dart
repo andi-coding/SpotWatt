@@ -4,6 +4,7 @@ import 'package:spotwatt/services/price_cache_service.dart';
 import 'package:spotwatt/utils/price_utils.dart';
 import 'package:spotwatt/models/price_data.dart';
 import 'package:intl/intl.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:io';
 
 class WidgetService {
@@ -45,6 +46,13 @@ class WidgetService {
       
       // Format update time
       final updateTime = DateFormat('HH:mm').format(now);
+
+      // Get time slot end (next hour)
+      final nextHour = DateTime(now.year, now.month, now.day, now.hour + 1, 0);
+      final timeSlot = DateFormat('HH:mm').format(nextHour);
+
+      // Get theme setting for widget
+      final themeMode = await _getThemeModeSetting();
       
       // Save data to widget
       await HomeWidget.saveWidgetData<String>('current_price', 
@@ -58,7 +66,9 @@ class WidgetService {
       print('Widget Update: Min at $minTime, Max at $maxTime');
       await HomeWidget.saveWidgetData<String>('price_status', priceStatus);
       await HomeWidget.saveWidgetData<String>('price_trend', priceTrend);
-      await HomeWidget.saveWidgetData<String>('last_update', 'Stand: $updateTime');
+      await HomeWidget.saveWidgetData<String>('last_update', updateTime);
+      await HomeWidget.saveWidgetData<String>('time_slot', timeSlot);
+      await HomeWidget.saveWidgetData<String>('theme_mode', themeMode);
       
       // Update the widget
       print('[WidgetService] Calling HomeWidget.updateWidget...');
@@ -207,5 +217,14 @@ class WidgetService {
       }
     });
     print('[WidgetService] Widget click listener setup complete');
+  }
+  
+  static Future<String> _getThemeModeSetting() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      return prefs.getString('theme_mode') ?? 'system';
+    } catch (e) {
+      return 'system'; // Default to system on error
+    }
   }
 }

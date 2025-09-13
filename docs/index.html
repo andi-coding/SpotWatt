@@ -22,6 +22,7 @@
                 <li><a href="#home">Start</a></li>
                 <li><a href="#features">Features</a></li>
                 <li><a href="guide.html">Anleitung</a></li>
+                <li><a href="how-it-works.html">Datenquelle</a></li>
                 <li><a href="#pricing">Preise</a></li>
                 <li><a href="#download">Download</a></li>
             </ul>
@@ -49,7 +50,7 @@
                 <div class="hero-badges">
                     <span class="badge">🇩🇪 Deutschland</span>
                     <span class="badge">🇦🇹 Österreich</span>
-                    <span class="badge">📱 Android & iOS</span>
+                    <span class="badge">📱 Android</span>
                 </div>
             </div>
             <div class="hero-image">
@@ -74,12 +75,14 @@
                 <div class="feature-card">
                     <div class="feature-icon">📊</div>
                     <h3>Echtzeit-Preise</h3>
-                    <p>Aktuelle Spotmarkt-Preise für Ihre Region. Stündlich aktualisiert, immer präzise.</p>
+                    <p>Aktuelle EPEX Spotmarkt Strompreise für Ihre Region. Stündlich aktualisiert, immer präzise.
+                        Bezogen über aWATTar API.</p>
                 </div>
                 <div class="feature-card">
                     <div class="feature-icon">🔔</div>
                     <h3>Smart Notifications</h3>
-                    <p>Automatische Benachrichtigungen bei günstigen Preisen. Verpassen Sie keine Sparchance.</p>
+                    <p>Automatische Benachrichtigungen bei günstigen Preisen, sowie tägliche Zusammenfassung der günstigsten Stunden. 
+                        Verpassen Sie keine Sparchance.</p>
                 </div>
                 <div class="feature-card">
                     <div class="feature-icon">📈</div>
@@ -101,6 +104,35 @@
                     <h3>Dark Mode</h3>
                     <p>Augenschonende Darstellung bei Nacht. Automatischer Wechsel nach Systemeinstellung.</p>
                 </div>
+                <div class="feature-card">
+                    <div class="feature-icon">💰</div>
+                    <h3>Vollkosten-Rechner</h3>
+                    <p>Berechnung der Absolutpreise inklusive Energieanbietergebühren, Netzkosten und USt. Sehen Sie Ihre tatsächlichen Kosten.</p>
+                </div>
+                <!--<div class="feature-card">
+                    <div class="feature-icon">🔧</div>
+                    <h3>mehrere Energieanbieter</h3>
+                    <p>Funktioniert mit allen Energieanbietern die stündliche Epex Spotmarkt-Tarife anbieten. Unterschiedliche Gebühren individuell konfigurierbar.</p>
+                </div>-->
+            </div>
+        </div>
+    </section>
+
+    <!-- Provider Compatibility -->
+    <section class="provider-info" style="background: #f8f9fa; padding: 60px 0;">
+        <div class="container">
+            <h2 class="section-title">Für alle Spotmarkt-Anbieter</h2>
+            <p style="text-align: center; max-width: 800px; margin: 0 auto 40px; font-size: 1.1rem; color: #666;">
+                SpotWatt funktioniert mit <strong>allen Energieanbietern</strong> die stündliche Strompreise vom EPEX Spotmarkt anbieten.
+                Konfigurieren Sie einfach die individuellen Gebühren Ihres Anbieters und sehen Sie Ihre exakten Vollkosten.
+            </p>
+            <div style="display: flex; flex-wrap: wrap; justify-content: center; gap: 20px; margin-top: 30px;">
+                <span style="background: white; padding: 10px 20px; border-radius: 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">✓ aWATTar</span>
+                <span style="background: white; padding: 10px 20px; border-radius: 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">✓ Tibber</span>
+                <span style="background: white; padding: 10px 20px; border-radius: 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">✓ Octopus Energy</span>
+                <span style="background: white; padding: 10px 20px; border-radius: 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">✓ OSTROM</span>
+                <span style="background: white; padding: 10px 20px; border-radius: 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">✓ 1KOMMA5°</span>
+                <span style="background: white; padding: 10px 20px; border-radius: 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">✓ und viele mehr...</span>
             </div>
         </div>
     </section>
@@ -117,8 +149,8 @@
                 </div>
                 <div class="step">
                     <div class="step-number">2</div>
-                    <h3>Region wählen</h3>
-                    <p>Wählen Sie Ihre Preiszone in Deutschland oder Österreich</p>
+                    <h3>Anbieter konfigurieren</h3>
+                    <p>Geben Sie die Gebühren Ihres Energieanbieters ein für exakte Vollkosten</p>
                 </div>
                 <div class="step">
                     <div class="step-number">3</div>
@@ -174,14 +206,14 @@
     <section id="download" class="download">
         <div class="container">
             <h2 class="section-title">Jetzt SpotWatt herunterladen</h2>
-            <p class="section-subtitle">Verfügbar für Android und iOS</p>
+            <p class="section-subtitle">Verfügbar für Android</p>
             <div class="download-buttons">
                 <a href="#" class="download-btn">
                     <img src="https://upload.wikimedia.org/wikipedia/commons/7/78/Google_Play_Store_badge_EN.svg" alt="Google Play">
                 </a>
-                <a href="#" class="download-btn">
+                <!--<a href="#" class="download-btn">
                     <img src="https://upload.wikimedia.org/wikipedia/commons/3/3c/Download_on_the_App_Store_Badge.svg" alt="App Store">
-                </a>
+                </a>-->
             </div>
         </div>
     </section>
@@ -198,6 +230,7 @@
                     <h4>Links</h4>
                     <ul>
                         <li><a href="guide.html">Anleitung</a></li>
+                        <li><a href="how-it-works.html">Datenquelle</a></li>
                         <li><a href="features.html">Features</a></li>
                         <li><a href="privacy.html">Datenschutz</a></li>
                         <li><a href="imprint.html">Impressum</a></li>

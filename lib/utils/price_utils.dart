@@ -58,7 +58,7 @@ class PriceUtils {
     final color = getPriceColorMedian(price, prices);
     
     if (color == Colors.green) return Icons.lightbulb; // Glühbirne für günstig
-    if (color == Colors.orange) return Icons.remove; // Uhr für mittel (warten)
+    if (color == Colors.orange) return Icons.circle_outlined; // Uhr für mittel (warten)
     return Icons.warning_amber; // Warnung für teuer
   }
 

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:timezone/data/latest_all.dart' as tz;
 import 'package:timezone/timezone.dart' as tz;
+import 'package:shared_preferences/shared_preferences.dart';
 import 'screens/home_screen.dart';
 import 'services/background_task_service.dart';
 import 'services/geofence_service.dart';
@@ -24,41 +25,105 @@ void main() async {
   runApp(const WattWiseApp());
 }
 
-class WattWiseApp extends StatelessWidget {
+class WattWiseApp extends StatefulWidget {
   const WattWiseApp({Key? key}) : super(key: key);
 
   @override
+  State<WattWiseApp> createState() => _WattWiseAppState();
+}
+
+class _WattWiseAppState extends State<WattWiseApp> {
+  ThemeMode _themeMode = ThemeMode.system;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadThemeMode();
+  }
+
+  void _loadThemeMode() async {
+    final prefs = await SharedPreferences.getInstance();
+    final themeModeString = prefs.getString('theme_mode') ?? 'system';
+    setState(() {
+      switch (themeModeString) {
+        case 'light':
+          _themeMode = ThemeMode.light;
+          break;
+        case 'dark':
+          _themeMode = ThemeMode.dark;
+          break;
+        default:
+          _themeMode = ThemeMode.system;
+      }
+    });
+  }
+
+  void setThemeMode(ThemeMode themeMode) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('theme_mode', themeMode.toString().split('.').last);
+    setState(() {
+      _themeMode = themeMode;
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'WattWise',
-      debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        useMaterial3: true,
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: Colors.green,
-          brightness: Brightness.light,
-        ),
-        cardTheme: CardThemeData(  // Hier geändert!
-          elevation: 2,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
+    return ThemeProvider(
+      setThemeMode: setThemeMode,
+      currentThemeMode: _themeMode,
+      child: MaterialApp(
+        title: 'WattWise',
+        debugShowCheckedModeBanner: false,
+        theme: ThemeData(
+          useMaterial3: true,
+          colorScheme: ColorScheme.fromSeed(
+            seedColor: Colors.green,
+            brightness: Brightness.light,
+          ),
+          cardTheme: CardThemeData(
+            elevation: 2,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
           ),
         ),
-      ),
-      darkTheme: ThemeData(
-        useMaterial3: true,
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: Colors.green,
-          brightness: Brightness.dark,
-        ),
-        cardTheme: CardThemeData(  // Hier geändert!
-          elevation: 2,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
+        darkTheme: ThemeData(
+          useMaterial3: true,
+          colorScheme: ColorScheme.fromSeed(
+            seedColor: Colors.green,
+            brightness: Brightness.dark,
+          ),
+          cardTheme: CardThemeData(
+            elevation: 2,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
           ),
         ),
+        themeMode: _themeMode,
+        home: const HomeScreen(),
       ),
-      home: const HomeScreen(),
     );
+  }
+}
+
+class ThemeProvider extends InheritedWidget {
+  final Function(ThemeMode) setThemeMode;
+  final ThemeMode currentThemeMode;
+
+  const ThemeProvider({
+    Key? key,
+    required this.setThemeMode,
+    required this.currentThemeMode,
+    required Widget child,
+  }) : super(key: key, child: child);
+
+  static ThemeProvider? of(BuildContext context) {
+    return context.dependOnInheritedWidgetOfExactType<ThemeProvider>();
+  }
+
+  @override
+  bool updateShouldNotify(ThemeProvider oldWidget) {
+    return currentThemeMode != oldWidget.currentThemeMode;
   }
 }

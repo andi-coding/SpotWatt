@@ -4,104 +4,125 @@
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:orientation="vertical"
-    android:padding="16dp"
+    android:padding="20dp"
     android:background="@drawable/widget_background">
 
-    <!-- Header with Logo and Title -->
+    <!-- Header with Logo and Title (right aligned) -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="end|center_vertical"
+        android:layout_marginBottom="8dp">
+
+        <TextView
+            android:id="@+id/app_title"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="SpotWatt"
+            android:textSize="14sp"
+            android:textStyle="bold"
+            android:textColor="#333333"
+            android:layout_marginEnd="4dp" />
+
+        <ImageView
+            android:layout_width="20dp"
+            android:layout_height="20dp"
+            android:src="@drawable/spotwatt_logo_widget_header" />
+    </LinearLayout>
+
+    <!-- Current Price Label -->
+    <TextView
+        android:id="@+id/aktuell_label"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="AKTUELL"
+        android:textSize="10sp"
+        android:textStyle="bold"
+        android:textColor="#666666"
+        android:letterSpacing="0.1"
+        android:layout_marginBottom="4dp" />
+
+    <!-- Main Price with Icon and Status -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="horizontal"
         android:gravity="center_vertical"
         android:layout_marginBottom="4dp">
-        
-        <ImageView
-            android:layout_width="24dp"
-            android:layout_height="24dp"
-            android:src="@drawable/spotwatt_logo_widget_header"
-            android:layout_marginEnd="8dp" />
-            
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="SpotWatt"
-            android:textSize="16sp"
-            android:textStyle="bold"
-            android:textColor="#333333" />
-    </LinearLayout>
-
-    <!-- Original Widget Title -->
-    <TextView
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:text="Aktueller Strompreis"
-        android:textSize="12sp"
-        android:textColor="#666666"
-        android:layout_marginTop="8dp"
-        android:layout_marginBottom="4dp" />
-
-    <!-- Current Price with Icon and Trend -->
-    <LinearLayout
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:orientation="horizontal"
-        android:gravity="center_vertical"
-        android:layout_marginBottom="8dp">
 
         <TextView
             android:id="@+id/price_icon"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text=""
-            android:textSize="22sp"
-            android:layout_marginEnd="8dp" />
+            android:textSize="22sp" />
 
         <TextView
             android:id="@+id/current_price"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:text="-- ct/kWh"
-            android:textSize="24sp"
-            android:textStyle="bold"
-            android:textColor="#000000" />
-
-        <LinearLayout
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:orientation="vertical"
-            android:gravity="center"
-            android:layout_marginStart="8dp">
-            
-            <TextView
-                android:id="@+id/price_trend"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="→"
-                android:textSize="28sp"
-                android:textStyle="bold"
-                android:textColor="#666666" />
-                
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="3h Trend"
-                android:textSize="9sp"
-                android:textColor="#999999" />
-        </LinearLayout>
+            android:text="-- ct/kWh"
+            android:textSize="28sp"
+            android:textStyle="bold"
+            android:textColor="#000000"
+            android:layout_marginEnd="8dp" />
+
+        <TextView
+            android:id="@+id/price_status"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text=""
+            android:textSize="16sp"
+            android:textStyle="normal" />
     </LinearLayout>
 
-    <!-- Status Indicator -->
-    <TextView
-        android:id="@+id/price_status"
-        android:layout_width="wrap_content"
+    <!-- Trend Section with Update Time -->
+    <LinearLayout
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text=""
-        android:textSize="12sp"
-        android:textStyle="bold"
-        android:layout_marginBottom="8dp" />
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:layout_marginBottom="8dp"
+        android:layout_marginTop="4dp">
 
-    <!-- Min/Max Prices with Times -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="3H-TREND:"
+            android:textSize="10sp"
+            android:textStyle="bold"
+            android:textColor="#666666"
+            android:letterSpacing="0.1" />
+
+        <TextView
+            android:id="@+id/price_trend"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="→"
+            android:textSize="30sp"
+            android:textStyle="bold"
+            android:textColor="#222222"
+            android:layout_marginStart="8dp" />
+
+        <!-- Spacer -->
+        <TextView
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1" />
+
+        <!-- Update time -->
+        <TextView
+            android:id="@+id/last_update"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text=""
+            android:textSize="8sp"
+            android:textColor="#999999" />
+    </LinearLayout>
+
+    <!-- Min/Max Section - TEMPORARILY COMMENTED OUT TO REDUCE TEXT -->
+    <!--
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
@@ -112,23 +133,23 @@
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:orientation="vertical">
-            
+            android:orientation="horizontal">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="MIN "
+                android:textSize="12sp"
+                android:textStyle="bold"
+                android:textColor="#4CAF50" />
+
             <TextView
                 android:id="@+id/min_price"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Min: --"
-                android:textSize="14sp"
+                android:text="XX ct"
+                android:textSize="12sp"
                 android:textStyle="bold"
-                android:textColor="#4CAF50" />
-                
-            <TextView
-                android:id="@+id/min_time"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="um --:--"
-                android:textSize="11sp"
                 android:textColor="#4CAF50" />
         </LinearLayout>
 
@@ -136,36 +157,54 @@
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:orientation="vertical"
+            android:orientation="horizontal"
             android:gravity="end">
-            
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="MAX "
+                android:textSize="12sp"
+                android:textStyle="bold"
+                android:textColor="#F44336" />
+
             <TextView
                 android:id="@+id/max_price"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Max: --"
-                android:textSize="14sp"
+                android:text="XX ct"
+                android:textSize="12sp"
                 android:textStyle="bold"
-                android:textColor="#F44336" />
-                
-            <TextView
-                android:id="@+id/max_time"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="um --:--"
-                android:textSize="11sp"
                 android:textColor="#F44336" />
         </LinearLayout>
     </LinearLayout>
 
-    <!-- Last Update -->
-    <TextView
-        android:id="@+id/last_update"
+    <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text=""
-        android:textSize="10sp"
-        android:textColor="#999999"
-        android:gravity="end" />
+        android:orientation="horizontal"
+        android:layout_marginBottom="4dp">
+
+        <TextView
+            android:id="@+id/min_time"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="XX:XX Uhr"
+            android:textSize="12sp"
+            android:textColor="#4CAF50" />
+
+        <TextView
+            android:id="@+id/max_time"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="XX:XX Uhr"
+            android:textSize="12sp"
+            android:textColor="#F44336"
+            android:gravity="end" />
+    </LinearLayout>
+    -->
+
 
 </LinearLayout>

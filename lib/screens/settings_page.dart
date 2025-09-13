@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../services/notification_service.dart';
 import '../services/location_service.dart';
 import '../services/shelly_service.dart';
@@ -8,6 +9,9 @@ import '../utils/price_utils.dart';
 import '../widgets/shelly_login_dialog.dart';
 import 'price_settings_page.dart';
 import 'notification_settings_page.dart';
+import 'display_settings_page.dart';
+import 'about_page.dart';
+import 'legal_page.dart';
 
 class SettingsPage extends StatefulWidget {
   const SettingsPage({Key? key}) : super(key: key);
@@ -85,6 +89,64 @@ class _SettingsPageState extends State<SettingsPage> {
             ),
           ),
           
+          const SizedBox(height: 16),
+          
+          Card(
+            child: ListTile(
+              leading: Icon(Icons.palette, color: Theme.of(context).colorScheme.primary),
+              title: const Text('Anzeige-Einstellungen'),
+              subtitle: const Text(''),
+              trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const DisplaySettingsPage(),
+                  ),
+                );
+              },
+            ),
+          ),
+          
+          const SizedBox(height: 16),
+          
+          Card(
+            child: ListTile(
+              leading: Icon(Icons.info_outline, color: Theme.of(context).colorScheme.primary),
+              title: const Text('Über SpotWatt'),
+              subtitle: const Text('Version, Kontakt & Support'),
+              trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const AboutPage(),
+                  ),
+                );
+              },
+            ),
+          ),
+          
+          const SizedBox(height: 8),
+          
+          Card(
+            child: ListTile(
+              leading: Icon(Icons.policy_outlined, color: Theme.of(context).colorScheme.primary),
+              title: const Text('Rechtliches'),
+              subtitle: const Text('Datenschutz & Impressum'),
+              trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const LegalPage(),
+                  ),
+                );
+              },
+            ),
+          ),
+          
+          const SizedBox(height: 8),
           
           // API Einstellungen entfernt - jetzt in Preis-Einstellungen integriert
           
@@ -128,4 +190,5 @@ class _SettingsPageState extends State<SettingsPage> {
       ),
     );
   }
+
 }
