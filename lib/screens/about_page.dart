@@ -56,12 +56,12 @@ class AboutPage extends StatelessWidget {
                 ListTile(
                   leading: Icon(Icons.mail_outline, color: Theme.of(context).colorScheme.primary),
                   title: const Text('Kontakt & Feedback'),
-                  subtitle: const Text('support@spotwatt.de'),
+                  subtitle: const Text('contact@spotwatt.at'),
                   trailing: const Icon(Icons.arrow_forward_ios, size: 16),
                   onTap: () async {
                     final Uri emailUri = Uri(
                       scheme: 'mailto',
-                      path: 'support@spotwatt.de',
+                      path: 'contact@spotwatt.at',
                       queryParameters: {
                         'subject': 'SpotWatt Feedback',
                       },

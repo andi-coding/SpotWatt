@@ -16,14 +16,12 @@
     <nav class="navbar">
         <div class="container">
             <div class="nav-brand">
-                <h1>⚡ SpotWatt</h1>
+                <h1><img src="spotwatt_logo_final.png" alt="SpotWatt Logo" style="height: 32px; vertical-align: middle; margin-right: 8px;">SpotWatt</h1>
             </div>
             <ul class="nav-menu">
                 <li><a href="#home">Start</a></li>
                 <li><a href="#features">Features</a></li>
-                <li><a href="guide.html">Anleitung</a></li>
-                <li><a href="how-it-works.html">Datenquelle</a></li>
-                <li><a href="#pricing">Preise</a></li>
+                <li><a href="faq.html">FAQ</a></li>
                 <li><a href="#download">Download</a></li>
             </ul>
             <div class="nav-toggle" id="navToggle">
@@ -54,14 +52,14 @@
                 </div>
             </div>
             <div class="hero-image">
-                <div class="phone-mockup">
-                    <div class="phone-screen">
-                        <div class="price-display">
-                            <div class="current-price">12,5</div>
-                            <div class="price-unit">ct/kWh</div>
-                            <div class="price-time">Aktueller Preis</div>
-                        </div>
-                    </div>
+                <!-- Smartphone Frame -->
+                <div style="position: relative; display: inline-block; background: #000; padding: 12px; border-radius: 30px; box-shadow: 0 25px 50px rgba(0,0,0,0.4);">
+                    <!-- Screen -->
+                    <img src="App_Screenshots/Spotwatt_Homescreen_Preise.jpg"
+                         alt="SpotWatt App Screenshot"
+                         style="width: 280px; height: auto; border-radius: 20px; display: block;">
+                    <!-- Home indicator -->
+                    <div style="position: absolute; bottom: 6px; left: 50%; transform: translateX(-50%); width: 60px; height: 3px; background: #666; border-radius: 2px;"></div>
                 </div>
             </div>
         </div>
@@ -74,20 +72,13 @@
             <div class="features-grid">
                 <div class="feature-card">
                     <div class="feature-icon">📊</div>
-                    <h3>Echtzeit-Preise</h3>
-                    <p>Aktuelle EPEX Spotmarkt Strompreise für Ihre Region. Stündlich aktualisiert, immer präzise.
-                        Bezogen über aWATTar API.</p>
+                    <h3>Aktuelle Preise & Vorschau</h3>
+                    <p>Aktuelle EPEX Spotmarkt Strompreise plus 24-Stunden-Vorschau. Stündlich aktualisiert für optimale Planung.</p>
                 </div>
                 <div class="feature-card">
                     <div class="feature-icon">🔔</div>
                     <h3>Smart Notifications</h3>
-                    <p>Automatische Benachrichtigungen bei günstigen Preisen, sowie tägliche Zusammenfassung der günstigsten Stunden. 
-                        Verpassen Sie keine Sparchance.</p>
-                </div>
-                <div class="feature-card">
-                    <div class="feature-icon">📈</div>
-                    <h3>Preis-Prognosen</h3>
-                    <p>24-Stunden-Vorschau hilft bei der Planung von energieintensiven Tätigkeiten.</p>
+                    <p>Automatische Benachrichtigungen bei günstigen Preisen, sowie tägliche Zusammenfassung der günstigsten Stunden.</p>
                 </div>
                 <div class="feature-card">
                     <div class="feature-icon">⚠️</div>
@@ -100,14 +91,14 @@
                     <p>Homescreen-Widget für schnellen Zugriff auf aktuelle Preise ohne App-Start.</p>
                 </div>
                 <div class="feature-card">
-                    <div class="feature-icon">🌙</div>
-                    <h3>Dark Mode</h3>
-                    <p>Augenschonende Darstellung bei Nacht. Automatischer Wechsel nach Systemeinstellung.</p>
-                </div>
-                <div class="feature-card">
                     <div class="feature-icon">💰</div>
                     <h3>Vollkosten-Rechner</h3>
                     <p>Berechnung der Absolutpreise inklusive Energieanbietergebühren, Netzkosten und USt. Sehen Sie Ihre tatsächlichen Kosten.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">🌙</div>
+                    <h3>Dark Mode</h3>
+                    <p>Augenschonende Darstellung bei Nacht. Automatischer Wechsel nach Systemeinstellung.</p>
                 </div>
                 <!--<div class="feature-card">
                     <div class="feature-icon">🔧</div>
@@ -126,14 +117,14 @@
                 SpotWatt funktioniert mit <strong>allen Energieanbietern</strong> die stündliche Strompreise vom EPEX Spotmarkt anbieten.
                 Konfigurieren Sie einfach die individuellen Gebühren Ihres Anbieters und sehen Sie Ihre exakten Vollkosten.
             </p>
-            <div style="display: flex; flex-wrap: wrap; justify-content: center; gap: 20px; margin-top: 30px;">
+          <!--  <div style="display: flex; flex-wrap: wrap; justify-content: center; gap: 20px; margin-top: 30px;">
                 <span style="background: white; padding: 10px 20px; border-radius: 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">✓ aWATTar</span>
                 <span style="background: white; padding: 10px 20px; border-radius: 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">✓ Tibber</span>
                 <span style="background: white; padding: 10px 20px; border-radius: 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">✓ Octopus Energy</span>
                 <span style="background: white; padding: 10px 20px; border-radius: 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">✓ OSTROM</span>
                 <span style="background: white; padding: 10px 20px; border-radius: 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">✓ 1KOMMA5°</span>
                 <span style="background: white; padding: 10px 20px; border-radius: 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">✓ und viele mehr...</span>
-            </div>
+            </div>-->
         </div>
     </section>
 
@@ -166,41 +157,6 @@
         </div>
     </section>
 
-    <!-- Pricing Section -->
-    <section id="pricing" class="pricing">
-        <div class="container">
-            <h2 class="section-title">Transparente Preise</h2>
-            <div class="pricing-cards">
-                <div class="pricing-card">
-                    <h3>Basic</h3>
-                    <div class="price">Kostenlos</div>
-                    <ul class="pricing-features">
-                        <li>✓ Aktuelle Strompreise</li>
-                        <li>✓ 24h Vorschau</li>
-                        <li>✓ Basis-Benachrichtigungen</li>
-                        <li>✓ Widget</li>
-                        <li>✗ Erweiterte Statistiken</li>
-                        <li>✗ Export-Funktionen</li>
-                    </ul>
-                    <a href="#download" class="btn btn-secondary">Jetzt starten</a>
-                </div>
-                <div class="pricing-card featured">
-                    <div class="badge-featured">Beliebt</div>
-                    <h3>Pro</h3>
-                    <div class="price">2,99€<span>/Monat</span></div>
-                    <ul class="pricing-features">
-                        <li>✓ Alle Basic Features</li>
-                        <li>✓ Unbegrenzte Benachrichtigungen</li>
-                        <li>✓ Erweiterte Statistiken</li>
-                        <li>✓ CSV/Excel Export</li>
-                        <li>✓ Mehrere Standorte</li>
-                        <li>✓ Priority Support</li>
-                    </ul>
-                    <a href="#download" class="btn btn-primary">Pro werden</a>
-                </div>
-            </div>
-        </div>
-    </section>
 
     <!-- Download Section -->
     <section id="download" class="download">
@@ -229,16 +185,15 @@
                 <div class="footer-section">
                     <h4>Links</h4>
                     <ul>
-                        <li><a href="guide.html">Anleitung</a></li>
-                        <li><a href="how-it-works.html">Datenquelle</a></li>
-                        <li><a href="features.html">Features</a></li>
+                                <li><a href="features.html">Features</a></li>
+                        <li><a href="terms.html">Nutzungsbedingungen</a></li>
                         <li><a href="privacy.html">Datenschutz</a></li>
                         <li><a href="imprint.html">Impressum</a></li>
                     </ul>
                 </div>
                 <div class="footer-section">
                     <h4>Kontakt</h4>
-                    <p>support@spotwatt.de</p>
+                    <p>contact@spotwatt.at</p>
                 </div>
             </div>
             <div class="footer-bottom">

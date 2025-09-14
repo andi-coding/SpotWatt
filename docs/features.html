@@ -8,7 +8,7 @@
     <link rel="stylesheet" href="styles.css">
     <style>
         .features-hero {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: linear-gradient(135deg, #1b5e20 0%, #4CAF50 100%);
             color: white;
             padding: 60px 0;
             text-align: center;
@@ -36,7 +36,7 @@
             direction: ltr;
         }
         .feature-info h2 {
-            color: var(--primary-color);
+            color: #444;
             font-size: 2rem;
             margin-bottom: 1rem;
         }
@@ -135,13 +135,12 @@
     <nav class="navbar">
         <div class="container">
             <div class="nav-brand">
-                <h1>⚡ SpotWatt</h1>
+                <h1><img src="spotwatt_logo_final.png" alt="SpotWatt Logo" style="height: 32px; vertical-align: middle; margin-right: 8px;">SpotWatt</h1>
             </div>
             <ul class="nav-menu">
                 <li><a href="index.html">Start</a></li>
                 <li><a href="features.html">Features</a></li>
-                <li><a href="guide.html">Anleitung</a></li>
-                <li><a href="index.html#pricing">Preise</a></li>
+                <li><a href="faq.html">FAQ</a></li>
                 <li><a href="index.html#download">Download</a></li>
             </ul>
             <div class="nav-toggle" id="navToggle">
@@ -161,29 +160,28 @@
     <!-- Features Details -->
     <div class="features-container">
         
-        <!-- Echtzeit-Preise -->
+        <!-- Aktuelle Preise & Vorschau -->
         <div class="feature-detail">
             <div class="feature-info">
-                <h2>📊 Echtzeit-Strompreise</h2>
+                <h2>📊 Aktuelle Preise & Vorschau</h2>
                 <p>
-                    Verfolgen Sie die aktuellen Spotmarkt-Preise in Echtzeit. 
-                    Unsere App aktualisiert sich automatisch stündlich und zeigt Ihnen immer die neuesten Preise 
-                    für Ihre Region.
+                    Verfolgen Sie die aktuellen EPEX Spotmarkt-Preise und planen Sie voraus mit der 24-Stunden-Vorschau.
+                    Die App aktualisiert sich automatisch stündlich und zeigt ab 14 Uhr alle Preise des Folgetages.
                 </p>
                 <ul class="feature-benefits">
-                    <li>Stündliche Aktualisierung der Börsenpreise</li>
-                    <li>Historische Daten der letzten 30 Tage</li>
-                    <li>Farbcodierung für schnelle Preisbewertung</li>
-                    <li>Vergleich mit Tagesdurchschnitt</li>
-                    <li>Trend-Indikatoren für Preisentwicklung</li>
+                    <li>Aktuelle Strompreise stündlich aktualisiert</li>
+                    <li>24-Stunden-Vorschau ab 14 Uhr verfügbar</li>
+                    <li>Vergleich mit Tagesdurchschnitt - Farbcodierung für schnelle Preisbewertung</li>
+                    <li>Beste und schlechteste Stunden markiert</li>
                 </ul>
             </div>
-            <div class="feature-visual">
+            <div class="feature-visual" style="background: none; box-shadow: none; padding: 1rem;">
                 <div style="text-align: center;">
-                    <div style="font-size: 4rem;">📈</div>
-                    <p style="margin-top: 1rem; color: var(--text-color);">
-                        Live-Preise<br>
-                        Immer aktuell
+                    <img src="App_Screenshots/Spotwatt_Homescreen_Preise.jpg"
+                         alt="SpotWatt Preise Screenshot"
+                         style="max-width: 250px; height: auto; border-radius: 15px; box-shadow: 0 8px 25px rgba(0,0,0,0.2);">
+                    <p style="margin-top: 1rem; color: var(--text-color); font-size: 0.9rem;">
+                        Aktuelle Preise & 24h-Vorschau
                     </p>
                 </div>
             </div>
@@ -199,10 +197,11 @@
                 </p>
                 <ul class="feature-benefits">
                     <li>Individuelle Preisschwellen definierbar</li>
-                    <li>Zeitfenster für Benachrichtigungen wählbar</li>
                     <li>Tägliche Zusammenfassung mit besten Zeiten</li>
                     <li>Warnungen vor Hochpreisphasen</li>
-                    <li>Silent Mode für Ruhezeiten</li>
+                    <li>Zeitfenster für Benachrichtigungen wählbar</li>
+                    <li>Standortbasiert - Erhalten Sie Strompreis Benachrichtigungen nur wenn Sie zuhause sind</li>
+                    <!--<li>Silent Mode für Ruhezeiten</li>-->
                 </ul>
             </div>
             <div class="feature-visual">
@@ -216,32 +215,6 @@
             </div>
         </div>
 
-        <!-- Prognosen -->
-        <div class="feature-detail">
-            <div class="feature-info">
-                <h2>🔮 24-Stunden-Prognose</h2>
-                <p>
-                    Planen Sie voraus mit unserer detaillierten Preisvorschau für die nächsten 24 Stunden. 
-                    Sobald die Börsenpreise gegen 13 Uhr veröffentlicht werden, sehen Sie alle Preise des Folgetages.
-                </p>
-                <ul class="feature-benefits">
-                    <li>Komplette Tagesvorschau ab 13 Uhr</li>
-                    <li>Beste und schlechteste Stunden markiert</li>
-                    <li>Durchschnittspreis des kommenden Tages</li>
-                    <li>Empfehlungen für optimale Verbrauchszeiten</li>
-                    <li>Export der Prognosedaten möglich (Pro)</li>
-                </ul>
-            </div>
-            <div class="feature-visual">
-                <div style="text-align: center;">
-                    <div style="font-size: 4rem;">📅</div>
-                    <p style="margin-top: 1rem; color: var(--text-color);">
-                        Vorausplanung<br>
-                        24h im Voraus
-                    </p>
-                </div>
-            </div>
-        </div>
 
         <!-- Widget -->
         <div class="feature-detail">
@@ -253,163 +226,54 @@
                 </p>
                 <ul class="feature-benefits">
                     <li>Aktueller Preis auf einen Blick</li>
-                    <li>Nächste günstige Stunde angezeigt</li>
-                    <li>Mini-Chart der kommenden Stunden</li>
-                    <li>Verschiedene Widget-Größen verfügbar</li>
-                    <li>Dark Mode Unterstützung</li>
+                    <li>Trend-Indikator für Preisentwicklung</li>
                 </ul>
             </div>
-            <div class="feature-visual">
+            <div class="feature-visual" style="background: none; box-shadow: none; padding: 1rem;">
                 <div style="text-align: center;">
-                    <div style="font-size: 4rem;">📱</div>
-                    <p style="margin-top: 1rem; color: var(--text-color);">
-                        Widget<br>
-                        Immer sichtbar
+                    <img src="App_Screenshots/HomeScreen_Widget.jpg"
+                         alt="SpotWatt Widget Screenshot"
+                         style="max-width: 250px; height: auto; border-radius: 15px; box-shadow: 0 8px 25px rgba(0,0,0,0.2);">
+                    <p style="margin-top: 1rem; color: var(--text-color); font-size: 0.9rem;">
+                        Widget direkt am Homescreen
                     </p>
                 </div>
             </div>
         </div>
 
-        <!-- Statistiken -->
+        <!-- Vollkosten-Rechner ---->
         <div class="feature-detail">
             <div class="feature-info">
-                <h2>📈 Erweiterte Statistiken (Pro)</h2>
+                <h2>💰 Vollkosten-Rechner</h2>
                 <p>
-                    Analysieren Sie Ihre Verbrauchsmuster und identifizieren Sie Einsparpotenziale mit 
-                    unseren detaillierten Statistiken und Auswertungen.
+                    Sehen Sie Ihre tatsächlichen Stromkosten auf einen Blick! Der Vollkosten-Rechner berechnet
+                    nicht nur die EPEX Spotmarkt-Preise, sondern bezieht auch alle Zusatzkosten Ihres
+                    Energieanbieters mit ein.
                 </p>
                 <ul class="feature-benefits">
-                    <li>Monats- und Jahresübersichten</li>
-                    <li>Durchschnittspreise nach Wochentag</li>
-                    <li>Beste Verbrauchszeiten-Analyse</li>
-                    <li>Sparpotenzial-Berechnung</li>
-                    <li>CSV/Excel Export für eigene Analysen</li>
+                    <li>Berechnung der Absolutpreise inklusive aller Gebühren</li>
+                    <li>Individuelle Konfiguration für jeden Energieanbieter</li>
+                    <li>Energieanbietergebühren, Netzkosten und Umsatzsteuer berücksichtigt</li>
+                    <li>Transparente Kostenaufschlüsselung</li>
+                    <li>Realistische Einschätzung der tatsächlichen Stromkosten</li>
+                    <li>Funktioniert mit allen Energie-Anbietern die stündliche Spotmarkt Tarife anbieten</li>
                 </ul>
             </div>
-            <div class="feature-visual">
+            <div class="feature-visual" style="background: none; box-shadow: none; padding: 1rem;">
                 <div style="text-align: center;">
-                    <div style="font-size: 4rem;">📊</div>
-                    <p style="margin-top: 1rem; color: var(--text-color);">
-                        Analysen<br>
-                        Datenbasiert sparen
+                    <img src="App_Screenshots/Vollkostenmodus.jpg"
+                         alt="SpotWatt Vollkosten-Rechner Screenshot"
+                         style="max-width: 250px; height: auto; border-radius: 15px; box-shadow: 0 8px 25px rgba(0,0,0,0.2);">
+                    <p style="margin-top: 1rem; color: var(--text-color); font-size: 0.9rem;">
+                        Vollkosten mit allen Gebühren
                     </p>
                 </div>
             </div>
         </div>
+
     </div>
 
-    <!-- Comparison Table -->
-    <div class="container">
-        <h2 style="text-align: center; margin-bottom: 2rem;">Feature-Vergleich: Basic vs. Pro</h2>
-        <table class="comparison-table">
-            <thead>
-                <tr>
-                    <th>Feature</th>
-                    <th>Basic (Kostenlos)</th>
-                    <th>Pro (2,99€/Monat)</th>
-                </tr>
-            </thead>
-            <tbody>
-                <tr>
-                    <td>Aktuelle Strompreise</td>
-                    <td class="check-mark">✓</td>
-                    <td class="check-mark">✓</td>
-                </tr>
-                <tr>
-                    <td>24h Prognose</td>
-                    <td class="check-mark">✓</td>
-                    <td class="check-mark">✓</td>
-                </tr>
-                <tr>
-                    <td>Basis-Benachrichtigungen</td>
-                    <td class="check-mark">✓</td>
-                    <td class="check-mark">✓</td>
-                </tr>
-                <tr>
-                    <td>Widget</td>
-                    <td class="check-mark">✓</td>
-                    <td class="check-mark">✓</td>
-                </tr>
-                <tr>
-                    <td>Unbegrenzte Benachrichtigungen</td>
-                    <td class="cross-mark">✗</td>
-                    <td class="check-mark">✓</td>
-                </tr>
-                <tr>
-                    <td>Erweiterte Statistiken</td>
-                    <td class="cross-mark">✗</td>
-                    <td class="check-mark">✓</td>
-                </tr>
-                <tr>
-                    <td>Daten-Export (CSV/Excel)</td>
-                    <td class="cross-mark">✗</td>
-                    <td class="check-mark">✓</td>
-                </tr>
-                <tr>
-                    <td>Mehrere Standorte</td>
-                    <td class="cross-mark">✗</td>
-                    <td class="check-mark">✓</td>
-                </tr>
-                <tr>
-                    <td>API-Zugang</td>
-                    <td class="cross-mark">✗</td>
-                    <td class="check-mark">✓</td>
-                </tr>
-                <tr>
-                    <td>Priority Support</td>
-                    <td class="cross-mark">✗</td>
-                    <td class="check-mark">✓</td>
-                </tr>
-            </tbody>
-        </table>
-    </div>
 
-    <!-- Technical Specifications -->
-    <div class="container">
-        <div class="tech-specs">
-            <h2 style="text-align: center; margin-bottom: 1rem;">Technische Spezifikationen</h2>
-            <div class="specs-grid">
-                <div class="spec-item">
-                    <h4>Plattformen</h4>
-                    <p>Android 5.0+<br>iOS 12.0+<br>Widget Support</p>
-                </div>
-                <div class="spec-item">
-                    <h4>Datenquellen</h4>
-                    <p>EPEX Spot (DE)<br>EXAA (AT)<br>Stündliche Updates</p>
-                </div>
-                <div class="spec-item">
-                    <h4>Sprachen</h4>
-                    <p>Deutsch<br>Englisch (coming soon)</p>
-                </div>
-                <div class="spec-item">
-                    <h4>Datenschutz</h4>
-                    <p>DSGVO-konform<br>Lokale Datenspeicherung<br>Keine Tracker</p>
-                </div>
-                <div class="spec-item">
-                    <h4>Offline-Modus</h4>
-                    <p>24h Cache<br>Letzte Preise verfügbar<br>Auto-Sync</p>
-                </div>
-                <div class="spec-item">
-                    <h4>Performance</h4>
-                    <p>< 10MB App-Größe<br>Batterie-optimiert<br>Schnelle Ladezeiten</p>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- CTA Section -->
-    <section style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 60px 0; text-align: center; color: white;">
-        <div class="container">
-            <h2 style="font-size: 2rem; margin-bottom: 1rem;">Bereit zum Sparen?</h2>
-            <p style="font-size: 1.2rem; margin-bottom: 2rem;">
-                Laden Sie SpotWatt jetzt herunter und beginnen Sie noch heute, Ihre Stromkosten zu optimieren.
-            </p>
-            <div style="display: flex; gap: 1rem; justify-content: center;">
-                <a href="index.html#download" class="btn btn-primary">Jetzt downloaden</a>
-                <a href="guide.html" class="btn btn-secondary">Zur Anleitung</a>
-            </div>
-        </div>
-    </section>
 
     <!-- Footer -->
     <footer class="footer">
@@ -423,14 +287,14 @@
                     <h4>Links</h4>
                     <ul>
                         <li><a href="index.html">Startseite</a></li>
-                        <li><a href="guide.html">Anleitung</a></li>
+                        <li><a href="terms.html">Nutzungsbedingungen</a></li>
                         <li><a href="privacy.html">Datenschutz</a></li>
                         <li><a href="imprint.html">Impressum</a></li>
                     </ul>
                 </div>
                 <div class="footer-section">
                     <h4>Kontakt</h4>
-                    <p>support@spotwatt.de</p>
+                    <p>contact@spotwatt.at</p>
                 </div>
             </div>
             <div class="footer-bottom">

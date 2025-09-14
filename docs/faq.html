@@ -1,0 +1,418 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FAQ - Häufige Fragen | SpotWatt</title>
+    <meta name="description" content="Häufig gestellte Fragen zur SpotWatt App - Strompreise verstehen und optimal nutzen">
+    <link rel="stylesheet" href="styles.css">
+    <style>
+        .faq-container {
+            max-width: 800px;
+            margin: 80px auto;
+            padding: 20px;
+        }
+
+        .faq-item {
+            background: white;
+            border-radius: 12px;
+            margin-bottom: 16px;
+            border: 1px solid #e8f0fe;
+            overflow: hidden;
+            transition: all 0.3s ease;
+        }
+
+        .faq-item:hover {
+            border-color: #4CAF50;
+            box-shadow: 0 4px 20px rgba(76, 175, 80, 0.1);
+        }
+
+        .faq-question {
+            padding: 18px 24px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: #333;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: linear-gradient(135deg, #f8fff8 0%, #ffffff 100%);
+        }
+
+        .faq-question::after {
+            content: '+';
+            font-size: 1.5rem;
+            color: #4CAF50;
+            transition: transform 0.3s ease;
+        }
+
+        .faq-item.active .faq-question::after {
+            transform: rotate(45deg);
+        }
+
+        .faq-answer {
+            padding: 0 20px;
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.3s ease, padding 0.3s ease;
+        }
+
+        .faq-item.active .faq-answer {
+            padding: 20px;
+            max-height: 500px;
+        }
+
+        .faq-answer p {
+            margin-bottom: 1rem;
+            line-height: 1.8;
+        }
+
+        .faq-answer ul {
+            margin: 15px 0;
+            padding-left: 20px;
+        }
+
+        .faq-answer li {
+            margin-bottom: 10px;
+        }
+
+        .faq-category {
+            margin: 50px 0 24px;
+            padding: 16px 24px;
+            background: linear-gradient(135deg, #e8f5e8 0%, #f0f9f0 100%);
+            border-radius: 12px;
+            border-left: 4px solid #4CAF50;
+        }
+
+        .faq-category h2 {
+            color: #444;
+            font-size: 1.6rem;
+            margin: 0;
+        }
+
+        .highlight-box {
+            background: linear-gradient(135deg, #e8f5e8 0%, #f0f9f0 100%);
+            border-left: 4px solid var(--primary-color);
+            padding: 15px;
+            margin: 15px 0;
+            border-radius: 5px;
+        }
+    </style>
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar">
+        <div class="container">
+            <div class="nav-brand">
+                <h1><img src="spotwatt_logo_final.png" alt="SpotWatt Logo" style="height: 32px; vertical-align: middle; margin-right: 8px;">SpotWatt</h1>
+            </div>
+            <ul class="nav-menu">
+                <li><a href="index.html">Start</a></li>
+                <li><a href="index.html#features">Features</a></li>
+                <li><a href="faq.html" class="active">FAQ</a></li>
+                <li><a href="index.html#download">Download</a></li>
+            </ul>
+            <div class="nav-toggle" id="navToggle">
+                <span></span>
+                <span></span>
+                <span></span>
+            </div>
+        </div>
+    </nav>
+
+    <div class="faq-container">
+        <h1 style="text-align: center; color: #333; margin-bottom: 40px; font-size: 2.5rem;">
+            Häufig gestellte Fragen
+        </h1>
+        <p style="text-align: center; color: #666; font-size: 1.1rem; margin-bottom: 50px;">
+            Alles was Sie über SpotWatt wissen müssen
+        </p>
+
+        <!-- Allgemeine Fragen -->
+        <div class="faq-category">
+            <h2>📱 Allgemeine Fragen</h2>
+        </div>
+
+        <div class="faq-item">
+            <div class="faq-question">
+                Was ist SpotWatt?
+            </div>
+            <div class="faq-answer">
+                <p>SpotWatt ist eine kostenlose App, die Ihnen die aktuellen Strompreise vom EPEX Spotmarkt anzeigt. Die App hilft Ihnen dabei, Strom dann zu nutzen, wenn er besonders günstig ist - perfekt für alle mit dynamischen Stromtarifen!</p>
+                <p>Die App ist speziell für Deutschland und Österreich entwickelt und zeigt die stündlich wechselnden Börsenpreise übersichtlich an.</p>
+            </div>
+        </div>
+
+        <div class="faq-item">
+            <div class="faq-question">
+                Ist SpotWatt wirklich kostenlos?
+            </div>
+            <div class="faq-answer">
+                <p>Ja, SpotWatt ist komplett kostenlos! Es gibt keine versteckten Kosten, keine Werbung und keine In-App-Käufe. Die App finanziert sich durch freiwillige Spenden über Ko-fi.</p>
+                <div class="highlight-box">
+                    <strong>Alle Funktionen kostenlos:</strong> Widget, Benachrichtigungen, Preisvorschau, Dark Mode und mehr!
+                </div>
+            </div>
+        </div>
+
+        <div class="faq-item">
+            <div class="faq-question">
+                Für wen ist die App geeignet?
+            </div>
+            <div class="faq-answer">
+                <p>SpotWatt ist ideal für:</p>
+                <ul>
+                    <li><strong>Haushalte mit dynamischen EPEX Spot Stromtarifen</strong> (z.B. von aWATTar, Tado Hourly, Tibber usw.)</li>
+                    <li><strong>E-Auto-Besitzer</strong>, die günstig laden möchten</li>
+                    <li><strong>Wärmepumpen-Nutzer</strong>, die Heizkosten optimieren wollen</li>
+                    <li><strong>Alle Interessierten</strong>, die verstehen möchten, wie Strompreise funktionieren</li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- Funktionen -->
+        <div class="faq-category">
+            <h2>⚙️ Funktionen & Bedienung</h2>
+        </div>
+
+        <div class="faq-item">
+            <div class="faq-question">
+                Wie funktioniert das Homescreen-Widget?
+            </div>
+            <div class="faq-answer">
+                <p>Das Widget zeigt Ihnen die wichtigsten Informationen direkt auf dem Homescreen:</p>
+                <ul>
+                    <li>Aktueller Strompreis mit Farbindikator (grün/gelb/rot)</li>
+                    <li>3-Stunden-Trend mit Richtungspfeil</li>
+                    <li>Letzte Aktualisierungszeit</li>
+                </ul>
+                <p><strong>Installation:</strong> Lange auf den Homescreen drücken → Widgets → SpotWatt Widget auswählen und platzieren.</p>
+            </div>
+        </div>
+
+        <div class="faq-item">
+            <div class="faq-question">
+                Was bedeuten die Farben und Emojis?
+            </div>
+            <div class="faq-answer">
+                <p>Die Farben helfen Ihnen, die Preislage schnell zu erkennen:</p>
+                <ul>
+                    <li><strong>🟢 Grün (😊)</strong> - Günstiger Preis, ideal zum Stromverbrauch</li>
+                    <li><strong>🟡 Gelb (😐)</strong> - Mittlerer Preis, normaler Verbrauch ok</li>
+                    <li><strong>🔴 Rot (😞)</strong> - Hoher Preis, Verbrauch vermeiden wenn möglich</li>
+                </ul>
+                <p>Die Einstufung erfolgt automatisch basierend auf dem Tagesdurchschnitt.</p>
+            </div>
+        </div>
+
+        <div class="faq-item">
+            <div class="faq-question">
+                Wie funktionieren die Benachrichtigungen?
+            </div>
+            <div class="faq-answer">
+                <p>SpotWatt kann Sie auf verschiedene Arten informieren:</p>
+                <ul>
+                    <li><strong>Preisalarm:</strong> Benachrichtigung bei besonders günstigen Preisen</li>
+                    <li><strong>Günstigster Preis des Tages:</strong> Benachrichtigung vor dem günstigsten Zeitpunkt des Tages</li>
+                    <li><strong>Tägliche Zusammenfassung:</strong> Tägliche Vorausschau der günstigsten Preise</li>
+                    <li><strong>Warnung vor hohen Preisen:</strong> Warnung wenn Strompreise außergewöhnlich hoch sind.</li>
+                    <li><strong>Schwellenwerte:</strong> Sie legen fest, ab welchem Preis Sie informiert werden möchten.</li>
+                </ul>
+                <p>Alle Benachrichtigungen können in den Einstellungen angepasst oder deaktiviert werden.</p>
+            </div>
+        </div>
+
+        <!-- Strompreise -->
+        <div class="faq-category">
+            <h2>💰 Strompreise verstehen</h2>
+        </div>
+
+        <div class="faq-item">
+            <div class="faq-question">
+                Woher kommen die Preisdaten?
+            </div>
+            <div class="faq-answer">
+                <p>Die Preisdaten stammen von der <strong>EPEX Spot Strombörse</strong> und werden über die kostenlose API von <strong>aWATTar</strong> bezogen. Dies sind die offiziellen Börsenpreise, die auch Ihr Stromanbieter nutzt.</p>
+                <div class="highlight-box" style="background: linear-gradient(135deg, #e8f5e8 0%, #d4f3d4 100%); border-left-color: #4CAF50;">
+                    <strong>💚 Besonderer Dank an aWATTar!</strong><br>
+                    aWATTar stellt diese API kostenlos zur Verfügung und ermöglicht damit Apps wie SpotWatt.
+                    aWATTar ist selbst ein innovativer Ökostromanbieter mit stündlich variablen Tarifen.
+                    <br><br>
+                    <a href="https://www.awattar.at" target="_blank" style="color: #4CAF50; font-weight: bold;">→ Mehr über aWATTar erfahren</a>
+                </div>
+                <p>Die Preise werden täglich gegen 14 Uhr für den Folgetag veröffentlicht.</p>
+            </div>
+        </div>
+
+        <div class="faq-item">
+            <div class="faq-question">
+                Was ist im angezeigten Preis enthalten?
+            </div>
+            <div class="faq-answer">
+                <p>Der angezeigte Preis ist standardmäßig der <strong>reine Börsenpreis (Spotpreis)</strong>. Für Ihren tatsächlichen Strompreis kommen noch hinzu:</p>
+                <ul>
+                    <li>Netzentgelte</li>
+                    <li>Steuern und Abgaben</li>
+                    <li>Aufschlag Ihres Stromanbieters</li>
+                </ul>
+                <p>Diese Zusatzkosten sind bei jedem Anbieter unterschiedlich. Prüfen Sie Ihren Vertrag für die genauen Konditionen.</p>
+                <div class="highlight-box">
+                    <strong>Tipp:</strong> Sie können alle diese Gebühren in der App unter Einstellungen konfigurieren, um Ihre exakten Vollkosten angezeigt zu bekommen!
+                </div>
+            </div>
+        </div>
+
+        <div class="faq-item">
+            <div class="faq-question">
+                Warum schwanken die Preise so stark?
+            </div>
+            <div class="faq-answer">
+                <p>Die Strompreise werden durch Angebot und Nachfrage bestimmt:</p>
+                <ul>
+                    <li><strong>Günstig:</strong> Viel Wind/Sonne, wenig Verbrauch (z.B. nachts, Wochenende)</li>
+                    <li><strong>Teuer:</strong> Wenig erneuerbare Energie, hoher Verbrauch (z.B. werktags 17-20 Uhr)</li>
+                </ul>
+                <p>Negative Preise sind möglich, wenn sehr viel erneuerbarer Strom produziert wird!</p>
+            </div>
+        </div>
+
+        <!-- Technische Fragen -->
+        <div class="faq-category">
+            <h2>🔧 Technische Fragen</h2>
+        </div>
+
+        <div class="faq-item">
+            <div class="faq-question">
+                Funktioniert die App auch offline?
+            </div>
+            <div class="faq-answer">
+                <p>Ja! SpotWatt speichert die Preisdaten für 24-48 Stunden zwischen. Sie können die App also auch ohne Internetverbindung nutzen und sehen die zuletzt geladenen Preise.</p>
+                <p>Neue Preise werden automatisch geladen, sobald wieder eine Verbindung besteht.</p>
+            </div>
+        </div>
+
+        <div class="faq-item">
+            <div class="faq-question">
+                Werden meine Daten gespeichert?
+            </div>
+            <div class="faq-answer">
+                <p><strong>Nein!</strong> SpotWatt speichert keine persönlichen Daten:</p>
+                <ul>
+                    <li>Keine Benutzerkonten erforderlich</li>
+                    <li>Keine Tracking oder Analytics</li>
+                    <li>Alle Einstellungen nur lokal auf Ihrem Gerät</li>
+                    <li>Kein Upload von Nutzungsdaten</li>
+                </ul>
+                <div class="highlight-box">
+                    Ihre Privatsphäre ist uns wichtig - daher verzichten wir komplett auf Datensammlung!
+                </div>
+            </div>
+        </div>
+
+        <div class="faq-item">
+            <div class="faq-question">
+                Auf welchen Geräten läuft SpotWatt?
+            </div>
+            <div class="faq-answer">
+                <p>SpotWatt ist verfügbar für:</p>
+                <ul>
+                    <li><strong>Android:</strong> Ab Version 5.0 (API Level 21)</li>
+                    <li><strong>iOS:</strong> In Entwicklung - coming soon</li>
+                </ul>
+                <p>Die App ist für Smartphones optimiert, funktioniert aber auch auf Tablets.</p>
+            </div>
+        </div>
+
+        <!-- Support -->
+        <div class="faq-category">
+            <h2>❓ Support & Kontakt</h2>
+        </div>
+
+        <div class="faq-item">
+            <div class="faq-question">
+                Ich habe einen Fehler gefunden - was nun?
+            </div>
+            <div class="faq-answer">
+                <p>Wir freuen uns über Ihr Feedback! Melden Sie Fehler oder Verbesserungsvorschläge gerne per E-Mail:</p>
+                <div class="highlight-box">
+                    📧 <strong>contact@spotwatt.at</strong>
+                </div>
+                <p>Bitte beschreiben Sie das Problem möglichst genau und nennen Sie Ihr Gerät und die Android/iOS-Version.</p>
+            </div>
+        </div>
+
+        <div class="faq-item">
+            <div class="faq-question">
+                Wie kann ich das Projekt unterstützen?
+            </div>
+            <div class="faq-answer">
+                <p>Es gibt mehrere Möglichkeiten, SpotWatt zu unterstützen:</p>
+                <ul>
+                    <li><strong>Weiterempfehlen:</strong> Erzählen Sie Freunden und Familie von der App</li>
+                    <li><strong>Bewertung:</strong> Positive Bewertungen im App Store helfen sehr</li>
+                    <li><strong>Spende:</strong> Unterstützen Sie die Entwicklung über Ko-fi</li>
+                    <li><strong>Feedback:</strong> Ihre Ideen und Vorschläge sind willkommen</li>
+                </ul>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-content">
+                <div class="footer-section">
+                    <h4>SpotWatt</h4>
+                    <p>Die intelligente Strompreis-App für Deutschland und Österreich.</p>
+                </div>
+                <div class="footer-section">
+                    <h4>Links</h4>
+                    <ul>
+                        <li><a href="index.html">Startseite</a></li>
+                        <li><a href="faq.html">FAQ</a></li>
+                        <li><a href="features.html">Features</a></li>
+                        <li><a href="imprint.html">Impressum</a></li>
+                    </ul>
+                </div>
+                <div class="footer-section">
+                    <h4>Kontakt</h4>
+                    <p>contact@spotwatt.at</p>
+                </div>
+            </div>
+            <div class="footer-bottom">
+                <p>&copy; 2025 SpotWatt. Alle Rechte vorbehalten.</p>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        // FAQ Accordion
+        document.querySelectorAll('.faq-question').forEach(question => {
+            question.addEventListener('click', () => {
+                const item = question.parentElement;
+                const wasActive = item.classList.contains('active');
+
+                // Close all items
+                document.querySelectorAll('.faq-item').forEach(i => {
+                    i.classList.remove('active');
+                });
+
+                // Open clicked item if it wasn't active
+                if (!wasActive) {
+                    item.classList.add('active');
+                }
+            });
+        });
+
+        // Mobile Navigation
+        const navToggle = document.getElementById('navToggle');
+        const navMenu = document.querySelector('.nav-menu');
+
+        navToggle.addEventListener('click', () => {
+            navMenu.classList.toggle('active');
+            navToggle.classList.toggle('active');
+        });
+    </script>
+</body>
+</html>

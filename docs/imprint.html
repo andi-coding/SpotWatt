@@ -14,7 +14,7 @@
             line-height: 1.8;
         }
         .legal-content h1 {
-            color: var(--primary-color);
+            color: var(--dark-color);
             margin-bottom: 2rem;
         }
         .legal-content h2 {
@@ -36,6 +36,11 @@
             padding-left: 1rem;
             margin: 2rem 0;
         }
+        .address-info {
+            font-size: 0.8rem;
+            color: #666;
+            line-height: 1.3;
+        }
     </style>
 </head>
 <body>
@@ -43,13 +48,12 @@
     <nav class="navbar">
         <div class="container">
             <div class="nav-brand">
-                <h1>⚡ SpotWatt</h1>
+                <h1><img src="spotwatt_logo_final.png" alt="SpotWatt Logo" style="height: 32px; vertical-align: middle; margin-right: 8px;">SpotWatt</h1>
             </div>
             <ul class="nav-menu">
                 <li><a href="index.html">Start</a></li>
                 <li><a href="index.html#features">Features</a></li>
-                <li><a href="guide.html">Anleitung</a></li>
-                <li><a href="index.html#pricing">Preise</a></li>
+                <li><a href="faq.html">FAQ</a></li>
                 <li><a href="index.html#download">Download</a></li>
             </ul>
             <div class="nav-toggle" id="navToggle">
@@ -64,17 +68,19 @@
         <h1>Impressum</h1>
         
         <div class="contact-info">
-            <h2>Betreiber der App</h2>
+            <h2>Verantwortlich für den Inhalt / Betreiber der App</h2>
             <p>
-                <strong>[Ihr Name / Firmenname]</strong><br>
-                <!--[Straße und Hausnummer]<br>
-                [PLZ und Ort]<br>
-                Österreich-->
+                <strong>Andreas Karasek</strong><br>
+                <span class="address-info">
+                    [Ihre Straße und Hausnummer]<br>
+                    [PLZ und Ort]<br>
+                    Österreich
+                </span>
             </p>
 
             <h3>Kontakt</h3>
             <p>
-                E-Mail: support@spotwatt.de
+                E-Mail: contact@spotwatt.at
             </p>
 
             <!--<h3>Umsatzsteuer-ID</h3>
@@ -84,11 +90,11 @@
             </p>-->
         </div>
 
-        <h2>Verantwortlich für den Inhalt</h2>
+        <!--<h2>Verantwortlich für den Inhalt</h2>
         <p>
-            [Ihr Name]<br>
-            E-Mail: support@spotwatt.de
-        </p>
+            Andreas Karasek<br>
+            E-Mail: contact@spotwatt.at
+        </p>-->
 
         <!--<h2>EU-Streitschlichtung</h2>
         <p>
@@ -102,77 +108,6 @@
             Wir sind nicht bereit oder verpflichtet, an Streitbeilegungsverfahren vor einer 
             Verbraucherschlichtungsstelle teilzunehmen.
         </p>-->
-
-        <div class="disclaimer-box">
-            <h2>Haftungsausschluss (Disclaimer)</h2>
-            
-            <h3>Haftung für Inhalte</h3>
-            <p>
-                Als Diensteanbieter sind wir gemäß § 7 Abs.1 TMG für eigene Inhalte auf diesen Seiten 
-                nach den allgemeinen Gesetzen verantwortlich. Nach §§ 8 bis 10 TMG sind wir als 
-                Diensteanbieter jedoch nicht verpflichtet, übermittelte oder gespeicherte fremde 
-                Informationen zu überwachen oder nach Umständen zu forschen, die auf eine rechtswidrige 
-                Tätigkeit hinweisen.
-            </p>
-            <p>
-                Verpflichtungen zur Entfernung oder Sperrung der Nutzung von Informationen nach den 
-                allgemeinen Gesetzen bleiben hiervon unberührt. Eine diesbezügliche Haftung ist jedoch 
-                erst ab dem Zeitpunkt der Kenntnis einer konkreten Rechtsverletzung möglich. Bei 
-                Bekanntwerden von entsprechenden Rechtsverletzungen werden wir diese Inhalte umgehend entfernen.
-            </p>
-
-            <h3>Haftung für Links</h3>
-            <p>
-                Unser Angebot enthält Links zu externen Websites Dritter, auf deren Inhalte wir keinen 
-                Einfluss haben. Deshalb können wir für diese fremden Inhalte auch keine Gewähr übernehmen. 
-                Für die Inhalte der verlinkten Seiten ist stets der jeweilige Anbieter oder Betreiber der 
-                Seiten verantwortlich.
-            </p>
-
-            <h3>Urheberrecht</h3>
-            <p>
-                Die durch die Seitenbetreiber erstellten Inhalte und Werke auf diesen Seiten unterliegen 
-                dem deutschen Urheberrecht. Die Vervielfältigung, Bearbeitung, Verbreitung und jede Art der 
-                Verwertung außerhalb der Grenzen des Urheberrechtes bedürfen der schriftlichen Zustimmung 
-                des jeweiligen Autors bzw. Erstellers.
-            </p>
-        </div>
-
-        <h2>Wichtige Hinweise zur App</h2>
-        
-        <h3>Preisdaten</h3>
-        <p>
-            Die in der SpotWatt App angezeigten Strompreise stammen von öffentlichen Quellen 
-            (EPEX Spot, EXAA, Awattar API) und werden nach bestem Wissen und Gewissen bereitgestellt. 
-            Wir übernehmen keine Garantie für die Richtigkeit, Vollständigkeit und Aktualität der Daten.
-        </p>
-
-        <h3>Keine Anlageberatung</h3>
-        <p>
-            Die bereitgestellten Informationen stellen keine Anlageberatung dar und ersetzen keine 
-            fachkundige Beratung. Entscheidungen bezüglich Ihres Stromtarifs treffen Sie auf eigene Verantwortung.
-        </p>
-
-        <h3>Verfügbarkeit</h3>
-        <p>
-            Wir bemühen uns um eine hohe Verfügbarkeit der App, können diese jedoch nicht garantieren. 
-            Wartungsarbeiten und technische Störungen können zu temporären Einschränkungen führen.
-        </p>
-
-        <h2>Hinweis zur Entwicklung</h2>
-        <p>
-            SpotWatt befindet sich in aktiver Entwicklung. Features und Funktionen können sich ändern. 
-            Wir freuen uns über Ihr Feedback zur Verbesserung der App.
-        </p>
-
-        <div class="contact-info">
-            <h2>Support & Feedback</h2>
-            <p>
-                Bei Fragen, Problemen oder Anregungen erreichen Sie uns unter:<br>
-                <strong>E-Mail:</strong> support@spotwatt.de<br>
-                <strong>Antwortzeit:</strong> Innerhalb von 48 Stunden (werktags)
-            </p>
-        </div>
 
         <p style="margin-top: 3rem; color: var(--text-color); opacity: 0.7;">
             <strong>Stand:</strong> Januar 2025
@@ -191,14 +126,14 @@
                     <h4>Links</h4>
                     <ul>
                         <li><a href="index.html">Startseite</a></li>
-                        <li><a href="guide.html">Anleitung</a></li>
                         <li><a href="features.html">Features</a></li>
+                        <li><a href="terms.html">Nutzungsbedingungen</a></li>
                         <li><a href="privacy.html">Datenschutz</a></li>
                     </ul>
                 </div>
                 <div class="footer-section">
                     <h4>Kontakt</h4>
-                    <p>support@spotwatt.de</p>
+                    <p>contact@spotwatt.at</p>
                 </div>
             </div>
             <div class="footer-bottom">

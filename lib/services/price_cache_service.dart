@@ -64,7 +64,7 @@ class PriceCacheService {
   /// Lädt Preise aus Cache oder API
   /// Nutzt Cache wenn:
   /// - Cache vorhanden und nicht älter als 6 Stunden
-  /// - Cache enthält Preise für heute und morgen (falls nach 13:00)
+  /// - Cache enthält Preise für heute und morgen (falls nach 14:00)
   Future<List<PriceData>> getPrices() async {
     List<PriceData> prices;
     
@@ -144,18 +144,18 @@ class PriceCacheService {
       return false;
     }
     
-    // Nach 13:00 sollten wir auch Morgen-Preise haben
-    if (now.hour >= 13) {
+    // Nach 14:00 sollten wir auch Morgen-Preise haben
+    if (now.hour >= 14) {
       final tomorrow = now.add(const Duration(days: 1));
       final hasTomorrow = prices.any((p) => 
         p.startTime.day == tomorrow.day && 
         p.startTime.month == tomorrow.month && 
         p.startTime.year == tomorrow.year
       );
-      print('[Cache] Time is after 13:00 (${now.hour}:${now.minute}), checking for tomorrow (${tomorrow.day}/${tomorrow.month}/${tomorrow.year})');
+      print('[Cache] Time is after 14:00 (${now.hour}:${now.minute}), checking for tomorrow (${tomorrow.day}/${tomorrow.month}/${tomorrow.year})');
       print('[Cache] Has tomorrow prices: $hasTomorrow');
       if (!hasTomorrow) {
-        print('[Cache] Missing tomorrow prices after 13:00 - invalid');
+        print('[Cache] Missing tomorrow prices after 14:00 - invalid');
         return false;
       }
     }
