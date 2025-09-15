@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../models/price_data.dart';
+import '../services/settings_cache.dart';
 
 class PriceUtils {
   /// Calculate quartiles from a list of prices
@@ -23,21 +25,67 @@ class PriceUtils {
   /// Median-based color calculation with symmetric ranges around median
   static Color getPriceColorMedian(double price, List<PriceData> prices, [Color? lastColor]) {
     if (prices.isEmpty) return Colors.green;
-    
-    // Prices already contain either spot or full cost depending on settings
+
+    // Get settings from cache
+    final settings = SettingsCache();
+    final fullCostMode = settings.fullCostMode;
+
+    // Calculate median from original prices
     final sortedPrices = prices.map((p) => p.price).toList()..sort();
     final length = sortedPrices.length;
     final medianIndex = (length / 2).floor();
-    final median = sortedPrices[medianIndex]; // Simple: always take the middle element
-    
-    // Create symmetric ranges around median (±15%)
-    final range15 = median * 0.15;
-    final greenThreshold = median - range15;   // Median - 15%
-    final orangeThreshold = median + range15;  // Median + 15%
-    
-    // Color logic based on symmetric ranges
-    if (price < greenThreshold) return Colors.green;      // < Median - 15%
-    if (price < orangeThreshold) return Colors.orange;    // Median ± 15%
+    double median = sortedPrices[medianIndex];
+
+    // If in full cost mode, subtract fees from median and price for comparison
+    double adjustedMedian = median;
+    double adjustedPrice = price;
+
+    if (fullCostMode) {
+      final taxRate = (settings.priceMarket == 'AT') ? 1.20 : 1.19;
+
+      // Helper function to extract spot price from full cost
+      double extractSpotPrice(double fullCost) {
+        // Remove VAT if applied
+        double priceWithoutTax = settings.includeTax ? fullCost / taxRate : fullCost;
+
+        // Remove fixed costs (network costs + provider fixed fee)
+        double priceWithoutFixed = priceWithoutTax - settings.networkCosts - settings.energyProviderFixedFee;
+
+        // Remove percentage markup
+        if (settings.energyProviderPercentage > 0) {
+          if (priceWithoutFixed > 0) {
+            return priceWithoutFixed / (1 + settings.energyProviderPercentage / 100);
+          } else {
+            return priceWithoutFixed / (1 - settings.energyProviderPercentage / 100);
+          }
+        }
+
+        return priceWithoutFixed;
+      }
+
+      // Extract spot prices for comparison
+      adjustedMedian = extractSpotPrice(median);
+      adjustedPrice = extractSpotPrice(price);
+    }
+
+    // Special handling for very low median values
+    if (adjustedMedian.abs() <= 1.5) {
+      if (adjustedPrice < adjustedMedian) return Colors.green;  // Everything below median is green
+      if (adjustedPrice < adjustedMedian + 2.0) return Colors.orange;
+      return Colors.red;
+    }
+
+    // Normal calculation with asymmetric minimum range
+    final range15 = adjustedMedian * 0.15;
+    final greenThreshold = adjustedMedian - range15;  // Normal 15% downwards
+
+    // Upwards: minimum 1ct range to avoid too sensitive coloring
+    final upwardRange = range15 > 1.0 ? range15 : 1.0;
+    final orangeThreshold = adjustedMedian + upwardRange;
+
+    // Color logic based on adjusted values
+    if (adjustedPrice < greenThreshold) return Colors.green;      // < Median - 15%
+    if (adjustedPrice < orangeThreshold) return Colors.orange;    // Median ± 15%
     return Colors.red;                                    // > Median + 15%
   }
 
@@ -53,10 +101,10 @@ class PriceUtils {
     return Colors.red;
   }
 
-  /// Quartile-based icon selection  
+  /// Quartile-based icon selection
   static IconData getPriceIconQuartile(double price, List<PriceData> prices) {
     final color = getPriceColorMedian(price, prices);
-    
+
     if (color == Colors.green) return Icons.lightbulb; // Glühbirne für günstig
     if (color == Colors.orange) return Icons.circle_outlined; // Uhr für mittel (warten)
     return Icons.warning_amber; // Warnung für teuer

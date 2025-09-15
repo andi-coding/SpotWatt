@@ -4,6 +4,7 @@ import '../utils/price_utils.dart';
 import '../services/awattar_service.dart';
 import '../services/price_cache_service.dart';
 import '../services/notification_service.dart';
+import '../services/settings_cache.dart';
 
 enum EnergyProvider {
   custom('custom', 'Benutzerdefiniert'),
@@ -17,15 +18,8 @@ enum EnergyProvider {
 
 class PriceSettingsHelper {
   static double calculateProviderFee(double spotPrice, String providerCode, double percentage, double fixedFee) {
-    switch (providerCode) {
-      case 'awattar_at':
-        // aWATTar formula: |Spot * 3%| + 1.5 cent
-        return spotPrice.abs() * 0.03 + 1.5;
-      case 'custom':
-      default:
-        // Custom formula: |Spot * percentage| + fixed fee
-        return spotPrice.abs() * (percentage / 100) + fixedFee;
-    }
+    // Unified formula for all providers: |Spot * percentage| + fixed fee
+    return spotPrice.abs() * (percentage / 100) + fixedFee;
   }
 }
 
@@ -122,8 +116,11 @@ class _PriceSettingsPageState extends State<PriceSettingsPage> {
         (p) => p.code == providerCode,
         orElse: () => EnergyProvider.custom,
       );
-      
-      // No auto-sync anymore
+
+      // Update text controllers with loaded values
+      _percentageController.text = energyProviderPercentage.toString();
+      _fixedFeeController.text = energyProviderFixedFee.toString();
+      _networkCostsController.text = networkCosts.toString();
     });
   }
 
@@ -138,6 +135,9 @@ class _PriceSettingsPageState extends State<PriceSettingsPage> {
     await prefs.setBool('include_tax', includeTax);
     await prefs.setString('price_market', selectedMarket.code);
     await prefs.setString('energy_provider', selectedProvider.code);
+
+    // Update the settings cache
+    await SettingsCache().loadSettings();
 
     // Reschedule notifications when price settings change
     // This ensures threshold-based notifications use the correct full cost prices
@@ -162,8 +162,8 @@ class _PriceSettingsPageState extends State<PriceSettingsPage> {
   // Not needed anymore - we keep both caches
 
   double _calculateProviderFee(double spotPrice) {
-    final providerCode = selectedProvider == EnergyProvider.awattarAT ? 'awattar_at' : 'custom';
-    return PriceSettingsHelper.calculateProviderFee(spotPrice, providerCode, energyProviderPercentage, energyProviderFixedFee);
+    // Einheitliche Berechnung für alle Provider
+    return spotPrice.abs() * (energyProviderPercentage / 100) + energyProviderFixedFee;
   }
 
   Widget _buildExampleCalculation() {
@@ -191,9 +191,7 @@ class _PriceSettingsPageState extends State<PriceSettingsPage> {
         const Text('Beispiel 1: Positiver SPOT-Preis', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
         const SizedBox(height: 8),
         Text('SPOT-Preis: ${PriceUtils.formatPrice(positiveSpot)}', style: const TextStyle(fontSize: 14)),
-        if (selectedProvider == EnergyProvider.awattarAT)
-          Text('+ Gebühr (|${positiveSpot.toStringAsFixed(1).replaceAll('.', ',')} × 3%| + 1,5ct): ${PriceUtils.formatPrice(posProviderFee)}', style: const TextStyle(fontSize: 14))
-        else if (selectedProvider == EnergyProvider.custom && (energyProviderPercentage > 0 || energyProviderFixedFee > 0))
+        if (energyProviderPercentage > 0 || energyProviderFixedFee > 0)
           Text('+ Gebühr (|${positiveSpot.toStringAsFixed(1).replaceAll('.', ',')} × ${energyProviderPercentage.toStringAsFixed(1)}%| + ${energyProviderFixedFee.toStringAsFixed(1)}ct): ${PriceUtils.formatPrice(posProviderFee)}', style: const TextStyle(fontSize: 14)),
         if (networkCosts > 0)
           Text('+ Netzentgelte: ${PriceUtils.formatPrice(networkCosts)}', style: const TextStyle(fontSize: 14)),
@@ -211,12 +209,8 @@ class _PriceSettingsPageState extends State<PriceSettingsPage> {
         const Text('Beispiel 2: Negativer SPOT-Preis', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
         const SizedBox(height: 8),
         Text('SPOT-Preis: ${PriceUtils.formatPrice(negativeSpot)}', style: const TextStyle(fontSize: 14)),
-        if (selectedProvider == EnergyProvider.awattarAT)
-          Text('+ Gebühr (|${negativeSpot.toStringAsFixed(1).replaceAll('.', ',')} × 3%| + 1,5ct): ${PriceUtils.formatPrice(negProviderFee)}', style: const TextStyle(fontSize: 14))
-        else if (selectedProvider == EnergyProvider.custom && energyProviderPercentage > 0)
-          Text('+ Gebühr (|${negativeSpot.toStringAsFixed(1).replaceAll('.', ',')} × ${energyProviderPercentage.toStringAsFixed(1)}%| + ${energyProviderFixedFee.toStringAsFixed(1)}ct): ${PriceUtils.formatPrice(negProviderFee)}', style: const TextStyle(fontSize: 14))
-        else
-          Text('+ Gebühr: ${PriceUtils.formatPrice(negProviderFee)}', style: const TextStyle(fontSize: 14)),
+        if (energyProviderPercentage > 0 || energyProviderFixedFee > 0)
+          Text('+ Gebühr (|${negativeSpot.toStringAsFixed(1).replaceAll('.', ',')} × ${energyProviderPercentage.toStringAsFixed(1)}%| + ${energyProviderFixedFee.toStringAsFixed(1)}ct): ${PriceUtils.formatPrice(negProviderFee)}', style: const TextStyle(fontSize: 14)),
        //Text('= Nach Gebühr: ${PriceUtils.formatPrice(negWithProviderFee)}', style: const TextStyle(fontSize: 14)),
         if (networkCosts > 0) 
           Text('+ Netzentgelte: ${PriceUtils.formatPrice(networkCosts)}', style: const TextStyle(fontSize: 14)),
@@ -448,9 +442,16 @@ class _PriceSettingsPageState extends State<PriceSettingsPage> {
                       )).toList(),
                       onChanged: (value) {
                         if (value != null) {
-                          final oldProvider = selectedProvider;
                           setState(() {
                             selectedProvider = value;
+
+                            // Set fixed values for aWATTar
+                            if (value == EnergyProvider.awattarAT) {
+                              energyProviderPercentage = 3.0;
+                              energyProviderFixedFee = 1.5;
+                              _percentageController.text = '3';
+                              _fixedFeeController.text = '1.5';
+                            }
                           });
                           _saveSettings();
                         }
