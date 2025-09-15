@@ -7,12 +7,11 @@ import '../services/notification_service.dart';
 
 enum EnergyProvider {
   custom('custom', 'Benutzerdefiniert'),
-  awattarAT('awattar_at', 'aWATTar Hourly (AT)'),
-  awattarDE('awattar_de', 'Tado Hourly (DE)');
+  awattarAT('awattar_at', 'aWATTar (AT)');
 
   final String code;
   final String displayName;
-  
+
   const EnergyProvider(this.code, this.displayName);
 }
 
@@ -20,7 +19,6 @@ class PriceSettingsHelper {
   static double calculateProviderFee(double spotPrice, String providerCode, double percentage, double fixedFee) {
     switch (providerCode) {
       case 'awattar_at':
-      case 'awattar_de':
         // aWATTar formula: |Spot * 3%| + 1.5 cent
         return spotPrice.abs() * 0.03 + 1.5;
       case 'custom':
@@ -125,32 +123,10 @@ class _PriceSettingsPageState extends State<PriceSettingsPage> {
         orElse: () => EnergyProvider.custom,
       );
       
-      // Auto-sync market with aWATTar provider selection
-      _syncMarketWithProvider(false); // Don't show snackbar on load
+      // No auto-sync anymore
     });
   }
 
-  void _syncMarketWithProvider(bool showSnackbar) {
-    PriceMarket? newMarket;
-    
-    if (selectedProvider == EnergyProvider.awattarAT) {
-      newMarket = PriceMarket.austria;
-    } else if (selectedProvider == EnergyProvider.awattarDE) {
-      newMarket = PriceMarket.germany;
-    }
-    
-    if (newMarket != null && newMarket != selectedMarket) {
-      selectedMarket = newMarket;
-      if (showSnackbar && Navigator.of(context).mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Markt automatisch auf ${selectedMarket.displayName} geändert'),
-            duration: Duration(seconds: 2),
-          ),
-        );
-      }
-    }
-  }
 
   Future<void> _saveSettings({bool marketChanged = false}) async {
     final prefs = await SharedPreferences.getInstance();
@@ -162,19 +138,20 @@ class _PriceSettingsPageState extends State<PriceSettingsPage> {
     await prefs.setBool('include_tax', includeTax);
     await prefs.setString('price_market', selectedMarket.code);
     await prefs.setString('energy_provider', selectedProvider.code);
-    
+
     // Reschedule notifications when price settings change
     // This ensures threshold-based notifications use the correct full cost prices
     final notificationService = NotificationService();
     await notificationService.rescheduleNotifications();
-    
-    // Only clear cache and show snackbar when market actually changes
+
+    // When market changes, ensure cache exists for new market (lazy loading)
     if (marketChanged) {
-      await _clearPriceCache();
+      final cacheService = PriceCacheService();
+      await cacheService.ensureCacheForMarket(selectedMarket.code);
       if (Navigator.of(context).mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Markt geändert auf ${selectedMarket.displayName}. Preise werden aktualisiert...'),
+            content: Text('Markt auf ${selectedMarket.displayName} geändert'),
             duration: Duration(seconds: 2),
           ),
         );
@@ -182,14 +159,10 @@ class _PriceSettingsPageState extends State<PriceSettingsPage> {
     }
   }
 
-  Future<void> _clearPriceCache() async {
-    final cacheService = PriceCacheService();
-    await cacheService.clearCache();
-  }
+  // Not needed anymore - we keep both caches
 
   double _calculateProviderFee(double spotPrice) {
-    final providerCode = selectedProvider == EnergyProvider.awattarAT ? 'awattar_at' :
-                        selectedProvider == EnergyProvider.awattarDE ? 'awattar_de' : 'custom';
+    final providerCode = selectedProvider == EnergyProvider.awattarAT ? 'awattar_at' : 'custom';
     return PriceSettingsHelper.calculateProviderFee(spotPrice, providerCode, energyProviderPercentage, energyProviderFixedFee);
   }
 
@@ -218,7 +191,7 @@ class _PriceSettingsPageState extends State<PriceSettingsPage> {
         const Text('Beispiel 1: Positiver SPOT-Preis', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
         const SizedBox(height: 8),
         Text('SPOT-Preis: ${PriceUtils.formatPrice(positiveSpot)}', style: const TextStyle(fontSize: 14)),
-        if (selectedProvider == EnergyProvider.awattarAT || selectedProvider == EnergyProvider.awattarDE)
+        if (selectedProvider == EnergyProvider.awattarAT)
           Text('+ Gebühr (|${positiveSpot.toStringAsFixed(1).replaceAll('.', ',')} × 3%| + 1,5ct): ${PriceUtils.formatPrice(posProviderFee)}', style: const TextStyle(fontSize: 14))
         else if (selectedProvider == EnergyProvider.custom && (energyProviderPercentage > 0 || energyProviderFixedFee > 0))
           Text('+ Gebühr (|${positiveSpot.toStringAsFixed(1).replaceAll('.', ',')} × ${energyProviderPercentage.toStringAsFixed(1)}%| + ${energyProviderFixedFee.toStringAsFixed(1)}ct): ${PriceUtils.formatPrice(posProviderFee)}', style: const TextStyle(fontSize: 14)),
@@ -238,7 +211,7 @@ class _PriceSettingsPageState extends State<PriceSettingsPage> {
         const Text('Beispiel 2: Negativer SPOT-Preis', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
         const SizedBox(height: 8),
         Text('SPOT-Preis: ${PriceUtils.formatPrice(negativeSpot)}', style: const TextStyle(fontSize: 14)),
-        if (selectedProvider == EnergyProvider.awattarAT || selectedProvider == EnergyProvider.awattarDE)
+        if (selectedProvider == EnergyProvider.awattarAT)
           Text('+ Gebühr (|${negativeSpot.toStringAsFixed(1).replaceAll('.', ',')} × 3%| + 1,5ct): ${PriceUtils.formatPrice(negProviderFee)}', style: const TextStyle(fontSize: 14))
         else if (selectedProvider == EnergyProvider.custom && energyProviderPercentage > 0)
           Text('+ Gebühr (|${negativeSpot.toStringAsFixed(1).replaceAll('.', ',')} × ${energyProviderPercentage.toStringAsFixed(1)}%| + ${energyProviderFixedFee.toStringAsFixed(1)}ct): ${PriceUtils.formatPrice(negProviderFee)}', style: const TextStyle(fontSize: 14))
@@ -479,7 +452,6 @@ class _PriceSettingsPageState extends State<PriceSettingsPage> {
                           setState(() {
                             selectedProvider = value;
                           });
-                          _syncMarketWithProvider(true);
                           _saveSettings();
                         }
                       },

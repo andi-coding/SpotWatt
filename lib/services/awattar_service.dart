@@ -25,17 +25,17 @@ class AwattarService {
     );
   }
 
-  Future<List<PriceData>> fetchPrices() async {
-    final market = await getSelectedMarket();
+  Future<List<PriceData>> fetchPrices({PriceMarket? market}) async {
+    final selectedMarket = market ?? await getSelectedMarket();
     final now = DateTime.now();
     // WICHTIG: Immer ab Tagesbeginn abfragen, damit wir die kompletten Tagespreise haben
     // für korrekte Min/Max Berechnung
     final startOfDay = DateTime(now.year, now.month, now.day, 0, 0);
     final end = DateTime(now.year, now.month, now.day + 2);
 
-    final url = Uri.parse('${market.apiUrl}?start=${startOfDay.millisecondsSinceEpoch}&end=${end.millisecondsSinceEpoch}');
-    
-    debugPrint('Fetching prices from ${market.displayName} market: ${startOfDay.toIso8601String()} to ${end.toIso8601String()}');
+    final url = Uri.parse('${selectedMarket.apiUrl}?start=${startOfDay.millisecondsSinceEpoch}&end=${end.millisecondsSinceEpoch}');
+
+    debugPrint('Fetching prices from ${selectedMarket.displayName} market: ${startOfDay.toIso8601String()} to ${end.toIso8601String()}');
     
     try {
       final response = await http.get(url);

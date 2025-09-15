@@ -357,7 +357,7 @@ class NotificationService {
     
     await notifications.zonedSchedule(
       _notificationId++,
-      '📊 Tägliche Strompreis-Übersicht',
+      '📊 Tägliche Übersicht',
       notificationText,
       tz.TZDateTime.from(notificationTime, tz.local),
       NotificationDetails(
