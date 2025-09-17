@@ -5,6 +5,7 @@ import 'dart:io';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import '../models/price_data.dart';
 import 'awattar_service.dart';
+import 'cloudflare_price_service.dart';
 import 'full_cost_calculator.dart';
 
 class NetworkException implements Exception {
@@ -116,11 +117,14 @@ class PriceCacheService {
       print('[Cache] No network available');
       throw NetworkException('Für aktuelle Preise wird eine Internetverbindung benötigt. Bitte WiFi oder Mobile Daten aktivieren.');
     } else {
-      print('[Cache] Network available, making API call for $market');
+      print('[Cache] Network available, fetching from CloudFlare Worker for $market');
       try {
-        final prices = await _awattarService.fetchPrices(market: market == 'AT' ? PriceMarket.austria : PriceMarket.germany);
+        // Try CloudFlare Worker first
+        final prices = await CloudflarePriceService.fetchPrices(
+          market: market == 'AT' ? PriceMarket.austria : PriceMarket.germany,
+        );
         await _saveToCache(prices, market);
-        print('[Cache] API call successful for $market, got ${prices.length} prices');
+        print('[Cache] CloudFlare fetch successful for $market, got ${prices.length} prices');
         return prices;
       } catch (e, stackTrace) {
         print('[Cache] API call failed for $market: $e');
@@ -139,7 +143,6 @@ class PriceCacheService {
       print('[Cache] No timestamp found - invalid');
       return false;
     }
-    
     final cacheTime = DateTime.fromMillisecondsSinceEpoch(timestamp);
     final now = DateTime.now();
     print('[Cache] Current time: ${now.toString()}');

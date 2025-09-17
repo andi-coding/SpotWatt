@@ -1,0 +1,17 @@
+name = "spotwatt-prices"
+main = "src/index.js"
+compatibility_date = "2024-01-17"
+
+# Environment variables
+[vars]
+# ENTSOE_TOKEN wird als Secret hinzugefügt, nicht hier
+
+# KV Namespace für Caching (wird später generiert)
+# [[kv_namespaces]]
+# binding = "PRICE_CACHE"
+# id = "xxx"
+
+# Cron Trigger - Täglich um 14:00 UTC (15:00 MEZ / 16:00 MESZ)
+# Wird nach dem ersten Deploy aktiviert
+# [triggers]
+# crons = ["0 14 * * *"]
