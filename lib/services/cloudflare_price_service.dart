@@ -37,10 +37,7 @@ class CloudflarePriceService {
       return prices;
     } catch (e) {
       print('[CloudFlare] Error fetching prices: $e');
-      // Fallback to direct aWATTar API
-      //print('[CloudFlare] Falling back to direct aWATTar API');
-      //final awattarService = AwattarService();
-      //return awattarService.fetchPrices(market: market);
+      rethrow; // Throw error to caller
     }
   }
 }
