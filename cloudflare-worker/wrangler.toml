@@ -4,14 +4,24 @@ compatibility_date = "2024-01-17"
 
 # Environment variables
 [vars]
-# ENTSOE_TOKEN wird als Secret hinzugefügt, nicht hier
+# ENTSOE_API_TOKEN wird als Secret hinzugefügt mit:
+# npx wrangler secret put ENTSOE_API_TOKEN
 
-# KV Namespace für Caching (wird später generiert)
-# [[kv_namespaces]]
-# binding = "PRICE_CACHE"
-# id = "xxx"
+# KV Namespace für Caching
+# Erstellen mit: npx wrangler kv:namespace create "PRICE_CACHE"
+# Dann die generierte ID hier eintragen
+[[kv_namespaces]]
+binding = "PRICE_CACHE"
+id = "51ae355e5c7749e1915440c1337170d8"
 
-# Cron Trigger - Täglich um 14:00 UTC (15:00 MEZ / 16:00 MESZ)
-# Wird nach dem ersten Deploy aktiviert
-# [triggers]
-# crons = ["0 14 * * *"]
+# Cron Triggers - Max 5 erlaubt im Free Plan
+# Day-Ahead Preise werden normalerweise um 12:30-13:00 CET (11:30-12:00 UTC) publiziert
+# Wir prüfen ab 14:00 UTC alle 30 Minuten
+[triggers]
+crons = [
+  "0 14 * * *",   # 14:00 UTC - Hauptversuch
+  "30 14 * * *",  # 14:30 UTC
+  "0 15 * * *",   # 15:00 UTC
+  "30 15 * * *",  # 15:30 UTC
+  "0 16 * * *"    # 16:00 UTC - Letzter Versuch
+]
