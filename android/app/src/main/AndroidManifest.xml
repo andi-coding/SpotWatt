@@ -37,15 +37,8 @@
                 android:name="android.appwidget.provider"
                 android:resource="@xml/price_widget_info" />
         </receiver>
-        
-        <!-- Screen Unlock Receiver for Widget Updates -->
-        <receiver android:name=".ScreenUnlockReceiver"
-            android:exported="false">
-            <intent-filter>
-                <action android:name="android.intent.action.USER_PRESENT" />
-            </intent-filter>
-        </receiver>
-        
+
+
         <!-- Used by plugin: native_geofence -->
         <receiver android:name="com.chunkytofustudios.native_geofence.receivers.NativeGeofenceBroadcastReceiver"
                   android:exported="true"/>

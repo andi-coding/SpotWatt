@@ -17,18 +17,6 @@ class PriceWidgetProvider : AppWidgetProvider() {
     
     companion object {
         const val ACTION_WIDGET_CLICK = "com.example.spotwatt.WIDGET_CLICK"
-        private var userPresentReceiver: BroadcastReceiver? = null
-
-        fun forceUpdate(context: Context) {
-            val intent = Intent(context, PriceWidgetProvider::class.java)
-            intent.action = AppWidgetManager.ACTION_APPWIDGET_UPDATE
-            val widgetManager = AppWidgetManager.getInstance(context)
-            val widgetIds = widgetManager.getAppWidgetIds(
-                ComponentName(context, PriceWidgetProvider::class.java)
-            )
-            intent.putExtra(AppWidgetManager.EXTRA_APPWIDGET_IDS, widgetIds)
-            context.sendBroadcast(intent)
-        }
     }
     
     override fun onUpdate(
@@ -42,16 +30,16 @@ class PriceWidgetProvider : AppWidgetProvider() {
             android.util.Log.d("PriceWidget", "Reading SharedPreferences for widget $appWidgetId")
             val views = createRemoteViews(context, widgetData)
             
-            // Add click listener to widget for manual refresh
-            val intent = Intent(context, PriceWidgetProvider::class.java)
-            intent.action = ACTION_WIDGET_CLICK
-            val pendingIntent = PendingIntent.getBroadcast(
+            // Add click listener to widget to open app
+            val openAppIntent = Intent(context, PriceWidgetProvider::class.java)
+            openAppIntent.action = ACTION_WIDGET_CLICK
+            val openAppPendingIntent = PendingIntent.getBroadcast(
                 context,
                 0,
-                intent,
+                openAppIntent,
                 PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
             )
-            views.setOnClickPendingIntent(R.id.widget_layout, pendingIntent)
+            views.setOnClickPendingIntent(R.id.widget_layout, openAppPendingIntent)
             
             appWidgetManager.updateAppWidget(appWidgetId, views)
             android.util.Log.d("PriceWidget", "Widget $appWidgetId updated")
@@ -64,60 +52,25 @@ class PriceWidgetProvider : AppWidgetProvider() {
         
         when (intent.action) {
             ACTION_WIDGET_CLICK -> {
-                // Open app and let Flutter handle the update
+                // Open app when widget area is clicked
+                android.util.Log.d("PriceWidget", "Widget area clicked - opening app")
                 val launchIntent = context.packageManager.getLaunchIntentForPackage(context.packageName)
                 launchIntent?.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                 launchIntent?.putExtra("widget_clicked", true)
                 context.startActivity(launchIntent)
-                
-                // Don't update here - let Flutter do it with fresh data
             }
         }
     }
 
     override fun onEnabled(context: Context) {
         super.onEnabled(context)
-        android.util.Log.d("PriceWidget", "Widget enabled - registering USER_PRESENT receiver")
-        
-        try {
-            val filter = IntentFilter().apply {
-                addAction(Intent.ACTION_USER_PRESENT)
-            }
-            
-            userPresentReceiver = object : BroadcastReceiver() {
-                override fun onReceive(context: Context?, intent: Intent?) {
-                    android.util.Log.e("PriceWidget", "USER_PRESENT received in onEnabled receiver!")
-                    android.util.Log.e("PriceWidget", "Action: ${intent?.action}")
-                    
-                    if (intent?.action == Intent.ACTION_USER_PRESENT) {
-                        android.util.Log.e("PriceWidget", "Updating widget from USER_PRESENT")
-                        context?.let { ctx ->
-                            forceUpdate(ctx)
-                        }
-                    }
-                }
-            }
-            
-            context.applicationContext.registerReceiver(userPresentReceiver, filter)
-            android.util.Log.e("PriceWidget", "USER_PRESENT receiver registered successfully in onEnabled")
-        } catch (e: Exception) {
-            android.util.Log.e("PriceWidget", "Failed to register USER_PRESENT receiver in onEnabled", e)
-        }
+        android.util.Log.d("PriceWidget", "First widget enabled")
+        // All widget updates are handled by Flutter WorkManager (every 15 minutes)
     }
 
     override fun onDisabled(context: Context) {
         super.onDisabled(context)
-        android.util.Log.d("PriceWidget", "Widget disabled - unregistering USER_PRESENT receiver")
-        
-        try {
-            userPresentReceiver?.let { receiver ->
-                context.applicationContext.unregisterReceiver(receiver)
-                android.util.Log.d("PriceWidget", "USER_PRESENT receiver unregistered successfully")
-                userPresentReceiver = null
-            }
-        } catch (e: Exception) {
-            android.util.Log.e("PriceWidget", "Failed to unregister USER_PRESENT receiver", e)
-        }
+        android.util.Log.d("PriceWidget", "Last widget disabled")
     }
 
     private fun createRemoteViews(context: Context, widgetData: SharedPreferences): RemoteViews {

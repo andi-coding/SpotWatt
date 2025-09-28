@@ -28,9 +28,10 @@ class CloudflarePriceService {
       final data = json.decode(response.body);
 
       // Parse prices from CloudFlare Worker response
+      // Convert UTC times from API to local time for correct display
       final prices = (data['prices'] as List).map((item) => PriceData(
-        startTime: DateTime.parse(item['startTime']),
-        endTime: DateTime.parse(item['endTime']),
+        startTime: DateTime.parse(item['startTime']).toLocal(),
+        endTime: DateTime.parse(item['endTime']).toLocal(),
         price: item['price'].toDouble(),
       )).toList();
 

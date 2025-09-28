@@ -18,10 +18,10 @@ class AboutPage extends StatelessWidget {
               padding: const EdgeInsets.all(16),
               child: Column(
                 children: [
-                  Icon(
-                    Icons.bolt,
-                    size: 64,
-                    color: Theme.of(context).colorScheme.primary,
+                  Image.asset(
+                    'assets/icons/spotwatt_logo_final.png',
+                    width: 64,
+                    height: 64,
                   ),
                   const SizedBox(height: 16),
                   Text(
@@ -51,40 +51,40 @@ class AboutPage extends StatelessWidget {
           const SizedBox(height: 16),
           
           Card(
-            child: Column(
-              children: [
-                ListTile(
-                  leading: Icon(Icons.mail_outline, color: Theme.of(context).colorScheme.primary),
-                  title: const Text('Kontakt & Feedback'),
-                  subtitle: const Text('contact@spotwatt.at'),
-                  trailing: const Icon(Icons.arrow_forward_ios, size: 16),
-                  onTap: () async {
-                    final Uri emailUri = Uri(
-                      scheme: 'mailto',
-                      path: 'contact@spotwatt.at',
-                      queryParameters: {
-                        'subject': 'SpotWatt Feedback',
-                      },
-                    );
-                    if (await canLaunchUrl(emailUri)) {
-                      await launchUrl(emailUri);
-                    }
+            child: ListTile(
+              leading: Icon(Icons.mail_outline, color: Theme.of(context).colorScheme.primary),
+              title: const Text('Kontakt & Feedback'),
+              subtitle: const Text('contact@spotwatt.at'),
+              trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+              onTap: () async {
+                final Uri emailUri = Uri(
+                  scheme: 'mailto',
+                  path: 'contact@spotwatt.at',
+                  queryParameters: {
+                    'subject': 'SpotWatt Feedback',
                   },
-                ),
-                const Divider(height: 1),
-                ListTile(
-                  leading: Icon(Icons.language, color: Theme.of(context).colorScheme.primary),
-                  title: const Text('Website'),
-                  subtitle: const Text('spotwatt.github.io'),
-                  trailing: const Icon(Icons.open_in_new, size: 16),
-                  onTap: () async {
-                    final Uri websiteUrl = Uri.parse('https://spotwatt.github.io');
-                    if (await canLaunchUrl(websiteUrl)) {
-                      await launchUrl(websiteUrl, mode: LaunchMode.externalApplication);
-                    }
-                  },
-                ),
-              ],
+                );
+                if (await canLaunchUrl(emailUri)) {
+                  await launchUrl(emailUri);
+                }
+              },
+            ),
+          ),
+
+          const SizedBox(height: 16),
+
+          Card(
+            child: ListTile(
+              leading: Icon(Icons.language, color: Theme.of(context).colorScheme.primary),
+              title: const Text('Website'),
+              subtitle: const Text('spotwatt.github.io'),
+              trailing: const Icon(Icons.open_in_new, size: 16),
+              onTap: () async {
+                final Uri websiteUrl = Uri.parse('https://spotwatt.github.io');
+                if (await canLaunchUrl(websiteUrl)) {
+                  await launchUrl(websiteUrl, mode: LaunchMode.externalApplication);
+                }
+              },
             ),
           ),
           

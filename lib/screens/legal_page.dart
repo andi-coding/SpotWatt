@@ -14,34 +14,34 @@ class LegalPage extends StatelessWidget {
         padding: const EdgeInsets.all(16),
         children: [
           Card(
-            child: Column(
-              children: [
-                ListTile(
-                  leading: Icon(Icons.privacy_tip_outlined, color: Theme.of(context).colorScheme.primary),
-                  title: const Text('Datenschutzerklärung'),
-                  subtitle: const Text('Informationen zum Datenschutz'),
-                  trailing: const Icon(Icons.open_in_new, size: 16),
-                  onTap: () async {
-                    final Uri privacyUrl = Uri.parse('https://spotwatt.github.io/privacy.html');
-                    if (await canLaunchUrl(privacyUrl)) {
-                      await launchUrl(privacyUrl, mode: LaunchMode.externalApplication);
-                    }
-                  },
-                ),
-                const Divider(height: 1),
-                ListTile(
-                  leading: Icon(Icons.article_outlined, color: Theme.of(context).colorScheme.primary),
-                  title: const Text('Impressum'),
-                  subtitle: const Text(''),
-                  trailing: const Icon(Icons.open_in_new, size: 16),
-                  onTap: () async {
-                    final Uri imprintUrl = Uri.parse('https://spotwatt.github.io/imprint.html');
-                    if (await canLaunchUrl(imprintUrl)) {
-                      await launchUrl(imprintUrl, mode: LaunchMode.externalApplication);
-                    }
-                  },
-                ),
-              ],
+            child: ListTile(
+              leading: Icon(Icons.privacy_tip_outlined, color: Theme.of(context).colorScheme.primary),
+              title: const Text('Datenschutzerklärung'),
+              subtitle: const Text('Informationen zum Datenschutz'),
+              trailing: const Icon(Icons.open_in_new, size: 16),
+              onTap: () async {
+                final Uri privacyUrl = Uri.parse('https://spotwatt.github.io/privacy.html');
+                if (await canLaunchUrl(privacyUrl)) {
+                  await launchUrl(privacyUrl, mode: LaunchMode.externalApplication);
+                }
+              },
+            ),
+          ),
+
+          const SizedBox(height: 16),
+
+          Card(
+            child: ListTile(
+              leading: Icon(Icons.article_outlined, color: Theme.of(context).colorScheme.primary),
+              title: const Text('Impressum'),
+              subtitle: const Text('Rechtliche Informationen'),
+              trailing: const Icon(Icons.open_in_new, size: 16),
+              onTap: () async {
+                final Uri imprintUrl = Uri.parse('https://spotwatt.github.io/imprint.html');
+                if (await canLaunchUrl(imprintUrl)) {
+                  await launchUrl(imprintUrl, mode: LaunchMode.externalApplication);
+                }
+              },
             ),
           ),
           
