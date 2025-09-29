@@ -97,7 +97,7 @@
         <p>
             <strong>Wie werden Daten verarbeitet?</strong><br>
             Die meisten Daten werden ausschließlich lokal auf Ihrem Gerät verarbeitet. 
-            Nur beim Abruf der Strompreise wird Ihre IP-Adresse an aWATTar GmbH übertragen.
+            Nur beim Abruf der Strompreise wird Ihre IP-Adresse an unseren Dienstleister übertragen, der die aktuellen Strompreise bereitstellt.
         </p>
 
         <p>
@@ -111,7 +111,7 @@
         <h3>2.1 Lokale Datenverarbeitung (auf Ihrem Gerät)</h3>
         <p>SpotWatt verarbeitet folgende Daten <strong>ausschließlich lokal</strong> - sie verlassen Ihr Gerät nicht:</p>
         <ul>
-            <li><strong>Strompreisdaten:</strong> Von aWATTar abgerufene EPEX Spot Preise (24-48h gecacht)</li>
+            <li><strong>Strompreisdaten:</strong> Von ENTSO-E abgerufene EPEX Spot Preise (24-48h gecacht)</li>
             <li><strong>App-Einstellungen:</strong> Preisschwellen, Benachrichtigungszeiten, gewählte Region</li>
             <li><strong>Standortdaten (optional):</strong> Nur für Geofencing ("nur zu Hause benachrichtigen")</li>
             <li><strong>Push-Token:</strong> Vom Betriebssystem automatisch generiert für lokale Benachrichtigungen</li>
@@ -124,7 +124,7 @@
         <h3>2.2 Datenübertragung an Dritte</h3>
         <p>SpotWatt überträgt <strong>nur minimal notwendige Daten</strong> an Dritte:</p>
         <ul>
-            <li><strong>An aWATTar API:</strong> Nur Ihre IP-Adresse (technisch notwendig für Internet-Requests)</li>
+            <li><strong>An Dienstleister (CloudFlare):</strong> Nur Ihre IP-Adresse (technisch notwendig für Internet-Requests)</li>
             <li><strong>Zweck:</strong> Abruf aktueller EPEX Spot Strompreise für Deutschland und Österreich</li>
             <li><strong>Häufigkeit:</strong> 1-2x täglich nach 14:00 Uhr</li>
         </ul>
@@ -153,8 +153,10 @@
             findet keine internationale Datenübertragung durch uns statt.
         </p>
         <p>
-            <strong>aWATTar (Deutschland):</strong> Die Strompreisdaten werden von aWATTar bezogen, einem deutschen Unternehmen. 
-            Ihre IP-Adresse wird dabei nur für den technischen Request verwendet.
+            <strong>CloudFlare (USA/EU):</strong> Die App nutzt CloudFlare als Dienstleister für den Abruf der Strompreisdaten.
+            CloudFlare ist ein US-amerikanisches Unternehmen mit Servern weltweit. Ihre IP-Adresse kann
+            dabei auch außerhalb der EU verarbeitet werden. CloudFlare fungiert als Auftragsverarbeiter
+            und die Daten werden ausschließlich für den technischen Request verwendet.
         </p>
 
         <h2>4. Ihre Rechte</h2>

@@ -23,8 +23,8 @@
         }
 
         .faq-item:hover {
-            border-color: #4CAF50;
-            box-shadow: 0 4px 20px rgba(76, 175, 80, 0.1);
+            border-color: var(--primary-color);
+            box-shadow: 0 4px 20px rgba(30, 58, 95, 0.1);
         }
 
         .faq-question {
@@ -36,13 +36,13 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
-            background: linear-gradient(135deg, #f8fff8 0%, #ffffff 100%);
+            background: white;
         }
 
         .faq-question::after {
             content: '+';
             font-size: 1.5rem;
-            color: #4CAF50;
+            color: var(--primary-color);
             transition: transform 0.3s ease;
         }
 
@@ -79,9 +79,9 @@
         .faq-category {
             margin: 50px 0 24px;
             padding: 16px 24px;
-            background: linear-gradient(135deg, #e8f5e8 0%, #f0f9f0 100%);
+            background: var(--light-color);
             border-radius: 12px;
-            border-left: 4px solid #4CAF50;
+            border-left: 4px solid var(--primary-color);
         }
 
         .faq-category h2 {
@@ -91,7 +91,7 @@
         }
 
         .highlight-box {
-            background: linear-gradient(135deg, #e8f5e8 0%, #f0f9f0 100%);
+            background: var(--light-color);
             border-left: 4px solid var(--primary-color);
             padding: 15px;
             margin: 15px 0;
@@ -162,7 +162,7 @@
             <div class="faq-answer">
                 <p>SpotWatt ist ideal für:</p>
                 <ul>
-                    <li><strong>Haushalte mit dynamischen EPEX Spot Stromtarifen</strong> (z.B. von aWATTar, Tado Hourly, Tibber usw.)</li>
+                    <li><strong>Haushalte mit dynamischen EPEX Spot Stromtarifen</strong> (z.B. von aWATTar, Tado, Tibber, smartENERGY, Verbund, Wien Energie usw.)</li>
                     <li><strong>E-Auto-Besitzer</strong>, die günstig laden möchten</li>
                     <li><strong>Wärmepumpen-Nutzer</strong>, die Heizkosten optimieren wollen</li>
                     <li><strong>Alle Interessierten</strong>, die verstehen möchten, wie Strompreise funktionieren</li>
@@ -232,14 +232,7 @@
                 Woher kommen die Preisdaten?
             </div>
             <div class="faq-answer">
-                <p>Die Preisdaten stammen von der <strong>EPEX Spot Strombörse</strong> und werden über die kostenlose API von <strong>aWATTar</strong> bezogen. Dies sind die offiziellen Börsenpreise, die auch Ihr Stromanbieter nutzt.</p>
-                <div class="highlight-box" style="background: linear-gradient(135deg, #e8f5e8 0%, #d4f3d4 100%); border-left-color: #4CAF50;">
-                    <strong>💚 Besonderer Dank an aWATTar!</strong><br>
-                    aWATTar stellt diese API kostenlos zur Verfügung und ermöglicht damit Apps wie SpotWatt.
-                    aWATTar ist selbst ein innovativer Ökostromanbieter mit stündlich variablen Tarifen.
-                    <br><br>
-                    <a href="https://www.awattar.at" target="_blank" style="color: #4CAF50; font-weight: bold;">→ Mehr über aWATTar erfahren</a>
-                </div>
+                <p>Die Preisdaten stammen von der <strong>EPEX Spot Strombörse</strong> und werden über offizielle europäische Datenquellen bezogen. Dies sind die gleichen Börsenpreise, die auch Ihr Stromanbieter nutzt.</p>
                 <p>Die Preise werden täglich gegen 14 Uhr für den Folgetag veröffentlicht.</p>
             </div>
         </div>

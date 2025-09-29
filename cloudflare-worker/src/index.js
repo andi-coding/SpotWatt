@@ -23,9 +23,9 @@ async function fetchRawXML(market, apiToken) {
   }
 
   const now = new Date();
-  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const today = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
   const dayAfterTomorrow = new Date(today);
-  dayAfterTomorrow.setDate(dayAfterTomorrow.getDate() + 2);
+  dayAfterTomorrow.setUTCDate(dayAfterTomorrow.getUTCDate() + 2);
 
   const periodStart = formatDateENTSOE(today);
   const periodEnd = formatDateENTSOE(dayAfterTomorrow);
@@ -41,12 +41,7 @@ async function fetchRawXML(market, apiToken) {
     'classificationSequence_AttributeInstanceComponent.position': '1' // Only position 1 (hourly)
   });
 
-  const response = await fetch(`${ENTSOE_API_URL}?${params}`);
-  if (!response.ok) {
-    const errorText = await response.text();
-    throw new Error(`ENTSO-E API error: ${response.status} - ${errorText}`);
-  }
-
+  const response = await fetchWithRetry(`${ENTSOE_API_URL}?${params}`);
   return await response.text();
 }
 
@@ -57,11 +52,11 @@ async function fetchFromENTSOE(market, apiToken) {
     throw new Error(`Invalid market: ${market}`);
   }
 
-  // Get current date and day after tomorrow for full coverage
+  // Get current date and day after tomorrow for full coverage (UTC)
   const now = new Date();
-  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const today = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
   const dayAfterTomorrow = new Date(today);
-  dayAfterTomorrow.setDate(dayAfterTomorrow.getDate() + 2); // Get 48 hours of data
+  dayAfterTomorrow.setUTCDate(dayAfterTomorrow.getUTCDate() + 2); // Get 48 hours of data
 
   // Format dates as required by ENTSO-E (yyyyMMddHHmm)
   const periodStart = formatDateENTSOE(today);
@@ -79,12 +74,7 @@ async function fetchFromENTSOE(market, apiToken) {
   });
 
   try {
-    const response = await fetch(`${ENTSOE_API_URL}?${params}`);
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(`ENTSO-E API error: ${response.status} - ${errorText}`);
-    }
-
+    const response = await fetchWithRetry(`${ENTSOE_API_URL}?${params}`);
     const xmlData = await response.text();
     console.log(`ENTSO-E XML Response for ${market}:`, xmlData.substring(0, 2000) + '...');
     const prices = parseENTSOEResponse(xmlData, market);
@@ -100,12 +90,56 @@ async function fetchFromENTSOE(market, apiToken) {
   }
 }
 
-// Format date for ENTSO-E API
+// Retry helper for ENTSO-E API calls
+async function fetchWithRetry(url, retries = 2, delay = 2000) {
+  for (let i = 0; i < retries; i++) {
+    try {
+      const response = await fetch(url);
+
+      if (response.ok) {
+        return response;
+      }
+
+      const errorText = await response.text();
+
+      // Check for retryable errors
+      const isRetryable = response.status === 503 ||
+                          response.status === 502 || // Bad Gateway
+                          response.status === 504 || // Gateway Timeout
+                          (response.status === 400 && (
+                            errorText.includes('<code>999</code>') ||
+                            errorText.includes('Unexpected error') ||
+                            errorText.includes('server error') ||
+                            errorText.includes('temporary') ||
+                            errorText.includes('maintenance') ||
+                            errorText.includes('overload')
+                          )) ||
+                          (response.status === 429); // Rate Limit (should retry with backoff)
+
+      if (isRetryable) {
+        console.log(`ENTSO-E ${response.status} error (attempt ${i + 1}/${retries}), retrying in ${delay * (i + 1)}ms...`);
+        if (i < retries - 1) {
+          await new Promise(resolve => setTimeout(resolve, delay * (i + 1)));
+          continue;
+        }
+      }
+
+      // Non-retryable error or final retry attempt
+      throw new Error(`ENTSO-E API error: ${response.status} - ${errorText}`);
+    } catch (error) {
+      if (i === retries - 1) throw error;
+      console.log(`Network error (attempt ${i + 1}/${retries}), retrying in ${delay * (i + 1)}ms...`);
+      await new Promise(resolve => setTimeout(resolve, delay * (i + 1)));
+    }
+  }
+}
+
+// Format date for ENTSO-E API (UTC)
 function formatDateENTSOE(date) {
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, '0');
-  const day = String(date.getDate()).padStart(2, '0');
-  return `${year}${month}${day}0000`; // Always start at 00:00
+  const year = date.getUTCFullYear();
+  const month = String(date.getUTCMonth() + 1).padStart(2, '0');
+  const day = String(date.getUTCDate()).padStart(2, '0');
+  return `${year}${month}${day}0000`; // Always start at 00:00 UTC
 }
 
 // Parse ENTSO-E XML response
@@ -187,6 +221,7 @@ export default {
     const adminKey = url.searchParams.get('key');
     const debug = url.searchParams.get('debug') === 'xml' && adminKey === env.ADMIN_API_KEY;
     const clearCache = url.searchParams.get('clear') === 'cache' && adminKey === env.ADMIN_API_KEY;
+    const testCron = url.searchParams.get('test') === 'cron' && adminKey === env.ADMIN_API_KEY;
 
     // Validate market parameter
     if (!['AT', 'DE'].includes(market)) {
@@ -206,7 +241,7 @@ export default {
 
     try {
       // Check for unauthorized admin attempts
-      if ((url.searchParams.get('debug') === 'xml' || url.searchParams.get('clear') === 'cache') && !adminKey) {
+      if ((url.searchParams.get('debug') === 'xml' || url.searchParams.get('clear') === 'cache' || url.searchParams.get('test') === 'cron') && !adminKey) {
         return new Response(
           JSON.stringify({ error: 'Admin functions require authentication' }),
           { status: 403, headers }
@@ -223,6 +258,31 @@ export default {
           JSON.stringify({ message: 'Cache cleared successfully' }),
           { headers }
         );
+      }
+
+      // Handle test cron job (manual trigger for debugging)
+      if (testCron) {
+        console.log('🔧 Manual cron test triggered via API');
+        try {
+          await updatePricesFromENTSOE(env);
+          return new Response(
+            JSON.stringify({
+              message: 'Cron job executed successfully',
+              timestamp: new Date().toISOString()
+            }),
+            { headers }
+          );
+        } catch (error) {
+          console.error('❌ Test cron failed:', error);
+          return new Response(
+            JSON.stringify({
+              error: 'Cron job failed',
+              details: error.message,
+              timestamp: new Date().toISOString()
+            }),
+            { status: 500, headers }
+          );
+        }
       }
 
       // Try to get from cache first (skip cache in debug mode)

@@ -6,12 +6,12 @@
 }
 
 :root {
-    --primary-color: #2e7d32;
-    --secondary-color: #4CAF50;
-    --accent-color: #66bb6a;
+    --primary-color: #1e3a5f;
+    --secondary-color: #2c5c7f;
+    --accent-color: #f39c12;
     --danger-color: #ef4444;
-    --dark-color: #1f2937;
-    --light-color: #f3f4f6;
+    --dark-color: #1a2b3d;
+    --light-color: #f8fafc;
     --text-color: #374151;
     --border-radius: 12px;
     --shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
@@ -86,7 +86,7 @@ body {
 /* Hero Section */
 .hero {
     padding: 80px 0;
-    background: linear-gradient(135deg, #1b5e20 0%, #4CAF50 100%);
+    background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
     color: white;
 }
 
@@ -157,6 +157,13 @@ body {
     padding: 6px 12px;
     border-radius: 20px;
     font-size: 0.875rem;
+    border: 1px solid rgba(243, 156, 18, 0.3);
+}
+
+.badge:hover {
+    background: rgba(243, 156, 18, 0.2);
+    transform: translateY(-1px);
+    transition: all 0.3s ease;
 }
 
 /* Phone Mockup */
@@ -237,6 +244,17 @@ body {
 .feature-icon {
     font-size: 2.5rem;
     margin-bottom: 1rem;
+}
+
+/* Add yellow accent for energy-related icons */
+.feature-card:nth-child(1) .feature-icon,
+.feature-card:nth-child(5) .feature-icon {
+    color: var(--accent-color);
+}
+
+.feature-card:hover .feature-icon {
+    transform: scale(1.1);
+    transition: transform 0.3s ease;
 }
 
 .feature-card h3 {
