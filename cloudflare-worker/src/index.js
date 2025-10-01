@@ -69,8 +69,8 @@ async function fetchFromENTSOE(market, apiToken) {
     out_Domain: areaCode,
     periodStart: periodStart,
     periodEnd: periodEnd,
-    'contract_MarketAgreement.type': 'A01', // Only Day-ahead, not Intraday
-    'classificationSequence_AttributeInstanceComponent.position': '1' // Only position 1 (hourly)
+    'contract_MarketAgreement.type': 'A01' // Only Day-ahead, not Intraday
+    // Note: NO position filter - we fetch all data and select Position 1 > Position 2 in parser
   });
 
   try {
@@ -144,13 +144,18 @@ function formatDateENTSOE(date) {
 
 // Parse ENTSO-E XML response
 function parseENTSOEResponse(xmlString, market) {
-  const prices = [];
+  const allPrices = [];
 
-  // Parse all TimeSeries (API already filters for position 1 and A01)
+  // Step 1: Parse all TimeSeries and group by position and period
   const timeSeriesMatches = xmlString.matchAll(/<TimeSeries>([\s\S]*?)<\/TimeSeries>/g);
+  const timeSeriesByPeriod = {}; // Group by period start time
 
   for (const timeSeriesMatch of timeSeriesMatches) {
     const timeSeriesContent = timeSeriesMatch[1];
+
+    // Extract position (may not exist for some countries)
+    const positionMatch = timeSeriesContent.match(/<classificationSequence_AttributeInstanceComponent\.position>(.*?)<\/classificationSequence_AttributeInstanceComponent\.position>/);
+    const position = positionMatch ? parseInt(positionMatch[1]) : null;
 
     // Parse periods within this TimeSeries
     const periodMatches = timeSeriesContent.matchAll(/<Period>([\s\S]*?)<\/Period>/g);
@@ -158,45 +163,223 @@ function parseENTSOEResponse(xmlString, market) {
     for (const periodMatch of periodMatches) {
       const periodContent = periodMatch[1];
 
-      // Extract time interval start
+      // Extract resolution
+      const resolutionMatch = periodContent.match(/<resolution>(.*?)<\/resolution>/);
+      if (!resolutionMatch) continue;
+      const resolution = resolutionMatch[1];
+
+      // Extract time interval start and end
       const intervalStartMatch = periodContent.match(/<start>(.*?)<\/start>/);
       if (!intervalStartMatch) continue;
+      const startTime = intervalStartMatch[1];
 
-      const startTime = new Date(intervalStartMatch[1]);
+      const intervalEndMatch = periodContent.match(/<end>(.*?)<\/end>/);
+      if (!intervalEndMatch) continue;
+      const endTime = intervalEndMatch[1];
 
-      // Extract all points in this period
-      const pointMatches = periodContent.matchAll(/<Point>([\s\S]*?)<\/Point>/g);
+      // Validate: Period should be exactly 24 hours
+      const periodStart = new Date(startTime);
+      const periodEnd = new Date(endTime);
+      const periodHours = (periodEnd - periodStart) / (1000 * 60 * 60);
 
-      for (const pointMatch of pointMatches) {
-        const pointContent = pointMatch[1];
+      if (periodHours > 24) {
+        // CRITICAL: Skip periods >24h to prevent incorrect time-to-price mapping
+        console.error(`[${market}] ❌ Period ${startTime} spans ${periodHours} hours (>24) - SKIPPING to avoid data corruption!`);
+        continue; // Skip this period entirely
+      } else if (periodHours < 24) {
+        // Warning: Partial data, but time mapping still correct
+        console.warn(`[${market}] ⚠️ Period ${startTime} has only ${periodHours} hours - processing anyway (partial data)`);
+      } else if (periodHours !== 24) {
+        // Unusual decimal hours
+        console.warn(`[${market}] ⚠️ Period ${startTime} has unusual duration: ${periodHours.toFixed(2)} hours`);
+      }
 
-        // Extract position and price
-        const positionMatch = pointContent.match(/<position>(\d+)<\/position>/);
-        const priceMatch = pointContent.match(/<price\.amount>([\d.]+)<\/price\.amount>/);
+      // Create key for grouping (period start time)
+      const periodKey = startTime;
 
-        if (positionMatch && priceMatch) {
-          const position = parseInt(positionMatch[1]);
-          const price = parseFloat(priceMatch[1]);
+      if (!timeSeriesByPeriod[periodKey]) {
+        timeSeriesByPeriod[periodKey] = {};
+      }
 
-          // Calculate actual time for this point (position is hour of day, 1-based)
-          const pointTime = new Date(startTime);
-          pointTime.setHours(pointTime.getHours() + position - 1);
-
-          const endTime = new Date(pointTime);
-          endTime.setHours(endTime.getHours() + 1);
-
-          prices.push({
-            startTime: pointTime.toISOString(),
-            endTime: endTime.toISOString(),
-            price: price / 10.0 // Convert from EUR/MWh to ct/kWh
-          });
-        }
+      // Store TimeSeries by position (1, 2, or null)
+      const posKey = position === null ? 'noPosition' : `pos${position}`;
+      if (!timeSeriesByPeriod[periodKey][posKey] || resolution === 'PT60M') {
+        // Prefer PT60M over PT15M for same position
+        timeSeriesByPeriod[periodKey][posKey] = {
+          position,
+          resolution,
+          startTime: new Date(startTime),
+          periodContent
+        };
       }
     }
   }
 
+  // Step 2: Process each period, selecting best TimeSeries (Position 1 > Position 2 > no position)
+  for (const periodKey of Object.keys(timeSeriesByPeriod)) {
+    const periodsData = timeSeriesByPeriod[periodKey];
+
+    // Select best TimeSeries: Position 1 > Position 2 > no position
+    const selectedTimeSeries = periodsData.pos1 || periodsData.pos2 || periodsData.noPosition;
+
+    if (!selectedTimeSeries) {
+      console.warn(`[${market}] ⚠️ No TimeSeries data found for period ${periodKey}`);
+      continue;
+    }
+
+    // Log position selection and resolution
+    if (periodsData.pos1) {
+      console.log(`[${market}] ✅ Period ${periodKey}: Using Position 1, Resolution: ${selectedTimeSeries.resolution}`);
+    } else if (periodsData.pos2) {
+      console.warn(`[${market}] ⚠️ Period ${periodKey}: Position 1 MISSING - Using Position 2 (fallback), Resolution: ${selectedTimeSeries.resolution}`);
+    } else if (periodsData.noPosition) {
+      console.log(`[${market}] ℹ️ Period ${periodKey}: Using data without position classification, Resolution: ${selectedTimeSeries.resolution}`);
+    }
+
+    const { resolution, startTime, periodContent } = selectedTimeSeries;
+
+    if (resolution === 'PT60M') {
+      // Process 60-minute data directly
+      allPrices.push(...parse60MinuteData(periodContent, startTime, market));
+    } else if (resolution === 'PT15M') {
+      // Aggregate 15-minute data to hourly
+      allPrices.push(...aggregate15MinToHourly(periodContent, startTime, market));
+    }
+  }
+
   // Sort by start time
-  prices.sort((a, b) => new Date(a.startTime) - new Date(b.startTime));
+  allPrices.sort((a, b) => new Date(a.startTime) - new Date(b.startTime));
+
+  return allPrices;
+}
+
+// Parse 60-minute data
+function parse60MinuteData(periodContent, startTime, market) {
+  const prices = [];
+  const pointMatches = periodContent.matchAll(/<Point>([\s\S]*?)<\/Point>/g);
+
+  for (const pointMatch of pointMatches) {
+    const pointContent = pointMatch[1];
+    const positionMatch = pointContent.match(/<position>(\d+)<\/position>/);
+    const priceMatch = pointContent.match(/<price\.amount>([\d.]+)<\/price\.amount>/);
+
+    if (positionMatch && priceMatch) {
+      const position = parseInt(positionMatch[1]);
+      const price = parseFloat(priceMatch[1]);
+
+      const pointTime = new Date(startTime);
+      pointTime.setUTCHours(pointTime.getUTCHours() + position - 1);
+
+      const endTime = new Date(pointTime);
+      endTime.setUTCHours(endTime.getUTCHours() + 1);
+
+      prices.push({
+        startTime: pointTime.toISOString(),
+        endTime: endTime.toISOString(),
+        price: price / 10.0 // EUR/MWh → ct/kWh
+      });
+    }
+  }
+
+  // Validate: Should have exactly 24 prices for PT60M
+  if (prices.length !== 24) {
+    console.warn(`[${market}] ⚠️ PT60M data has ${prices.length} prices (expected 24)`);
+  }
+
+  return prices;
+}
+
+// Aggregate 15-minute data to hourly (with Forward Fill for missing values)
+function aggregate15MinToHourly(periodContent, startTime, market) {
+  const prices = [];
+
+  // Extract all 15-minute points
+  const pointsMap = {};
+  const pointMatches = periodContent.matchAll(/<Point>([\s\S]*?)<\/Point>/g);
+
+  for (const pointMatch of pointMatches) {
+    const pointContent = pointMatch[1];
+    const positionMatch = pointContent.match(/<position>(\d+)<\/position>/);
+    const priceMatch = pointContent.match(/<price\.amount>([\d.]+)<\/price\.amount>/);
+
+    if (positionMatch && priceMatch) {
+      const position = parseInt(positionMatch[1]);
+      const price = parseFloat(priceMatch[1]);
+      pointsMap[position] = price;
+    }
+  }
+
+  // Aggregate to hourly (4 × 15min = 1 hour)
+  for (let hour = 0; hour < 24; hour++) {
+    const quarterHourPositions = [
+      hour * 4 + 1,
+      hour * 4 + 2,
+      hour * 4 + 3,
+      hour * 4 + 4
+    ];
+
+    const values = [];
+    let missingCount = 0;
+    const missingPositions = [];
+
+    for (const pos of quarterHourPositions) {
+      if (pointsMap[pos] !== undefined) {
+        values.push(pointsMap[pos]);
+      } else {
+        // Forward Fill: Use next available value
+        missingCount++;
+        missingPositions.push(pos);
+        let foundNext = false;
+        let filledValue = null;
+        for (let nextPos = pos + 1; nextPos <= 96; nextPos++) {
+          if (pointsMap[nextPos] !== undefined) {
+            filledValue = pointsMap[nextPos];
+            values.push(filledValue);
+            foundNext = true;
+            break;
+          }
+        }
+        if (!foundNext && values.length > 0) {
+          // If no next value found, use last known value
+          filledValue = values[values.length - 1];
+          values.push(filledValue);
+        }
+      }
+    }
+
+    if (values.length > 0) {
+      const avgPrice = values.reduce((sum, val) => sum + val, 0) / values.length;
+
+      const pointTime = new Date(startTime);
+      pointTime.setUTCHours(pointTime.getUTCHours() + hour);
+
+      const endTime = new Date(pointTime);
+      endTime.setUTCHours(endTime.getUTCHours() + 1);
+
+      prices.push({
+        startTime: pointTime.toISOString(),
+        endTime: endTime.toISOString(),
+        price: avgPrice / 10.0 // EUR/MWh → ct/kWh
+      });
+
+      if (missingCount > 0) {
+        const hourStr = pointTime.toISOString().substring(11, 16);
+        console.warn(`[${market}] ⚠️ Hour ${hourStr}: ${missingCount}/4 15-min slots missing (positions: ${missingPositions.join(', ')}), used Forward Fill → avg: ${(avgPrice / 10.0).toFixed(4)} ct/kWh`);
+      }
+    }
+  }
+
+  // Validate: Should have exactly 24 prices for 24 hours
+  if (prices.length !== 24) {
+    console.warn(`[${market}] ⚠️ PT15M aggregation resulted in ${prices.length} prices (expected 24)`);
+  }
+
+  // Validate: Check for too many points (shouldn't have more than 96)
+  const totalPoints = Object.keys(pointsMap).length;
+  const expectedPoints = 96;
+  if (totalPoints > expectedPoints) {
+    console.warn(`[${market}] ⚠️ PT15M data has ${totalPoints} points (expected max ${expectedPoints}) - possible duplicate or invalid data!`);
+  }
 
   return prices;
 }
