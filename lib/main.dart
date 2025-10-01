@@ -81,7 +81,7 @@ class _WattWiseAppState extends State<WattWiseApp> {
         theme: ThemeData(
           useMaterial3: true,
           colorScheme: ColorScheme.fromSeed(
-            seedColor: Colors.green,
+            seedColor: const Color(0xFF1e3a5f), // Blue from website (--primary-color)
             brightness: Brightness.light,
           ),
           cardTheme: CardThemeData(
@@ -94,7 +94,7 @@ class _WattWiseAppState extends State<WattWiseApp> {
         darkTheme: ThemeData(
           useMaterial3: true,
           colorScheme: ColorScheme.fromSeed(
-            seedColor: Colors.green,
+            seedColor: const Color(0xFF1e3a5f), // Blue theme for dark mode too
             brightness: Brightness.dark,
           ),
           cardTheme: CardThemeData(

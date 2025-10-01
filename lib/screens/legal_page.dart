@@ -15,6 +15,23 @@ class LegalPage extends StatelessWidget {
         children: [
           Card(
             child: ListTile(
+              leading: Icon(Icons.description_outlined, color: Theme.of(context).colorScheme.primary),
+              title: const Text('Nutzungsbedingungen'),
+              subtitle: const Text('Bedingungen für die App-Nutzung'),
+              trailing: const Icon(Icons.open_in_new, size: 16),
+              onTap: () async {
+                final Uri termsUrl = Uri.parse('https://spotwatt.github.io/terms.html');
+                if (await canLaunchUrl(termsUrl)) {
+                  await launchUrl(termsUrl, mode: LaunchMode.externalApplication);
+                }
+              },
+            ),
+          ),
+
+          const SizedBox(height: 16),
+
+          Card(
+            child: ListTile(
               leading: Icon(Icons.privacy_tip_outlined, color: Theme.of(context).colorScheme.primary),
               title: const Text('Datenschutzerklärung'),
               subtitle: const Text('Informationen zum Datenschutz'),
