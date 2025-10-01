@@ -1,8 +1,31 @@
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 
-class AboutPage extends StatelessWidget {
+class AboutPage extends StatefulWidget {
   const AboutPage({Key? key}) : super(key: key);
+
+  @override
+  State<AboutPage> createState() => _AboutPageState();
+}
+
+class _AboutPageState extends State<AboutPage> {
+  String _version = '...';
+
+  @override
+  void initState() {
+    super.initState();
+    _loadVersion();
+  }
+
+  Future<void> _loadVersion() async {
+    final packageInfo = await PackageInfo.fromPlatform();
+    if (mounted) {
+      setState(() {
+        _version = '${packageInfo.version}+${packageInfo.buildNumber}';
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -32,7 +55,7 @@ class AboutPage extends StatelessWidget {
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    'Version 1.0.0',
+                    'Version $_version',
                     style: Theme.of(context).textTheme.bodyLarge?.copyWith(
                       color: Theme.of(context).textTheme.bodyLarge?.color?.withAlpha(179),
                     ),
