@@ -133,7 +133,7 @@ class _SettingsPageState extends State<SettingsPage> {
             child: ListTile(
               leading: Icon(Icons.policy_outlined, color: Theme.of(context).colorScheme.primary),
               title: const Text('Rechtliches'),
-              subtitle: const Text('Datenschutz & Impressum'),
+              subtitle: const Text('Nutzungsbedingungen, Datenschutz & Impressum'),
               trailing: const Icon(Icons.arrow_forward_ios, size: 16),
               onTap: () {
                 Navigator.push(
