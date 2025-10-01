@@ -100,10 +100,10 @@ class _AboutPageState extends State<AboutPage> {
             child: ListTile(
               leading: Icon(Icons.language, color: Theme.of(context).colorScheme.primary),
               title: const Text('Website'),
-              subtitle: const Text('spotwatt.github.io'),
+              subtitle: const Text('www.spotwatt.at'),
               trailing: const Icon(Icons.open_in_new, size: 16),
               onTap: () async {
-                final Uri websiteUrl = Uri.parse('https://spotwatt.github.io');
+                final Uri websiteUrl = Uri.parse('https://www.spotwatt.at');
                 if (await canLaunchUrl(websiteUrl)) {
                   await launchUrl(websiteUrl, mode: LaunchMode.externalApplication);
                 }
