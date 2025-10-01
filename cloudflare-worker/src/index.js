@@ -326,23 +326,25 @@ function aggregate15MinToHourly(periodContent, startTime, market) {
       if (pointsMap[pos] !== undefined) {
         values.push(pointsMap[pos]);
       } else {
-        // Forward Fill: Use next available value
+        // Backward Fill: Use last known value (matches EPEX SPOT behavior)
         missingCount++;
         missingPositions.push(pos);
-        let foundNext = false;
-        let filledValue = null;
-        for (let nextPos = pos + 1; nextPos <= 96; nextPos++) {
-          if (pointsMap[nextPos] !== undefined) {
-            filledValue = pointsMap[nextPos];
-            values.push(filledValue);
-            foundNext = true;
-            break;
-          }
-        }
-        if (!foundNext && values.length > 0) {
-          // If no next value found, use last known value
-          filledValue = values[values.length - 1];
+        if (values.length > 0) {
+          // Use last known value from this hour
+          const filledValue = values[values.length - 1];
           values.push(filledValue);
+        } else {
+          // If no previous value in this hour, try to find any previous value
+          let filledValue = null;
+          for (let prevPos = pos - 1; prevPos >= 1; prevPos--) {
+            if (pointsMap[prevPos] !== undefined) {
+              filledValue = pointsMap[prevPos];
+              break;
+            }
+          }
+          if (filledValue !== null) {
+            values.push(filledValue);
+          }
         }
       }
     }
@@ -364,7 +366,7 @@ function aggregate15MinToHourly(periodContent, startTime, market) {
 
       if (missingCount > 0) {
         const hourStr = pointTime.toISOString().substring(11, 16);
-        console.warn(`[${market}] ⚠️ Hour ${hourStr}: ${missingCount}/4 15-min slots missing (positions: ${missingPositions.join(', ')}), used Forward Fill → avg: ${(avgPrice / 10.0).toFixed(4)} ct/kWh`);
+        console.warn(`[${market}] ⚠️ Hour ${hourStr}: ${missingCount}/4 15-min slots missing (positions: ${missingPositions.join(', ')}), used Backward Fill → avg: ${(avgPrice / 10.0).toFixed(4)} ct/kWh`);
       }
     }
   }
