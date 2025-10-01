@@ -20,7 +20,7 @@ class LegalPage extends StatelessWidget {
               subtitle: const Text('Bedingungen für die App-Nutzung'),
               trailing: const Icon(Icons.open_in_new, size: 16),
               onTap: () async {
-                final Uri termsUrl = Uri.parse('https://spotwatt.github.io/terms.html');
+                final Uri termsUrl = Uri.parse('https://www.spotwatt.at/terms.html');
                 if (await canLaunchUrl(termsUrl)) {
                   await launchUrl(termsUrl, mode: LaunchMode.externalApplication);
                 }
@@ -37,7 +37,7 @@ class LegalPage extends StatelessWidget {
               subtitle: const Text('Informationen zum Datenschutz'),
               trailing: const Icon(Icons.open_in_new, size: 16),
               onTap: () async {
-                final Uri privacyUrl = Uri.parse('https://spotwatt.github.io/privacy.html');
+                final Uri privacyUrl = Uri.parse('https://www.spotwatt.at/privacy.html');
                 if (await canLaunchUrl(privacyUrl)) {
                   await launchUrl(privacyUrl, mode: LaunchMode.externalApplication);
                 }
@@ -54,7 +54,7 @@ class LegalPage extends StatelessWidget {
               subtitle: const Text('Rechtliche Informationen'),
               trailing: const Icon(Icons.open_in_new, size: 16),
               onTap: () async {
-                final Uri imprintUrl = Uri.parse('https://spotwatt.github.io/imprint.html');
+                final Uri imprintUrl = Uri.parse('https://www.spotwatt.at/imprint.html');
                 if (await canLaunchUrl(imprintUrl)) {
                   await launchUrl(imprintUrl, mode: LaunchMode.externalApplication);
                 }
