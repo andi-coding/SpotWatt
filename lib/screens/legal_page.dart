@@ -21,8 +21,16 @@ class LegalPage extends StatelessWidget {
               trailing: const Icon(Icons.open_in_new, size: 16),
               onTap: () async {
                 final Uri termsUrl = Uri.parse('https://www.spotwatt.at/terms.html');
-                if (await canLaunchUrl(termsUrl)) {
+                try {
+                  // Skip canLaunchUrl check, just try to launch (like Ko-fi does)
                   await launchUrl(termsUrl, mode: LaunchMode.externalApplication);
+                } catch (e) {
+                  print('DEBUG: Error launching URL: $e');
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('Link konnte nicht geöffnet werden: $e')),
+                    );
+                  }
                 }
               },
             ),
@@ -38,8 +46,14 @@ class LegalPage extends StatelessWidget {
               trailing: const Icon(Icons.open_in_new, size: 16),
               onTap: () async {
                 final Uri privacyUrl = Uri.parse('https://www.spotwatt.at/privacy.html');
-                if (await canLaunchUrl(privacyUrl)) {
+                try {
                   await launchUrl(privacyUrl, mode: LaunchMode.externalApplication);
+                } catch (e) {
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('Link konnte nicht geöffnet werden: $e')),
+                    );
+                  }
                 }
               },
             ),
@@ -55,8 +69,14 @@ class LegalPage extends StatelessWidget {
               trailing: const Icon(Icons.open_in_new, size: 16),
               onTap: () async {
                 final Uri imprintUrl = Uri.parse('https://www.spotwatt.at/imprint.html');
-                if (await canLaunchUrl(imprintUrl)) {
+                try {
                   await launchUrl(imprintUrl, mode: LaunchMode.externalApplication);
+                } catch (e) {
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('Link konnte nicht geöffnet werden: $e')),
+                    );
+                  }
                 }
               },
             ),

@@ -87,8 +87,14 @@ class _AboutPageState extends State<AboutPage> {
                     'subject': 'SpotWatt Feedback',
                   },
                 );
-                if (await canLaunchUrl(emailUri)) {
+                try {
                   await launchUrl(emailUri);
+                } catch (e) {
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('E-Mail konnte nicht geöffnet werden: $e')),
+                    );
+                  }
                 }
               },
             ),
@@ -104,8 +110,14 @@ class _AboutPageState extends State<AboutPage> {
               trailing: const Icon(Icons.open_in_new, size: 16),
               onTap: () async {
                 final Uri websiteUrl = Uri.parse('https://www.spotwatt.at');
-                if (await canLaunchUrl(websiteUrl)) {
+                try {
                   await launchUrl(websiteUrl, mode: LaunchMode.externalApplication);
+                } catch (e) {
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('Link konnte nicht geöffnet werden: $e')),
+                    );
+                  }
                 }
               },
             ),
@@ -122,20 +134,11 @@ class _AboutPageState extends State<AboutPage> {
               onTap: () async {
                 final Uri kofiUrl = Uri.parse('https://ko-fi.com/spotwatt');
                 try {
-                  if (await canLaunchUrl(kofiUrl)) {
-                    await launchUrl(kofiUrl, mode: LaunchMode.externalApplication);
-                  } else {
-                    // Fallback - versuche trotzdem zu öffnen
-                    await launchUrl(kofiUrl, mode: LaunchMode.externalApplication);
-                  }
+                  await launchUrl(kofiUrl, mode: LaunchMode.externalApplication);
                 } catch (e) {
-                  // Zeige Fehlermeldung dem Nutzer
                   if (context.mounted) {
                     ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text('Ko-fi Link konnte nicht geöffnet werden: $e'),
-                        duration: const Duration(seconds: 3),
-                      ),
+                      SnackBar(content: Text('Link konnte nicht geöffnet werden: $e')),
                     );
                   }
                 }
