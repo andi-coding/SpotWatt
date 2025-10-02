@@ -6,14 +6,29 @@ import 'home_screen.dart';
 import 'notification_settings_page.dart';
 
 class OnboardingScreen extends StatefulWidget {
-  const OnboardingScreen({Key? key}) : super(key: key);
+  final bool termsOnly;
+
+  const OnboardingScreen({Key? key, this.termsOnly = false}) : super(key: key);
 
   static const String _onboardingCompleteKey = 'onboarding_completed';
   static const String _selectedRegionKey = 'selected_region';
+  static const String _termsVersionKey = 'accepted_terms_version';
+  static const int currentTermsVersion = 1; // Erhöhen bei Terms/Privacy Update!
 
   static Future<bool> hasCompletedOnboarding() async {
     final prefs = await SharedPreferences.getInstance();
     return prefs.getBool(_onboardingCompleteKey) ?? false;
+  }
+
+  static Future<bool> needsTermsAcceptance() async {
+    final prefs = await SharedPreferences.getInstance();
+    final acceptedVersion = prefs.getInt(_termsVersionKey) ?? 0;
+    return acceptedVersion < currentTermsVersion;
+  }
+
+  static Future<void> markTermsAccepted() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setInt(_termsVersionKey, currentTermsVersion);
   }
 
   @override
@@ -29,6 +44,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   Future<void> _completeOnboarding() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool(OnboardingScreen._onboardingCompleteKey, true);
+    await prefs.setInt(OnboardingScreen._termsVersionKey, OnboardingScreen.currentTermsVersion);
     if (_selectedRegion != null) {
       await prefs.setString(OnboardingScreen._selectedRegionKey, _selectedRegion!);
       // Also set the price_market for price settings
@@ -37,10 +53,25 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   }
 
   void _nextPage() {
+    // If termsOnly mode, go directly to home after accepting terms
+    if (widget.termsOnly) {
+      _acceptTermsAndGoHome();
+      return;
+    }
+
     if (_currentPage < 2) {
       _pageController.nextPage(
         duration: const Duration(milliseconds: 300),
         curve: Curves.easeInOut,
+      );
+    }
+  }
+
+  void _acceptTermsAndGoHome() async {
+    await OnboardingScreen.markTermsAccepted();
+    if (mounted) {
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(builder: (context) => const HomeScreen()),
       );
     }
   }
@@ -95,20 +126,22 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       body: SafeArea(
-        child: PageView(
-          controller: _pageController,
-          physics: const NeverScrollableScrollPhysics(), // Prevent manual swiping
-          onPageChanged: (page) {
-            setState(() {
-              _currentPage = page;
-            });
-          },
-          children: [
-            _buildTermsPage(),
-            _buildRegionSelectionPage(),
-            _buildNotificationOptInPage(),
-          ],
-        ),
+        child: widget.termsOnly
+            ? _buildTermsPage() // Only show terms page in termsOnly mode
+            : PageView(
+                controller: _pageController,
+                physics: const NeverScrollableScrollPhysics(), // Prevent manual swiping
+                onPageChanged: (page) {
+                  setState(() {
+                    _currentPage = page;
+                  });
+                },
+                children: [
+                  _buildTermsPage(),
+                  _buildRegionSelectionPage(),
+                  _buildNotificationOptInPage(),
+                ],
+              ),
       ),
     );
   }
@@ -131,7 +164,9 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
 
           // Title
           Text(
-            'Willkommen bei SpotWatt!',
+            widget.termsOnly
+                ? 'Aktualisierte Nutzungsbedingungen'
+                : 'Willkommen bei SpotWatt!',
             style: Theme.of(context).textTheme.headlineMedium?.copyWith(
               fontWeight: FontWeight.bold,
             ),
@@ -141,7 +176,9 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
 
           // Subtitle
           Text(
-            'Bitte stimme den folgenden Bedingungen zu, um fortzufahren:',
+            widget.termsOnly
+                ? 'Wir haben unsere Nutzungsbedingungen und Datenschutzerklärung aktualisiert. Bitte akzeptiere die neuen Bedingungen, um fortzufahren.'
+                : 'Bitte stimme den folgenden Bedingungen zu, um fortzufahren:',
             style: Theme.of(context).textTheme.bodyLarge,
             textAlign: TextAlign.center,
           ),
@@ -159,7 +196,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
             title: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text('Ich akzeptiere die'),
+                Text(widget.termsOnly ? 'Ich akzeptiere die aktualisierten' : 'Ich akzeptiere die'),
                 const SizedBox(height: 4),
                 InkWell(
                   onTap: () => _launchUrl('https://www.spotwatt.at/terms.html'),
@@ -172,7 +209,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                   ),
                 ),
                 const SizedBox(height: 8),
-                const Text('und die'),
+                Text(widget.termsOnly ? 'und die aktualisierte' : 'und die'),
                 const SizedBox(height: 4),
                 InkWell(
                   onTap: () => _launchUrl('https://www.spotwatt.at/privacy.html'),

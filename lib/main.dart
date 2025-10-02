@@ -41,6 +41,7 @@ class _WattWiseAppState extends State<WattWiseApp> {
   ThemeMode _themeMode = ThemeMode.system;
   bool _isLoading = true;
   bool _showOnboarding = false;
+  bool _showTermsUpdate = false;
 
   @override
   void initState() {
@@ -75,8 +76,19 @@ class _WattWiseAppState extends State<WattWiseApp> {
 
   Future<void> _checkOnboarding() async {
     final hasCompleted = await OnboardingScreen.hasCompletedOnboarding();
+    final needsTerms = await OnboardingScreen.needsTermsAcceptance();
+
     setState(() {
-      _showOnboarding = !hasCompleted;
+      if (!hasCompleted) {
+        _showOnboarding = true;
+        _showTermsUpdate = false;
+      } else if (needsTerms) {
+        _showOnboarding = false;
+        _showTermsUpdate = true;
+      } else {
+        _showOnboarding = false;
+        _showTermsUpdate = false;
+      }
     });
   }
 
@@ -136,7 +148,11 @@ class _WattWiseAppState extends State<WattWiseApp> {
           ),
         ),
         themeMode: _themeMode,
-        home: _showOnboarding ? const OnboardingScreen() : const HomeScreen(),
+        home: _showOnboarding
+            ? const OnboardingScreen()
+            : _showTermsUpdate
+                ? const OnboardingScreen(termsOnly: true)
+                : const HomeScreen(),
       ),
     );
   }
