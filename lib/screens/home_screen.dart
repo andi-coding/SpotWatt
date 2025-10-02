@@ -6,7 +6,6 @@ import '../services/notification_service.dart';
 import '../services/price_cache_service.dart';
 import '../services/widget_service.dart';
 import '../services/location_permission_helper.dart';
-import '../widgets/terms_dialog.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({Key? key}) : super(key: key);
@@ -32,10 +31,9 @@ class _HomeScreenState extends State<HomeScreen> {
   }
   
   Future<void> _initializeApp() async {
-    // Show terms dialog if not yet accepted
-    await TermsDialog.showIfNeeded(context);
+    // Terms are now handled in onboarding, no need for separate dialog
 
-    // Notifications initialisieren
+    // Notifications initialisieren (without requesting permissions)
     await _notificationService.initialize(context);
 
     // Location Permissions werden nur angefragt wenn User Location-based Notifications aktiviert

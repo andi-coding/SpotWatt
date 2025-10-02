@@ -229,7 +229,11 @@ class _NotificationSettingsState extends State<NotificationSettings> {
             // 3. Preis-Schwellwert (dritte Position)
             SwitchListTile(
               title: const Text('Günstige Preise'),
-              subtitle: Text('Benachrichtigung wenn Preis unterhalb von ${PriceUtils.formatPrice(_tempNotificationThreshold)} liegt'),
+              subtitle: Text(
+                widget.priceThresholdEnabled
+                  ? 'Benachrichtigung wenn Preis unterhalb von ${PriceUtils.formatPrice(_tempNotificationThreshold)} liegt'
+                  : 'Benachrichtigung wenn Preis unterhalb von ... ct/kWh liegt'
+              ),
               value: widget.priceThresholdEnabled,
               onChanged: widget.onPriceThresholdEnabledChanged,
             ),

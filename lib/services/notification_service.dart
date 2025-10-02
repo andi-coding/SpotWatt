@@ -18,31 +18,25 @@ class NotificationService {
   Future<void> initialize(BuildContext context) async {
     const androidSettings = AndroidInitializationSettings('@drawable/ic_notification_small');
     const iosSettings = DarwinInitializationSettings(
-      requestAlertPermission: true,
-      requestBadgePermission: true,
-      requestSoundPermission: true,
+      requestAlertPermission: false,
+      requestBadgePermission: false,
+      requestSoundPermission: false,
     );
-    
+
     const initSettings = InitializationSettings(
       android: androidSettings,
       iOS: iosSettings,
     );
-    
+
     await notifications.initialize(
       initSettings,
       onDidReceiveNotificationResponse: (NotificationResponse response) {
         debugPrint('Notification clicked: ${response.payload}');
       },
     );
-    
-    if (Theme.of(context).platform == TargetPlatform.android) {
-      final androidPlugin = notifications.resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>();
-      
-      if (androidPlugin != null) {
-        await androidPlugin.requestNotificationsPermission();
-        await androidPlugin.requestExactAlarmsPermission();
-      }
-    }
+
+    // Don't request permissions on initialize - only when user enables notifications
+    // Permissions are requested in notification_settings_page.dart when user toggles a notification
   }
 
   Future<void> rescheduleNotifications() async {
@@ -78,9 +72,9 @@ class NotificationService {
       }
     }
     
-    final cheapestTimeEnabled = prefs.getBool('cheapest_time_enabled') ?? true;
+    final cheapestTimeEnabled = prefs.getBool('cheapest_time_enabled') ?? false;
     final notificationMinutesBefore = prefs.getInt('notification_minutes_before') ?? 15;
-    
+
     if (cheapestTimeEnabled) {
       final now = DateTime.now();
       debugPrint('[NotificationService] Current time: $now');
@@ -111,7 +105,7 @@ class NotificationService {
     }
     
     // Schedule daily summary
-    final dailySummaryEnabled = prefs.getBool('daily_summary_enabled') ?? true;
+    final dailySummaryEnabled = prefs.getBool('daily_summary_enabled') ?? false;
     if (dailySummaryEnabled) {
       await _scheduleDailySummary(prices, prefs);
     }

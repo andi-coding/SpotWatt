@@ -1,5 +1,7 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import '../services/notification_service.dart';
 import '../services/location_service.dart';
 import '../services/location_permission_helper.dart';
@@ -19,9 +21,9 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
   final LocationService _locationService = LocationService();
   
   bool priceThresholdEnabled = false;
-  bool cheapestTimeEnabled = true;
+  bool cheapestTimeEnabled = false;
   bool locationBasedNotifications = false;
-  bool dailySummaryEnabled = true;
+  bool dailySummaryEnabled = false;
   bool quietTimeEnabled = false;
   double notificationThreshold = 5.0;
   double highPriceThreshold = 50.0;
@@ -41,9 +43,9 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
     final prefs = await SharedPreferences.getInstance();
     setState(() {
       priceThresholdEnabled = prefs.getBool('price_threshold_enabled') ?? false;
-      cheapestTimeEnabled = prefs.getBool('cheapest_time_enabled') ?? true;
+      cheapestTimeEnabled = prefs.getBool('cheapest_time_enabled') ?? false;
       locationBasedNotifications = prefs.getBool('location_based_notifications') ?? false;
-      dailySummaryEnabled = prefs.getBool('daily_summary_enabled') ?? true;
+      dailySummaryEnabled = prefs.getBool('daily_summary_enabled') ?? false;
       quietTimeEnabled = prefs.getBool('quiet_time_enabled') ?? false;
       notificationThreshold = prefs.getDouble('notification_threshold') ?? 5.0;
       highPriceThreshold = prefs.getDouble('high_price_threshold') ?? 50.0;
@@ -83,6 +85,71 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
     await prefs.setInt('daily_summary_hours', dailySummaryHours);
   }
 
+  Future<bool> _checkNotificationPermission() async {
+    final plugin = FlutterLocalNotificationsPlugin();
+
+    if (Platform.isAndroid) {
+      final androidImpl = plugin.resolvePlatformSpecificImplementation<
+          AndroidFlutterLocalNotificationsPlugin>();
+      return await androidImpl?.areNotificationsEnabled() ?? false;
+    }
+
+    return true; // iOS prüft automatisch bei requestPermission
+  }
+
+  Future<bool> _requestNotificationPermission() async {
+    final plugin = FlutterLocalNotificationsPlugin();
+
+    if (Platform.isAndroid) {
+      final androidImpl = plugin.resolvePlatformSpecificImplementation<
+          AndroidFlutterLocalNotificationsPlugin>();
+      return await androidImpl?.requestNotificationsPermission() ?? false;
+    } else if (Platform.isIOS) {
+      final iosImpl = plugin.resolvePlatformSpecificImplementation<
+          IOSFlutterLocalNotificationsPlugin>();
+      return await iosImpl?.requestPermissions(
+        alert: true,
+        badge: true,
+        sound: true,
+      ) ?? false;
+    }
+
+    return false;
+  }
+
+  void _showPermissionDeniedDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Berechtigung erforderlich'),
+        content: const Text(
+          'Um Benachrichtigungen zu erhalten, musst du die Berechtigung in den App-Einstellungen aktivieren.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('OK'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<bool> _ensureNotificationPermission() async {
+    final hasPermission = await _checkNotificationPermission();
+
+    if (!hasPermission) {
+      final granted = await _requestNotificationPermission();
+
+      if (!granted) {
+        _showPermissionDeniedDialog();
+        return false;
+      }
+    }
+
+    return true;
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -103,6 +170,14 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
             dailySummaryTime: dailySummaryTime,
             dailySummaryHours: dailySummaryHours,
             onPriceThresholdEnabledChanged: (value) async {
+              if (value) {
+                // User will Benachrichtigung aktivieren - Permission prüfen
+                final hasPermission = await _ensureNotificationPermission();
+                if (!hasPermission) {
+                  return; // Permission verweigert
+                }
+              }
+
               setState(() {
                 priceThresholdEnabled = value;
               });
@@ -111,6 +186,13 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
               debugPrint('Price threshold changed to: $value');
             },
             onCheapestTimeEnabledChanged: (value) async {
+              if (value) {
+                final hasPermission = await _ensureNotificationPermission();
+                if (!hasPermission) {
+                  return;
+                }
+              }
+
               setState(() {
                 cheapestTimeEnabled = value;
               });
@@ -135,6 +217,13 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
               debugPrint('Notification minutes before changed to: ${value.toInt()}');
             },
             onDailySummaryEnabledChanged: (value) async {
+              if (value) {
+                final hasPermission = await _ensureNotificationPermission();
+                if (!hasPermission) {
+                  return;
+                }
+              }
+
               setState(() {
                 dailySummaryEnabled = value;
               });
