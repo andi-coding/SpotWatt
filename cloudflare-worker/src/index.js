@@ -15,6 +15,44 @@ const MARKET_AREAS = {
 // Document type for day-ahead prices
 const DOCUMENT_TYPE = 'A44'; // Day-ahead prices
 
+// Timezone mapping for markets
+const MARKET_TIMEZONES = {
+  AT: 'Europe/Vienna',
+  DE: 'Europe/Berlin'
+};
+
+/**
+ * Get trading day boundaries in UTC for a given market's timezone
+ * Automatically handles MESZ (UTC+2) and MEZ (UTC+1)
+ * @param {string} timezone - IANA timezone (e.g., 'Europe/Vienna')
+ * @returns {Object} { periodStart: Date, periodEnd: Date }
+ */
+function getTradingDayUTC(timezone) {
+  const now = new Date();
+
+  // Get current date in the target timezone (format: "2025-10-05")
+  const localDateStr = new Intl.DateTimeFormat('sv-SE', {
+    timeZone: timezone
+  }).format(now);
+  const [year, month, day] = localDateStr.split('-').map(Number);
+
+  // Calculate UTC offset for this timezone (handles DST automatically)
+  const utcDate = new Date(now.toLocaleString('en-US', { timeZone: 'UTC' }));
+  const tzDate = new Date(now.toLocaleString('en-US', { timeZone: timezone }));
+  const offsetHours = Math.abs((utcDate.getTime() - tzDate.getTime()) / (1000 * 60 * 60));
+
+  // Trading day starts at 00:00 local time = (24 - offset) UTC on previous day
+  // MESZ (UTC+2): 22:00 UTC, MEZ (UTC+1): 23:00 UTC
+  const utcHour = 24 - offsetHours;
+
+  const periodStart = new Date(Date.UTC(year, month - 1, day - 1, utcHour, 0, 0));
+  const periodEnd = new Date(periodStart.getTime() + 48 * 60 * 60 * 1000);
+
+  console.log(`[${timezone}] Local date: ${localDateStr}, Offset: UTC+${offsetHours}, Period: ${periodStart.toISOString()} to ${periodEnd.toISOString()}`);
+
+  return { periodStart, periodEnd };
+}
+
 // Helper to fetch raw XML from ENTSO-E (for debugging)
 async function fetchRawXML(market, apiToken) {
   const areaCode = MARKET_AREAS[market];
@@ -22,13 +60,15 @@ async function fetchRawXML(market, apiToken) {
     throw new Error(`Invalid market: ${market}`);
   }
 
-  const now = new Date();
-  const today = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
-  const dayAfterTomorrow = new Date(today);
-  dayAfterTomorrow.setUTCDate(dayAfterTomorrow.getUTCDate() + 2);
+  // Get timezone for this market
+  const timezone = MARKET_TIMEZONES[market] || 'Europe/Vienna';
 
-  const periodStart = formatDateENTSOE(today);
-  const periodEnd = formatDateENTSOE(dayAfterTomorrow);
+  // Calculate trading day boundaries in UTC based on local timezone
+  const { periodStart: periodStartDate, periodEnd: periodEndDate } = getTradingDayUTC(timezone);
+
+  // Format dates as required by ENTSO-E (yyyyMMddHHmm)
+  const periodStart = formatDateENTSOE(periodStartDate);
+  const periodEnd = formatDateENTSOE(periodEndDate);
 
   const params = new URLSearchParams({
     securityToken: apiToken,
@@ -52,15 +92,16 @@ async function fetchFromENTSOE(market, apiToken) {
     throw new Error(`Invalid market: ${market}`);
   }
 
-  // Get current date and day after tomorrow for full coverage (UTC)
-  const now = new Date();
-  const today = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
-  const dayAfterTomorrow = new Date(today);
-  dayAfterTomorrow.setUTCDate(dayAfterTomorrow.getUTCDate() + 2); // Get 48 hours of data
+  // Get timezone for this market
+  const timezone = MARKET_TIMEZONES[market] || 'Europe/Vienna';
+
+  // Calculate trading day boundaries in UTC based on local timezone
+  // This automatically handles MESZ (UTC+2) and MEZ (UTC+1)
+  const { periodStart: periodStartDate, periodEnd: periodEndDate } = getTradingDayUTC(timezone);
 
   // Format dates as required by ENTSO-E (yyyyMMddHHmm)
-  const periodStart = formatDateENTSOE(today);
-  const periodEnd = formatDateENTSOE(dayAfterTomorrow);
+  const periodStart = formatDateENTSOE(periodStartDate);
+  const periodEnd = formatDateENTSOE(periodEndDate);
 
   const params = new URLSearchParams({
     securityToken: apiToken,
@@ -73,8 +114,12 @@ async function fetchFromENTSOE(market, apiToken) {
     // Note: NO position filter - we fetch all data and select Position 1 > Position 2 in parser
   });
 
+  const apiUrl = `${ENTSOE_API_URL}?${params}`;
+  console.log(`[${market}] 🌐 ENTSO-E API Request: periodStart=${periodStart}, periodEnd=${periodEnd}`);
+  console.log(`[${market}] 🔗 Full URL: ${apiUrl.replace(apiToken, 'REDACTED')}`);
+
   try {
-    const response = await fetchWithRetry(`${ENTSOE_API_URL}?${params}`);
+    const response = await fetchWithRetry(apiUrl);
     const xmlData = await response.text();
     console.log(`ENTSO-E XML Response for ${market}:`, xmlData.substring(0, 2000) + '...');
     const prices = parseENTSOEResponse(xmlData, market);
@@ -134,12 +179,14 @@ async function fetchWithRetry(url, retries = 2, delay = 2000) {
   }
 }
 
-// Format date for ENTSO-E API (UTC)
+// Format date for ENTSO-E API (yyyyMMddHHmm in UTC)
 function formatDateENTSOE(date) {
   const year = date.getUTCFullYear();
   const month = String(date.getUTCMonth() + 1).padStart(2, '0');
   const day = String(date.getUTCDate()).padStart(2, '0');
-  return `${year}${month}${day}0000`; // Always start at 00:00 UTC
+  const hour = String(date.getUTCHours()).padStart(2, '0');
+  const minute = String(date.getUTCMinutes()).padStart(2, '0');
+  return `${year}${month}${day}${hour}${minute}`;
 }
 
 // Parse ENTSO-E XML response
@@ -261,7 +308,7 @@ function parse60MinuteData(periodContent, startTime, market) {
   for (const pointMatch of pointMatches) {
     const pointContent = pointMatch[1];
     const positionMatch = pointContent.match(/<position>(\d+)<\/position>/);
-    const priceMatch = pointContent.match(/<price\.amount>([\d.]+)<\/price\.amount>/);
+    const priceMatch = pointContent.match(/<price\.amount>(-?[\d.]+)<\/price\.amount>/);
 
     if (positionMatch && priceMatch) {
       const position = parseInt(positionMatch[1]);
@@ -300,7 +347,7 @@ function aggregate15MinToHourly(periodContent, startTime, market) {
   for (const pointMatch of pointMatches) {
     const pointContent = pointMatch[1];
     const positionMatch = pointContent.match(/<position>(\d+)<\/position>/);
-    const priceMatch = pointContent.match(/<price\.amount>([\d.]+)<\/price\.amount>/);
+    const priceMatch = pointContent.match(/<price\.amount>(-?[\d.]+)<\/price\.amount>/);
 
     if (positionMatch && priceMatch) {
       const position = parseInt(positionMatch[1]);
