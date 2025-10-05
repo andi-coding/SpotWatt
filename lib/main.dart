@@ -133,6 +133,14 @@ class _WattWiseAppState extends State<WattWiseApp> {
               borderRadius: BorderRadius.circular(12),
             ),
           ),
+          snackBarTheme: SnackBarThemeData(
+            backgroundColor: const Color(0xFF1e3a5f),
+            contentTextStyle: const TextStyle(color: Colors.white),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(8),
+            ),
+            behavior: SnackBarBehavior.floating,
+          ),
         ),
         darkTheme: ThemeData(
           useMaterial3: true,
@@ -145,6 +153,14 @@ class _WattWiseAppState extends State<WattWiseApp> {
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(12),
             ),
+          ),
+          snackBarTheme: SnackBarThemeData(
+            backgroundColor: const Color(0xFF2d5a8a),
+            contentTextStyle: const TextStyle(color: Colors.white),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(8),
+            ),
+            behavior: SnackBarBehavior.floating,
           ),
         ),
         themeMode: _themeMode,

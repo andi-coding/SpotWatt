@@ -26,10 +26,10 @@ class PriceCacheService {
   final AwattarService _awattarService = AwattarService();
   final FullCostCalculator _fullCostCalculator = FullCostCalculator();
   
-  /// Tests actual internet connectivity with DNS lookup
+  /// Tests actual internet connectivity with DNS lookup to CloudFlare Worker
   Future<bool> _testInternetConnectivity() async {
     try {
-      final result = await InternetAddress.lookup('google.com')
+      final result = await InternetAddress.lookup('spotwatt-prices.spotwatt-api.workers.dev')
           .timeout(Duration(seconds: 5));
       return result.isNotEmpty && result[0].rawAddress.isNotEmpty;
     } catch (e) {

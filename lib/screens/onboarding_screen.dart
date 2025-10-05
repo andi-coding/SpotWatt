@@ -415,8 +415,8 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
           // Features List
           _buildFeatureItem(
             Icons.schedule,
-            'Tägliche Zusammenfassung',
-            'Die günstigsten Stunden des Tages (morgens)',
+            'Tägliche Zusammenfassung (morgens)',
+            'Die günstigsten Stunden des Tages, sowie Warnung vor sehr teuren Preisen',
           ),
           const SizedBox(height: 16),
           _buildFeatureItem(
@@ -428,7 +428,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
           _buildFeatureItem(
             Icons.trending_down,
             'Preis-Schwellen',
-            'Alarm bei besonders niedrigen Preisen',
+            'Benachrichtigung bei besonders niedrigen Preisen',
           ),
 
           const SizedBox(height: 32),

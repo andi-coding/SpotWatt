@@ -43,7 +43,7 @@ class BackgroundTaskService {
       frequency: const Duration(minutes: 15), // Android minimum
       initialDelay: const Duration(seconds: 10), // Startet 10 Sekunden nach App-Start
       constraints: Constraints(
-        networkType: NetworkType.connected,
+        networkType: NetworkType.notRequired, // ✅ Läuft auch offline
         requiresBatteryNotLow: false,
         requiresCharging: false,
         requiresDeviceIdle: false,
@@ -86,25 +86,32 @@ void callbackDispatcher() {
       if (now.hour >= 13) {
         final lastNotificationDate = prefs.getString('last_notification_scheduled_date');
         final todayString = '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
-        
+
         if (lastNotificationDate != todayString) {
           debugPrint('[BackgroundTask] Checking for tomorrow prices (notifications not yet scheduled today)...');
-          final prices = await priceCacheService.getPrices(); // Smart cache validation
-          
-          final tomorrow = now.add(const Duration(days: 1));
-          final hasTomorrowPrices = prices.any((p) => 
-            p.startTime.day == tomorrow.day && 
-            p.startTime.month == tomorrow.month && 
-            p.startTime.year == tomorrow.year
-          );
-          
-          if (hasTomorrowPrices) {
-            debugPrint('[BackgroundTask] ✓ Got tomorrow prices - scheduling notifications');
-            final notificationService = NotificationService();
-            await notificationService.scheduleNotifications();
-            await prefs.setString('last_notification_scheduled_date', todayString);
-          } else {
-            debugPrint('[BackgroundTask] No tomorrow prices yet, will retry in 15 min');
+
+          try {
+            final prices = await priceCacheService.getPrices(); // Smart cache validation
+
+            final tomorrow = now.add(const Duration(days: 1));
+            final hasTomorrowPrices = prices.any((p) =>
+              p.startTime.day == tomorrow.day &&
+              p.startTime.month == tomorrow.month &&
+              p.startTime.year == tomorrow.year
+            );
+
+            if (hasTomorrowPrices) {
+              debugPrint('[BackgroundTask] ✓ Got tomorrow prices - scheduling notifications');
+              final notificationService = NotificationService();
+              await notificationService.scheduleNotifications();
+              await prefs.setString('last_notification_scheduled_date', todayString);
+            } else {
+              debugPrint('[BackgroundTask] No tomorrow prices yet, will retry in 15 min');
+            }
+          } catch (e) {
+            debugPrint('[BackgroundTask] Failed to get prices for notifications: $e');
+            debugPrint('[BackgroundTask] Will retry in next cycle (offline or cache invalid)');
+            // No crash - just skip notification scheduling this time
           }
         } else {
           debugPrint('[BackgroundTask] Notifications already scheduled today');
@@ -135,7 +142,7 @@ void callbackDispatcher() {
             'updatePricesAndNotifications',
             initialDelay: delayToNextHour,
             constraints: Constraints(
-              networkType: NetworkType.connected,
+              networkType: NetworkType.notRequired,
             ),
           );
         }

@@ -5,6 +5,7 @@ import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import '../services/notification_service.dart';
 import '../services/location_service.dart';
 import '../services/location_permission_helper.dart';
+import '../services/exact_alarm_permission_helper.dart';
 import '../utils/price_utils.dart';
 import '../widgets/notification_settings.dart';
 import '../widgets/do_not_disturb_settings.dart';
@@ -144,6 +145,14 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
       if (!granted) {
         _showPermissionDeniedDialog();
         return false;
+      }
+    }
+
+    // Also check exact alarm permission (Android 14+)
+    if (Platform.isAndroid && mounted) {
+      final exactAlarmGranted = await ExactAlarmPermissionHelper.ensureExactAlarmPermission(context);
+      if (!exactAlarmGranted) {
+        return false; // User denied exact alarm permission
       }
     }
 

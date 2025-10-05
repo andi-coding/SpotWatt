@@ -61,7 +61,6 @@ class _LocationSettingsState extends State<LocationSettings> {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('Standort als Zuhause gespeichert'),
-            backgroundColor: Colors.green,
           ),
         );
       } else {
