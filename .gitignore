@@ -71,3 +71,8 @@ crashlytics-build.properties
 
 # Android Studio local settings
 local.properties
+
+# Keystore files (NEVER commit these!)
+*.jks
+*.keystore
+key.properties

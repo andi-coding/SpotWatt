@@ -60,6 +60,17 @@ dev_dependencies:
   # package. See that file for information about deactivating specific lint
   # rules and activating additional ones.
   flutter_lints: ^6.0.0
+  flutter_launcher_icons: ^0.14.1
+
+# Launcher Icons Configuration
+flutter_launcher_icons:
+  android: true
+  ios: false # Set to true when iOS version is ready
+  image_path: "assets/icons/Spotwatt_Logo_512_512.png"
+  adaptive_icon_background: "#E8F4F8" # Light blue background
+  adaptive_icon_foreground: "assets/icons/Spotwatt_Logo_512_512.png"
+  # For Play Store
+  remove_alpha_ios: false
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec

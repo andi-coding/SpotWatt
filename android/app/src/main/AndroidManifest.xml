@@ -7,11 +7,7 @@
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
     <!-- Background Fetch Permissions -->
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"/>
-    <!-- Location Permissions -->
-    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION"/>
-    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION"/>
-    <uses-permission android:name="android.permission.ACCESS_BACKGROUND_LOCATION"/>
-     
+
     <application
         android:label="SpotWatt"
         android:name="${applicationName}"
@@ -36,19 +32,6 @@
                 android:resource="@xml/price_widget_info" />
         </receiver>
 
-
-        <!-- Used by plugin: native_geofence -->
-        <receiver android:name="com.chunkytofustudios.native_geofence.receivers.NativeGeofenceBroadcastReceiver"
-                  android:exported="true"/>
-        <receiver android:name="com.chunkytofustudios.native_geofence.receivers.NativeGeofenceRebootBroadcastReceiver"
-                  android:exported="true">
-            <intent-filter>
-                <action android:name="android.intent.action.BOOT_COMPLETED"></action>
-            </intent-filter>
-        </receiver>
-        <service android:name="com.chunkytofustudios.native_geofence.NativeGeofenceForegroundService"
-                  android:permission="android.permission.BIND_JOB_SERVICE" android:exported="true"/>
-            
         <activity
             android:name=".MainActivity"
             android:exported="true"

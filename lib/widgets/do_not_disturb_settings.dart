@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:geolocator/geolocator.dart';
-import '../services/location_service.dart';
+// TODO v2.0: Re-enable for location features
+// import 'package:geolocator/geolocator.dart';
+// import '../services/location_service.dart';
 
 class DoNotDisturbSettings extends StatefulWidget {
   final bool locationBasedNotifications;
@@ -29,18 +30,20 @@ class DoNotDisturbSettings extends StatefulWidget {
 }
 
 class _DoNotDisturbSettingsState extends State<DoNotDisturbSettings> with WidgetsBindingObserver {
-  final LocationService _locationService = LocationService();
-  bool _hasHomeLocation = false;
-  double _homeRadius = 100.0;
-  bool _isLoading = false;
-  String? _homeAddress;
-  bool _isLocationServiceEnabled = true;
+  // TODO v2.0: Re-enable for location features
+  // final LocationService _locationService = LocationService();
+  // bool _hasHomeLocation = false;
+  // double _homeRadius = 100.0;
+  // bool _isLoading = false;
+  // String? _homeAddress;
+  // bool _isLocationServiceEnabled = true;
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    _checkHomeLocation();
+    // TODO v2.0: Re-enable for location features
+    // _checkHomeLocation();
   }
 
   @override
@@ -52,29 +55,34 @@ class _DoNotDisturbSettingsState extends State<DoNotDisturbSettings> with Widget
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     super.didChangeAppLifecycleState(state);
+    // TODO v2.0: Re-enable for location features
+    /*
     debugPrint('[DoNotDisturb] App lifecycle changed: $state');
-    
+
     if (state == AppLifecycleState.resumed) {
       debugPrint('[DoNotDisturb] App resumed - refreshing location status');
       // User returned from background (e.g., from Android Settings)
       // Refresh location service status
       _checkHomeLocation();
     }
+    */
   }
 
+  // TODO v2.0: Re-enable all location methods below
+  /*
   Future<void> _checkHomeLocation() async {
     final homeLocation = await _locationService.getHomeLocation();
     final radius = await _locationService.getHomeRadius();
     final locationServiceEnabled = await Geolocator.isLocationServiceEnabled();
     String? address;
-    
+
     if (homeLocation != null) {
       address = await _locationService.getAddressFromLocation(
-        homeLocation['latitude']!, 
+        homeLocation['latitude']!,
         homeLocation['longitude']!
       );
     }
-    
+
     if (mounted) {
       setState(() {
         _hasHomeLocation = homeLocation != null;
@@ -87,12 +95,12 @@ class _DoNotDisturbSettingsState extends State<DoNotDisturbSettings> with Widget
 
   Future<void> _setCurrentLocationAsHome() async {
     setState(() => _isLoading = true);
-    
+
     final success = await _locationService.saveHomeLocation();
-    
+
     if (mounted) {
       setState(() => _isLoading = false);
-      
+
       if (success) {
         await _checkHomeLocation();
         ScaffoldMessenger.of(context).showSnackBar(
@@ -114,7 +122,7 @@ class _DoNotDisturbSettingsState extends State<DoNotDisturbSettings> with Widget
   Future<void> _clearHomeLocation() async {
     await _locationService.clearHomeLocation();
     await _checkHomeLocation();
-    
+
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Zuhause-Standort gelöscht')),
@@ -127,6 +135,7 @@ class _DoNotDisturbSettingsState extends State<DoNotDisturbSettings> with Widget
     await _locationService.setHomeRadius(safeRadius);
     setState(() => _homeRadius = safeRadius);
   }
+  */
 
   Future<void> _selectTime(BuildContext context, TimeOfDay initialTime, ValueChanged<TimeOfDay> onChanged) async {
     final TimeOfDay? picked = await showTimePicker(
@@ -163,15 +172,17 @@ class _DoNotDisturbSettingsState extends State<DoNotDisturbSettings> with Widget
               ],
             ),
             const SizedBox(height: 16),
-            
+
             // Standortbasierte Benachrichtigungen
+            // TODO v2.0: Re-enable when Background Location permission is approved
+            /*
             SwitchListTile(
               title: const Text('Standortbasierte Benachrichtigungen'),
               subtitle: const Text('Benachrichtigungen nur wenn du zu Hause bist'),
               value: widget.locationBasedNotifications,
               onChanged: widget.onLocationBasedChanged,
             ),
-            
+
             if (widget.locationBasedNotifications) ...[
               const SizedBox(height: 8),
               Padding(
@@ -389,9 +400,8 @@ class _DoNotDisturbSettingsState extends State<DoNotDisturbSettings> with Widget
                 ),
               ),
             ],
-            
-            const Divider(),
-            
+            */
+
             // Ruhezeiten
             SwitchListTile(
               title: const Text('Ruhezeiten'),

@@ -1,4 +1,4 @@
-package com.example.spotwatt
+package com.spotwatt.app
 
 import android.app.PendingIntent
 import android.appwidget.AppWidgetManager

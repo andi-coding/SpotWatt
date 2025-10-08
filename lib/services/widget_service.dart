@@ -10,7 +10,7 @@ import 'dart:io';
 class WidgetService {
   static const String androidWidgetName = 'PriceWidgetProvider';
   static const String iosWidgetKind = 'PriceWidget';
-  static const MethodChannel _channel = MethodChannel('com.example.spotwatt/widget');
+  static const MethodChannel _channel = MethodChannel('com.spotwatt.app/widget');
   
   static Future<void> updateWidget() async {
     try {
