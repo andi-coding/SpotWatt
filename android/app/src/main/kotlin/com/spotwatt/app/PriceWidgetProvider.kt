@@ -16,7 +16,7 @@ import es.antonborri.home_widget.HomeWidgetPlugin
 class PriceWidgetProvider : AppWidgetProvider() {
     
     companion object {
-        const val ACTION_WIDGET_CLICK = "com.example.spotwatt.WIDGET_CLICK"
+        const val ACTION_WIDGET_CLICK = "com.spotwatt.app.WIDGET_CLICK"
     }
     
     override fun onUpdate(

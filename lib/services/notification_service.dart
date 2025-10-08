@@ -142,6 +142,7 @@ class NotificationService {
             channelDescription: 'Benachrichtigungen bei günstigen Strompreisen',
             importance: Importance.high,
             priority: Priority.high,
+            icon: '@drawable/ic_notification_small',
           ),
           iOS: DarwinNotificationDetails(
             presentAlert: true,
@@ -187,6 +188,7 @@ class NotificationService {
             channelDescription: 'Benachrichtigung zum günstigsten Zeitpunkt',
             importance: Importance.max,
             priority: Priority.max,
+            icon: '@drawable/ic_notification_small',
           ),
           iOS: DarwinNotificationDetails(
             presentAlert: true,
@@ -359,6 +361,7 @@ class NotificationService {
           channelDescription: 'Tägliche Übersicht der günstigsten Strompreise',
           importance: Importance.high,
           priority: Priority.high,
+          icon: '@drawable/ic_notification_small',
           styleInformation: BigTextStyleInformation(notificationText),
         ),
         iOS: const DarwinNotificationDetails(

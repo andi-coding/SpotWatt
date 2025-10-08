@@ -12,6 +12,14 @@
         android:label="SpotWatt"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
+        <!-- Keep notification icons from being removed by resource shrinking -->
+        <meta-data
+            android:name="com.google.firebase.messaging.default_notification_icon"
+            android:resource="@drawable/ic_notification_small" />
+        <meta-data
+            android:name="com.google.firebase.messaging.default_notification_icon_large"
+            android:resource="@drawable/ic_notification_large" />
+
         <!-- Notification Receivers -->
         <receiver android:exported="false" android:name="com.dexterous.flutterlocalnotifications.ScheduledNotificationReceiver" />
         <receiver android:exported="false" android:name="com.dexterous.flutterlocalnotifications.ScheduledNotificationBootReceiver">
