@@ -39,6 +39,7 @@ class PriceChart extends StatelessWidget {
 
     return LineChart(
       LineChartData(
+        maxX: spots.length - 0.2,
         minY: minY - padding,
         maxY: maxY + padding,
         gridData: FlGridData(
@@ -68,6 +69,7 @@ class PriceChart extends StatelessWidget {
           leftTitles: AxisTitles(
             axisNameWidget: Text(
               'Preis: ct/kWh',
+              textScaler: TextScaler.noScaling,
               style: TextStyle(
                 color: isDarkMode ? Colors.white54 : Colors.black54,
                 fontSize: 10,
@@ -106,6 +108,7 @@ class PriceChart extends StatelessWidget {
                   padding: const EdgeInsets.only(right: 3),
                   child: Text(
                     label,
+                    textScaler: TextScaler.noScaling,
                     style: TextStyle(
                       color: isDarkMode ? Colors.white70 : Colors.black87,
                       fontSize: 11,
@@ -119,6 +122,7 @@ class PriceChart extends StatelessWidget {
           bottomTitles: AxisTitles(
             axisNameWidget: Text(
               'Uhrzeit',
+              textScaler: TextScaler.noScaling,
               style: TextStyle(
                 color: isDarkMode ? Colors.white54 : Colors.black54,
                 fontSize: 10,
@@ -161,6 +165,7 @@ class PriceChart extends StatelessWidget {
                         children: [
                           Text(
                             '0h',
+                            textScaler: TextScaler.noScaling,
                             style: TextStyle(
                               fontSize: 12, // Etwas größer
                               fontWeight: FontWeight.bold, // Fetter
@@ -171,6 +176,7 @@ class PriceChart extends StatelessWidget {
                           const SizedBox(height: 1),
                           Text(
                             'Morgen',
+                            textScaler: TextScaler.noScaling,
                             style: TextStyle(
                               fontSize: 9,
                               height: 0.9,
@@ -204,6 +210,7 @@ class PriceChart extends StatelessWidget {
                     padding: const EdgeInsets.only(top: 2.0),
                     child: Text(
                       '${hour}h',
+                      textScaler: TextScaler.noScaling,
                       style: TextStyle(
                         fontSize: 11,
                         fontWeight: FontWeight.w500,

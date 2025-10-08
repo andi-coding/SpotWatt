@@ -33,24 +33,31 @@ class CurrentPriceCard extends StatelessWidget {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      PriceUtils.formatPrice(currentPrice),
-                      style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                        color: PriceUtils.getPriceColorMedian(currentPrice, allPrices),
-                        fontWeight: FontWeight.bold,
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        PriceUtils.formatPrice(currentPrice),
+                        style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                          color: PriceUtils.getPriceColorMedian(currentPrice, allPrices),
+                          fontWeight: FontWeight.bold,
+                        ),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
                       ),
-                    ),
-                    Text(
-                      'Gültig bis ${DateTime.now().hour + 1}:00 Uhr',
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: Theme.of(context).textTheme.bodySmall?.color?.withOpacity(0.7),
+                      Text(
+                        'Gültig bis ${DateTime.now().hour + 1}:00 Uhr',
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: Theme.of(context).textTheme.bodySmall?.color?.withOpacity(0.7),
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
+                const SizedBox(width: 8),
                 Icon(
                   PriceUtils.getPriceIconQuartile(currentPrice, allPrices),
                   color: PriceUtils.getPriceColorMedian(currentPrice, allPrices),

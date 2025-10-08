@@ -72,9 +72,11 @@ class ExactAlarmPermissionHelper {
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Exakte Benachrichtigungen erlauben'),
-        content: const Text(
-          'Für pünktliche Benachrichtigungen zu günstigen Strompreisen benötigt SpotWatt die Berechtigung für exakte Alarme.\n\n'
-          'Bitte erlaube "Alarme & Erinnerungen" in den folgenden Einstellungen.',
+        content: SingleChildScrollView(
+          child: const Text(
+            'Für pünktliche Benachrichtigungen zu günstigen Strompreisen benötigt SpotWatt die Berechtigung für exakte Alarme.\n\n'
+            'Bitte erlaube "Alarme & Erinnerungen" in den folgenden Einstellungen.',
+          ),
         ),
         actions: [
           TextButton(

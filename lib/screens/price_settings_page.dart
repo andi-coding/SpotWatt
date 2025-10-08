@@ -291,9 +291,13 @@ class _PriceSettingsPageState extends State<PriceSettingsPage> {
                     children: [
                       Icon(Icons.info_outline, color: Theme.of(context).colorScheme.primary, size: 20),
                       SizedBox(width: 8),
-                      Text(
-                        'Was zeigen die Preise?',
-                        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                      Expanded(
+                        child: Text(
+                          'Was zeigen die Preise?',
+                          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
                       ),
                     ],
                   ),
@@ -331,9 +335,13 @@ class _PriceSettingsPageState extends State<PriceSettingsPage> {
                     children: [
                       Icon(Icons.language, color: Theme.of(context).colorScheme.primary, size: 20),
                       SizedBox(width: 8),
-                      Text(
-                        'Strommarkt auswählen',
-                        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                      Expanded(
+                        child: Text(
+                          'Strommarkt auswählen',
+                          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
                       ),
                     ],
                   ),
@@ -392,9 +400,13 @@ class _PriceSettingsPageState extends State<PriceSettingsPage> {
                     children: [
                       Icon(Icons.account_balance_wallet, color: Theme.of(context).colorScheme.primary, size: 20),
                       const SizedBox(width: 8),
-                      Text(
-                        'Vollkosten-Modus',
-                        style: Theme.of(context).textTheme.titleLarge,
+                      Expanded(
+                        child: Text(
+                          'Vollkosten-Modus',
+                          style: Theme.of(context).textTheme.titleLarge,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
                       ),
                     ],
                   ),
@@ -423,22 +435,31 @@ class _PriceSettingsPageState extends State<PriceSettingsPage> {
                       children: [
                         Icon(Icons.bolt, color: Theme.of(context).colorScheme.primary, size: 20),
                         SizedBox(width: 8),
-                        Text(
-                          'Energieanbieter-Gebühren',
-                          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                        Expanded(
+                          child: Text(
+                            'Energieanbieter-Gebühren',
+                            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                          ),
                         ),
                       ],
                     ),
                     const SizedBox(height: 12),
                     DropdownButtonFormField<EnergyProvider>(
                       value: selectedProvider,
+                      isExpanded: true,
                       decoration: const InputDecoration(
                         labelText: 'Energieanbieter auswählen',
                         border: OutlineInputBorder(),
                       ),
                       items: EnergyProvider.values.map((provider) => DropdownMenuItem(
                         value: provider,
-                        child: Text(provider.displayName),
+                        child: Text(
+                          provider.displayName,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
                       )).toList(),
                       onChanged: (value) {
                         if (value != null) {
@@ -475,11 +496,15 @@ class _PriceSettingsPageState extends State<PriceSettingsPage> {
                               size: 16,
                             ),
                             const SizedBox(width: 8),
-                            Text(
-                              'Preisaufschlag: Epex Spot + 3% + 1,5 ct/kWh',
-                              style: TextStyle(
-                                fontSize: 13,
-                                color: Theme.of(context).colorScheme.onSurfaceVariant,
+                            Expanded(
+                              child: Text(
+                                'Preisaufschlag: Epex Spot + 3% + 1,5 ct/kWh',
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                                ),
+                                maxLines: 3,
+                                overflow: TextOverflow.ellipsis,
                               ),
                             ),
                           ],
@@ -606,9 +631,13 @@ class _PriceSettingsPageState extends State<PriceSettingsPage> {
                       children: [
                         Icon(Icons.receipt_long, color: Theme.of(context).colorScheme.primary, size: 20),
                         SizedBox(width: 8),
-                        Text(
-                          'Beispiel-Rechnung',
-                          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                        Expanded(
+                          child: Text(
+                            'Beispiel-Rechnung',
+                            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                          ),
                         ),
                       ],
                     ),

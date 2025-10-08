@@ -147,12 +147,17 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   }
 
   Widget _buildTermsPage() {
-    return Padding(
-      padding: const EdgeInsets.all(32.0),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          const Spacer(),
+    return SingleChildScrollView(
+      child: Padding(
+        padding: const EdgeInsets.all(32.0),
+        child: ConstrainedBox(
+          constraints: BoxConstraints(
+            minHeight: MediaQuery.of(context).size.height - 64, // Account for padding
+          ),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const SizedBox(height: 32), // Replace Spacer with fixed spacing
           // Icon/Logo
           Image.asset(
             'assets/icons/spotwatt_logo_final.png',
@@ -225,56 +230,63 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
             ),
           ),
 
-          const Spacer(),
+              const SizedBox(height: 32), // Replace Spacer with fixed spacing
 
-          // Buttons
-          SizedBox(
-            width: double.infinity,
-            child: FilledButton(
-              onPressed: _termsAccepted ? _nextPage : null,
-              style: FilledButton.styleFrom(
-                padding: const EdgeInsets.symmetric(vertical: 16),
+              // Buttons
+              SizedBox(
+                width: double.infinity,
+                child: FilledButton(
+                  onPressed: _termsAccepted ? _nextPage : null,
+                  style: FilledButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                  ),
+                  child: const Text('Weiter'),
+                ),
               ),
-              child: const Text('Weiter'),
-            ),
-          ),
-          const SizedBox(height: 12),
-          SizedBox(
-            width: double.infinity,
-            child: TextButton(
-              onPressed: () => SystemNavigator.pop(),
-              style: TextButton.styleFrom(
-                padding: const EdgeInsets.symmetric(vertical: 16),
+              const SizedBox(height: 12),
+              SizedBox(
+                width: double.infinity,
+                child: TextButton(
+                  onPressed: () => SystemNavigator.pop(),
+                  style: TextButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                  ),
+                  child: const Text('App beenden'),
+                ),
               ),
-              child: const Text('App beenden'),
-            ),
-          ),
 
-          // Page Indicator
-          const SizedBox(height: 16),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              _buildPageIndicator(0),
-              const SizedBox(width: 8),
-              _buildPageIndicator(1),
-              const SizedBox(width: 8),
-              _buildPageIndicator(2),
+              // Page Indicator
+              const SizedBox(height: 16),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  _buildPageIndicator(0),
+                  const SizedBox(width: 8),
+                  _buildPageIndicator(1),
+                  const SizedBox(width: 8),
+                  _buildPageIndicator(2),
+                ],
+              ),
+              const SizedBox(height: 32),
             ],
           ),
-          const SizedBox(height: 8),
-        ],
+        ),
       ),
     );
   }
 
   Widget _buildRegionSelectionPage() {
-    return Padding(
-      padding: const EdgeInsets.all(32.0),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          const Spacer(),
+    return SingleChildScrollView(
+      child: Padding(
+        padding: const EdgeInsets.all(32.0),
+        child: ConstrainedBox(
+          constraints: BoxConstraints(
+            minHeight: MediaQuery.of(context).size.height - 64,
+          ),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const SizedBox(height: 32),
           // Icon
           Icon(
             Icons.language,
@@ -298,34 +310,36 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
           const SizedBox(height: 12),
           _buildRegionCard('🇦🇹 Österreich', 'AT'),
 
-          const Spacer(),
+              const SizedBox(height: 32),
 
-          // Continue Button
-          SizedBox(
-            width: double.infinity,
-            child: FilledButton(
-              onPressed: _selectedRegion != null ? _nextPage : null,
-              style: FilledButton.styleFrom(
-                padding: const EdgeInsets.symmetric(vertical: 16),
+              // Continue Button
+              SizedBox(
+                width: double.infinity,
+                child: FilledButton(
+                  onPressed: _selectedRegion != null ? _nextPage : null,
+                  style: FilledButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                  ),
+                  child: const Text('Weiter'),
+                ),
               ),
-              child: const Text('Weiter'),
-            ),
-          ),
 
-          // Page Indicator
-          const SizedBox(height: 16),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              _buildPageIndicator(0),
-              const SizedBox(width: 8),
-              _buildPageIndicator(1),
-              const SizedBox(width: 8),
-              _buildPageIndicator(2),
+              // Page Indicator
+              const SizedBox(height: 16),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  _buildPageIndicator(0),
+                  const SizedBox(width: 8),
+                  _buildPageIndicator(1),
+                  const SizedBox(width: 8),
+                  _buildPageIndicator(2),
+                ],
+              ),
+              const SizedBox(height: 32),
             ],
           ),
-          const SizedBox(height: 8),
-        ],
+        ),
       ),
     );
   }
@@ -366,9 +380,13 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
               },
             ),
             const SizedBox(width: 12),
-            Text(
-              label,
-              style: Theme.of(context).textTheme.titleMedium,
+            Expanded(
+              child: Text(
+                label,
+                style: Theme.of(context).textTheme.titleMedium,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+              ),
             ),
           ],
         ),
@@ -377,14 +395,19 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   }
 
   Widget _buildNotificationOptInPage() {
-    return Padding(
-      padding: const EdgeInsets.all(32.0),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          const Spacer(),
+    return SingleChildScrollView(
+      child: Padding(
+        padding: const EdgeInsets.all(32.0),
+        child: ConstrainedBox(
+          constraints: BoxConstraints(
+            minHeight: MediaQuery.of(context).size.height - 64,
+          ),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const SizedBox(height: 32),
 
-          // Icon
+              // Icon
           Icon(
             Icons.notifications_active,
             size: 100,
@@ -457,45 +480,47 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
             ),
           ),
 
-          const Spacer(),
+              const SizedBox(height: 32),
 
-          // Buttons
-          SizedBox(
-            width: double.infinity,
-            child: FilledButton(
-              onPressed: _goToNotificationSettings,
-              style: FilledButton.styleFrom(
-                padding: const EdgeInsets.symmetric(vertical: 16),
+              // Buttons
+              SizedBox(
+                width: double.infinity,
+                child: FilledButton(
+                  onPressed: _goToNotificationSettings,
+                  style: FilledButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                  ),
+                  child: const Text('Benachrichtigungen einrichten'),
+                ),
               ),
-              child: const Text('Benachrichtigungen einrichten'),
-            ),
-          ),
-          const SizedBox(height: 12),
-          SizedBox(
-            width: double.infinity,
-            child: TextButton(
-              onPressed: _goToHome,
-              style: TextButton.styleFrom(
-                padding: const EdgeInsets.symmetric(vertical: 16),
+              const SizedBox(height: 12),
+              SizedBox(
+                width: double.infinity,
+                child: TextButton(
+                  onPressed: _goToHome,
+                  style: TextButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                  ),
+                  child: const Text('Später in den Einstellungen'),
+                ),
               ),
-              child: const Text('Später in den Einstellungen'),
-            ),
-          ),
 
-          // Page Indicator
-          const SizedBox(height: 16),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              _buildPageIndicator(0),
-              const SizedBox(width: 8),
-              _buildPageIndicator(1),
-              const SizedBox(width: 8),
-              _buildPageIndicator(2),
+              // Page Indicator
+              const SizedBox(height: 16),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  _buildPageIndicator(0),
+                  const SizedBox(width: 8),
+                  _buildPageIndicator(1),
+                  const SizedBox(width: 8),
+                  _buildPageIndicator(2),
+                ],
+              ),
+              const SizedBox(height: 32),
             ],
           ),
-          const SizedBox(height: 8),
-        ],
+        ),
       ),
     );
   }

@@ -279,7 +279,7 @@ class _PriceOverviewPageState extends State<PriceOverviewPage> with WidgetsBindi
                     ),
                     const SizedBox(height: 16),
                     SizedBox(
-                      height: 200,
+                      height: 220,
                       child: PriceChart(
                         prices: prices,
                         allPricesForColors: allPricesForColors,
@@ -292,12 +292,31 @@ class _PriceOverviewPageState extends State<PriceOverviewPage> with WidgetsBindi
                     ),
                     const SizedBox(height: 8),
                     ...getBestTimes().map((time) {
-                      final isToday = time.startTime.day == DateTime.now().day;
+                      final now = DateTime.now();
+                      final isToday = time.startTime.day == now.day;
                       final dayText = isToday ? 'Heute' : 'Morgen';
-                      final timeText = isToday 
+                      final timeText = isToday
                         ? '${time.startTime.hour}:00 - ${time.endTime.hour}:00 Uhr'
                         : '${time.startTime.hour}:00 - ${time.endTime.hour}:00 Uhr (Morgen)';
-                      
+
+                      // Calculate time difference
+                      final difference = time.startTime.difference(now);
+                      final hours = difference.inHours;
+                      final minutes = difference.inMinutes;
+
+                      // Determine display text
+                      String timeUntilText;
+                      if (time.startTime.hour == now.hour && time.startTime.day == now.day) {
+                        // Current hour
+                        timeUntilText = 'Jetzt';
+                      } else if (hours == 0) {
+                        // Less than 1 hour
+                        timeUntilText = 'in ${minutes}min';
+                      } else {
+                        // 1 or more hours
+                        timeUntilText = 'in ${hours}h';
+                      }
+
                       return Card(
                         child: ListTile(
                           leading: CircleAvatar(
@@ -314,7 +333,7 @@ class _PriceOverviewPageState extends State<PriceOverviewPage> with WidgetsBindi
                             children: [
                               const Icon(Icons.access_time, size: 16),
                               Text(
-                                'in ${time.startTime.difference(DateTime.now()).inHours}h',
+                                timeUntilText,
                                 style: Theme.of(context).textTheme.bodySmall,
                               ),
                             ],

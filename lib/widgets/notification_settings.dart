@@ -91,9 +91,13 @@ class _NotificationSettingsState extends State<NotificationSettings> {
               children: [
                 Icon(Icons.notifications, color: Theme.of(context).colorScheme.primary),
                 const SizedBox(width: 8),
-                Text(
-                  'Benachrichtigungen',
-                  style: Theme.of(context).textTheme.titleLarge,
+                Expanded(
+                  child: Text(
+                    'Benachrichtigungen',
+                    style: Theme.of(context).textTheme.titleLarge,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
                 ),
               ],
             ),

@@ -53,8 +53,8 @@ function getTradingDayUTC(timezone) {
   return { periodStart, periodEnd };
 }
 
-// Helper to fetch raw XML from ENTSO-E (for debugging)
-async function fetchRawXML(market, apiToken) {
+// Helper to fetch raw XML from ENTSO-E (for debugging or position checking)
+async function fetchRawXML(market, apiToken, position = null, daysOffset = 0) {
   const areaCode = MARKET_AREAS[market];
   if (!areaCode) {
     throw new Error(`Invalid market: ${market}`);
@@ -65,6 +65,11 @@ async function fetchRawXML(market, apiToken) {
 
   // Calculate trading day boundaries in UTC based on local timezone
   const { periodStart: periodStartDate, periodEnd: periodEndDate } = getTradingDayUTC(timezone);
+
+  // Apply days offset to periodStart only (to query specific day within 48h window)
+  if (daysOffset !== 0) {
+    periodStartDate.setDate(periodStartDate.getDate() + daysOffset);
+  }
 
   // Format dates as required by ENTSO-E (yyyyMMddHHmm)
   const periodStart = formatDateENTSOE(periodStartDate);
@@ -77,9 +82,13 @@ async function fetchRawXML(market, apiToken) {
     out_Domain: areaCode,
     periodStart: periodStart,
     periodEnd: periodEnd,
-    'contract_MarketAgreement.type': 'A01', // Only Day-ahead, not Intraday
-    'classificationSequence_AttributeInstanceComponent.position': '1' // Only position 1 (hourly)
+    'contract_MarketAgreement.type': 'A01' // Only Day-ahead, not Intraday
   });
+
+  // Optionally filter by position
+  if (position !== null) {
+    params.set('classificationSequence_AttributeInstanceComponent.position', position.toString());
+  }
 
   const response = await fetchWithRetry(`${ENTSOE_API_URL}?${params}`);
   return await response.text();
@@ -563,7 +572,8 @@ export default {
 
   // Scheduled handler - runs multiple times starting at 14:00 UTC
   async scheduled(event, env, ctx) {
-    console.log('Scheduled task running at', new Date().toISOString());
+    const now = new Date();
+    console.log('🕐 Scheduled task running at', now.toISOString());
 
     if (!env.ENTSOE_API_TOKEN) {
       console.error('ENTSO-E API token not configured');
@@ -574,10 +584,40 @@ export default {
     const needsUpdate = await checkIfUpdateNeeded(env);
 
     if (needsUpdate) {
-      console.log('Missing tomorrow prices, fetching from ENTSO-E...');
-      await updatePricesFromENTSOE(env);
+      console.log('📥 Missing tomorrow prices, fetching from ENTSO-E...');
+
+      // Get current attempt counter (resets on successful update or at midnight UTC)
+      const todayKey = `attempt_count_${now.toISOString().split('T')[0]}`;
+      let attemptCount = 1;
+
+      if (env.PRICE_CACHE) {
+        const cachedCount = await env.PRICE_CACHE.get(todayKey);
+        attemptCount = cachedCount ? parseInt(cachedCount) + 1 : 1;
+
+        // Store updated count (expires in 6 hours - enough for all retries)
+        await env.PRICE_CACHE.put(todayKey, attemptCount.toString(), {
+          expirationTtl: 21600 // 6 hours
+        });
+      }
+
+      console.log(`🔄 Attempt ${attemptCount} for today`);
+
+      // Emergency fallback on 5th attempt (regardless of time)
+      const isLastAttempt = attemptCount >= 5;
+
+      if (isLastAttempt) {
+        console.warn('⏰ Last cron attempt (5th try) - emergency fallback mode enabled');
+      }
+
+      const updateSuccess = await updatePricesFromENTSOE(env, isLastAttempt);
+
+      // Reset counter on successful update
+      if (updateSuccess && env.PRICE_CACHE) {
+        await env.PRICE_CACHE.delete(todayKey);
+        console.log('🔄 Counter reset - update successful');
+      }
     } else {
-      console.log('Already have tomorrow prices, skipping update');
+      console.log('✅ Already have tomorrow prices, skipping update');
     }
   }
 };
@@ -606,10 +646,30 @@ async function checkIfUpdateNeeded(env) {
   }
 }
 
-async function updatePricesFromENTSOE(env) {
+async function updatePricesFromENTSOE(env, isLastCronAttempt = false) {
 
   try {
-    // Fetch both markets
+    // Step 1: Check if AT Position 1 (EPEX) is available for tomorrow
+    console.log('[AT] Checking for Position 1 (EPEX) availability for tomorrow...');
+    const atPos1XML = await fetchRawXML('AT', env.ENTSOE_API_TOKEN, 1, 1); // Position 1, +1 day offset
+
+    // Check if we have TimeSeries data (if empty = Position 1 not available yet)
+    const hasTomorrowData = atPos1XML.includes('<TimeSeries>');
+
+    if (!hasTomorrowData && !isLastCronAttempt) {
+      // AT Position 1 not available yet for tomorrow - EPEX auction not finished
+      console.log('⏳ AT Position 1 (EPEX) not yet available for tomorrow - skipping update, will retry later');
+      return false; // Return false = update failed, keep counter running
+    }
+
+    if (!hasTomorrowData && isLastCronAttempt) {
+      // Last attempt - use Position 2 as emergency fallback
+      console.warn('⚠️ EMERGENCY FALLBACK: AT Position 1 still missing for tomorrow on last cron attempt - using Position 2 for both markets');
+    } else {
+      console.log('✅ AT Position 1 (EPEX) available for tomorrow - EPEX auction complete, proceeding with update');
+    }
+
+    // Step 2: Parse both markets (AT uses Pos1, DE uses Pos2)
     const [atData, deData] = await Promise.all([
       fetchFromENTSOE('AT', env.ENTSOE_API_TOKEN),
       fetchFromENTSOE('DE', env.ENTSOE_API_TOKEN)
@@ -619,7 +679,7 @@ async function updatePricesFromENTSOE(env) {
     const hasATTomorrow = hasTomorrowPrices(atData.prices);
     const hasDETomorrow = hasTomorrowPrices(deData.prices);
 
-    // Cache the data for 36 hours (safety buffer for late updates)
+    // Cache the data for 48 hours
     if (env.PRICE_CACHE) {
       await Promise.all([
         env.PRICE_CACHE.put('prices_AT', JSON.stringify(atData), {
@@ -631,10 +691,12 @@ async function updatePricesFromENTSOE(env) {
       ]);
     }
 
-    console.log(`Successfully updated prices - AT tomorrow: ${hasATTomorrow}, DE tomorrow: ${hasDETomorrow}`);
+    console.log(`✅ Successfully updated prices - AT tomorrow: ${hasATTomorrow}, DE tomorrow: ${hasDETomorrow}`);
+    return true; // Return true = update successful, reset counter
   } catch (error) {
-    console.error('Error updating prices from ENTSO-E:', error);
-    // The cron job will retry automatically in 5 minutes
+    console.error('❌ Error updating prices from ENTSO-E:', error);
+    // The cron job will retry automatically at next scheduled time
+    return false; // Return false = update failed, keep counter running
   }
 }
 

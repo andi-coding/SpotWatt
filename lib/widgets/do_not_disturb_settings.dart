@@ -165,9 +165,13 @@ class _DoNotDisturbSettingsState extends State<DoNotDisturbSettings> with Widget
               children: [
                 Icon(Icons.do_not_disturb, color: Theme.of(context).colorScheme.primary),
                 const SizedBox(width: 8),
-                Text(
-                  'Nicht stören',
-                  style: Theme.of(context).textTheme.titleLarge,
+                Expanded(
+                  child: Text(
+                    'Nicht stören',
+                    style: Theme.of(context).textTheme.titleLarge,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
                 ),
               ],
             ),
