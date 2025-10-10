@@ -4,6 +4,7 @@ import 'package:timezone/timezone.dart' as tz;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'screens/home_screen.dart';
 import 'screens/onboarding_screen.dart';
+import 'screens/refresh_screen.dart';
 import 'services/background_task_service.dart';
 import 'services/geofence_service.dart';
 import 'services/location_permission_helper.dart';
@@ -121,6 +122,12 @@ class _WattWiseAppState extends State<WattWiseApp> {
       child: MaterialApp(
         title: 'WattWise',
         debugShowCheckedModeBanner: false,
+        onGenerateRoute: (settings) {
+          if (settings.name == 'refresh') {
+            return MaterialPageRoute(builder: (context) => const RefreshScreen());
+          }
+          return null;
+        },
         theme: ThemeData(
           useMaterial3: true,
           colorScheme: ColorScheme.fromSeed(

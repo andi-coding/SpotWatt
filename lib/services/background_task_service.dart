@@ -35,27 +35,52 @@ class BackgroundTaskService {
       callbackDispatcher,
       isInDebugMode: false,
     );
-    
-    // Register periodic task - runs every 15 minutes
-    await Workmanager().registerPeriodicTask(
+
+    // Schedule first hourly task
+    await _scheduleNextHourlyUpdate();
+
+    debugPrint('[BackgroundTask] Android Workmanager initialized');
+    debugPrint('[BackgroundTask] Hourly updates scheduled');
+  }
+
+  /// Schedule next update at the top of the hour
+  static Future<void> _scheduleNextHourlyUpdate() async {
+    final now = DateTime.now();
+
+    // Calculate next full hour
+    final nextHour = now.hour < 23
+        ? DateTime(now.year, now.month, now.day, now.hour + 1, 0, 0)
+        : DateTime(now.year, now.month, now.day + 1, 0, 0, 0);
+
+    final delay = nextHour.difference(now);
+
+    await Workmanager().registerOneOffTask(
       _taskName,
       'updatePricesAndNotifications',
-      frequency: const Duration(minutes: 15), // Android minimum
-      initialDelay: const Duration(seconds: 10), // Startet 10 Sekunden nach App-Start
+      initialDelay: delay,
       constraints: Constraints(
-        networkType: NetworkType.notRequired, // ✅ Läuft auch offline
+        networkType: NetworkType.notRequired,
         requiresBatteryNotLow: false,
         requiresCharging: false,
         requiresDeviceIdle: false,
         requiresStorageNotLow: false,
       ),
-      existingWorkPolicy: ExistingPeriodicWorkPolicy.update,
-      backoffPolicy: BackoffPolicy.linear,
-      backoffPolicyDelay: const Duration(minutes: 1),
+      existingWorkPolicy: ExistingWorkPolicy.replace,
+      // Exponential backoff for quick recovery from short network outages
+      // 30s → 1min → 2min → 4min → 8min → 16min (6 retries in ~30min)
+      backoffPolicy: BackoffPolicy.exponential,
+      backoffPolicyDelay: const Duration(seconds: 30),
     );
-    
-    debugPrint('[BackgroundTask] Android Workmanager initialized');
-    debugPrint('[BackgroundTask] First run in 10 seconds, then every 15 minutes');
+
+    debugPrint('[BackgroundTask] Next update scheduled for $nextHour (in ${delay.inMinutes} min)');
+  }
+
+  /// Reschedule background tasks (useful after OEM kills or app updates)
+  static Future<void> reschedule() async {
+    if (Platform.isAndroid) {
+      await _scheduleNextHourlyUpdate();
+      debugPrint('[BackgroundTask] Background tasks rescheduled');
+    }
   }
   
   /// Cancel all background tasks
@@ -106,7 +131,7 @@ void callbackDispatcher() {
               await notificationService.scheduleNotifications();
               await prefs.setString('last_notification_scheduled_date', todayString);
             } else {
-              debugPrint('[BackgroundTask] No tomorrow prices yet, will retry in 15 min');
+              debugPrint('[BackgroundTask] No tomorrow prices yet, will retry next hour');
             }
           } catch (e) {
             debugPrint('[BackgroundTask] Failed to get prices for notifications: $e');
@@ -121,38 +146,10 @@ void callbackDispatcher() {
       // Update widget with latest data
       await WidgetService.updateWidget();
       debugPrint('[BackgroundTask] Widget updated');
-      
-      
-      // Check if we're close to the hour mark
-      final currentMinute = now.minute;
-      if (currentMinute >= 45 && currentMinute <= 59) {
-        // We're in the last 15 minutes of an hour
-        // Schedule an extra update for the top of the hour
-        final nextHour = now.hour < 23 
-          ? DateTime(now.year, now.month, now.day, now.hour + 1, 0)
-          : DateTime(now.year, now.month, now.day + 1, 0, 0); // Handle midnight
-        final delayToNextHour = nextHour.difference(now);
-        
-        debugPrint('[BackgroundTask] Near hour mark (${now.minute} min), scheduling extra update in ${delayToNextHour.inMinutes} minutes');
-        
-        // Schedule one-time task for the top of the hour
-        if (Platform.isAndroid) {
-          await Workmanager().registerOneOffTask(
-            'hourly-update-${nextHour.hour}',
-            'updatePricesAndNotifications',
-            initialDelay: delayToNextHour,
-            constraints: Constraints(
-              networkType: NetworkType.notRequired,
-            ),
-          );
-        }
-      }
-      
-      // Always reschedule notifications
-      //final notificationService = NotificationService();
-      //await notificationService.scheduleNotifications();
-      debugPrint('[BackgroundTask] Notifications scheduled');
-      
+
+      // Schedule next hourly update (chain pattern)
+      await BackgroundTaskService._scheduleNextHourlyUpdate();
+
       debugPrint('[BackgroundTask] Task completed successfully');
       return Future.value(true);
     } catch (e) {

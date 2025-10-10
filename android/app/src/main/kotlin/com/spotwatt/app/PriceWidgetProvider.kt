@@ -17,6 +17,7 @@ class PriceWidgetProvider : AppWidgetProvider() {
     
     companion object {
         const val ACTION_WIDGET_CLICK = "com.spotwatt.app.WIDGET_CLICK"
+        const val ACTION_REFRESH_CLICK = "com.spotwatt.app.REFRESH_CLICK"
     }
     
     override fun onUpdate(
@@ -40,6 +41,17 @@ class PriceWidgetProvider : AppWidgetProvider() {
                 PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
             )
             views.setOnClickPendingIntent(R.id.widget_layout, openAppPendingIntent)
+
+            // Add click listener to refresh button to start RefreshActivity
+            val refreshIntent = Intent(context, RefreshActivity::class.java)
+            refreshIntent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_NO_ANIMATION
+            val refreshPendingIntent = PendingIntent.getActivity(
+                context,
+                999,
+                refreshIntent,
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+            )
+            views.setOnClickPendingIntent(R.id.refresh_button, refreshPendingIntent)
             
             appWidgetManager.updateAppWidget(appWidgetId, views)
             android.util.Log.d("PriceWidget", "Widget $appWidgetId updated")
@@ -106,8 +118,8 @@ class PriceWidgetProvider : AppWidgetProvider() {
         // views.setTextViewText(R.id.max_price, "$maxPrice ct")
         // views.setTextViewText(R.id.min_time, "$minTime Uhr")
         // views.setTextViewText(R.id.max_time, "$maxTime Uhr")
-        // Add "Aktualisiert:" prefix to the time
-        val updateText = if (lastUpdate.isNotEmpty()) "Aktualisiert: $lastUpdate" else ""
+        // Add "Stand:" prefix to the time
+        val updateText = if (lastUpdate.isNotEmpty()) "Stand: $lastUpdate" else ""
         views.setTextViewText(R.id.last_update, updateText)
 
         // No time slot needed anymore - moved to "Jetzt" label

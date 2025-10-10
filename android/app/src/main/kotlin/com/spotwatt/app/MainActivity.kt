@@ -11,10 +11,10 @@ import android.content.ComponentName
 class MainActivity : FlutterActivity() {
     private val CHANNEL = "com.spotwatt.app/widget"
     private var methodChannel: MethodChannel? = null
-    
+
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
-        
+
         methodChannel = MethodChannel(flutterEngine.dartExecutor.binaryMessenger, CHANNEL)
         methodChannel?.setMethodCallHandler { call, result ->
             android.util.Log.d("MainActivity", "Received method call: ${call.method}")
