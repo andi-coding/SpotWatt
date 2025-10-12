@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:timezone/data/latest_all.dart' as tz;
 import 'package:timezone/timezone.dart' as tz;
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
+import 'firebase_options.dart';
 import 'screens/home_screen.dart';
 import 'screens/onboarding_screen.dart';
 import 'screens/refresh_screen.dart';
@@ -9,12 +12,21 @@ import 'services/background_task_service.dart';
 import 'services/geofence_service.dart';
 import 'services/location_permission_helper.dart';
 import 'services/settings_cache.dart';
+import 'services/fcm_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   tz.initializeTimeZones();
   final String timeZoneName = 'Europe/Vienna';
   tz.setLocalLocation(tz.getLocation(timeZoneName));
+
+  // Initialize Firebase (FCM for push notifications)
+  await Firebase.initializeApp(
+    options: DefaultFirebaseOptions.currentPlatform,
+  );
+
+  // Register FCM background message handler (MUST be before runApp!)
+  FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
 
   // Initialize settings cache
   await SettingsCache().init();
@@ -53,6 +65,10 @@ class _WattWiseAppState extends State<WattWiseApp> {
   Future<void> _initialize() async {
     await _loadThemeMode();
     await _checkOnboarding();
+
+    // Initialize FCM (request permissions & register token)
+    await FCMService().initialize();
+
     setState(() {
       _isLoading = false;
     });

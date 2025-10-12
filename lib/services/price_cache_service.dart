@@ -108,6 +108,12 @@ class PriceCacheService {
     return fullCostPrices;
   }
   
+  /// Force fetch fresh prices from API (used by FCM background handler)
+  /// Bypasses cache and always makes API call
+  Future<List<PriceData>> fetchFreshPrices({String market = 'AT'}) async {
+    return await _fetchFreshPrices(market);
+  }
+
   Future<List<PriceData>> _fetchFreshPrices(String market) async {
     // Cache invalid - wait for network before API call
     print('[Cache] Waiting for network...');
@@ -157,9 +163,9 @@ class PriceCacheService {
     print('[Cache] Available price dates/hours: $availableDates');
     
     // Haben wir Preise für heute?
-    final hasToday = prices.any((p) => 
-      p.startTime.day == now.day && 
-      p.startTime.month == now.month && 
+    final hasToday = prices.any((p) =>
+      p.startTime.day == now.day &&
+      p.startTime.month == now.month &&
       p.startTime.year == now.year
     );
     print('[Cache] Has today prices (${now.day}/${now.month}/${now.year}): $hasToday');
@@ -167,23 +173,23 @@ class PriceCacheService {
       print('[Cache] Missing today prices - invalid');
       return false;
     }
-    
-    // Nach 14:00 sollten wir auch Morgen-Preise haben
+
+    // Tomorrow prices are fetched by FCM (not critical for cache validity)
+    // We only require today's prices to be present
+    // This prevents unnecessary API calls and improves UX when tomorrow prices are delayed
+    final tomorrow = now.add(const Duration(days: 1));
+    final hasTomorrow = prices.any((p) =>
+      p.startTime.day == tomorrow.day &&
+      p.startTime.month == tomorrow.month &&
+      p.startTime.year == tomorrow.year
+    );
     if (now.hour >= 14) {
-      final tomorrow = now.add(const Duration(days: 1));
-      final hasTomorrow = prices.any((p) => 
-        p.startTime.day == tomorrow.day && 
-        p.startTime.month == tomorrow.month && 
-        p.startTime.year == tomorrow.year
-      );
-      print('[Cache] Time is after 14:00 (${now.hour}:${now.minute}), checking for tomorrow (${tomorrow.day}/${tomorrow.month}/${tomorrow.year})');
-      print('[Cache] Has tomorrow prices: $hasTomorrow');
+      print('[Cache] Time is after 14:00 (${now.hour}:${now.minute}), tomorrow status: $hasTomorrow');
       if (!hasTomorrow) {
-        print('[Cache] Missing tomorrow prices after 14:00 - invalid');
-        return false;
+        print('[Cache] ℹ️ Tomorrow prices not yet available (FCM will handle this)');
       }
     }
-    
+
     print('[Cache] Cache is valid');
     return true;
   }

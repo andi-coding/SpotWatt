@@ -18,6 +18,12 @@ enabled = true
 binding = "PRICE_CACHE"
 id = "51ae355e5c7749e1915440c1337170d8"
 
+# D1 Database für FCM Device Tokens
+[[d1_databases]]
+binding = "FCM_DB"
+database_name = "spotwatt-fcm-tokens"
+database_id = "b1e2ec5c-adf1-4bba-81a9-10d71996943c"
+
 # Cron Triggers - ENTSO-E publiziert Day-Ahead Preise täglich um 12:30 CET/CEST
 # Erster Versuch um 12:00 UTC, dann Fallbacks alle 30 Min
 [triggers]

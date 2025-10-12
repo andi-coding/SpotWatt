@@ -1,19 +1,13 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:workmanager/workmanager.dart';
-import 'package:shared_preferences/shared_preferences.dart';
-import 'package:timezone/data/latest_all.dart' as tz_data;
-import 'package:timezone/timezone.dart' as tz;
-import '../models/price_data.dart';
-import 'notification_service.dart';
-import 'price_cache_service.dart';
 import 'widget_service.dart';
-import 'geofence_service.dart';
 
 /// Unified Background Task Service
-/// Handles background tasks for both Android and iOS (future)
+/// Handles widget updates via WorkManager (Android only)
+/// Note: Price fetching and notifications are handled by FCM (see fcm_service.dart)
 class BackgroundTaskService {
-  static const String _taskName = 'com.spottwatt.price_update';
+  static const String _taskName = 'com.spottwatt.widget_update';
   
   /// Initialize background tasks based on platform
   static Future<void> initialize() async {
@@ -93,59 +87,16 @@ class BackgroundTaskService {
 }
 
 /// Workmanager callback dispatcher (Android only)
+/// Only updates widget with cached data - FCM handles price fetching
 @pragma('vm:entry-point')
 void callbackDispatcher() {
   Workmanager().executeTask((task, inputData) async {
-    debugPrint('[BackgroundTask] Task started: $task at ${DateTime.now()}');
-    
+    debugPrint('[BackgroundTask] Widget refresh task started: $task at ${DateTime.now()}');
+
     try {
-      // Initialize timezone
-      tz_data.initializeTimeZones();
-      tz.setLocalLocation(tz.getLocation('Europe/Vienna'));
-      
-      final now = DateTime.now();
-      final prefs = await SharedPreferences.getInstance();
-      final priceCacheService = PriceCacheService();
-      
-      // After 13h: Check for tomorrow prices and schedule notifications once per day
-      if (now.hour >= 13) {
-        final lastNotificationDate = prefs.getString('last_notification_scheduled_date');
-        final todayString = '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
-
-        if (lastNotificationDate != todayString) {
-          debugPrint('[BackgroundTask] Checking for tomorrow prices (notifications not yet scheduled today)...');
-
-          try {
-            final prices = await priceCacheService.getPrices(); // Smart cache validation
-
-            final tomorrow = now.add(const Duration(days: 1));
-            final hasTomorrowPrices = prices.any((p) =>
-              p.startTime.day == tomorrow.day &&
-              p.startTime.month == tomorrow.month &&
-              p.startTime.year == tomorrow.year
-            );
-
-            if (hasTomorrowPrices) {
-              debugPrint('[BackgroundTask] ✓ Got tomorrow prices - scheduling notifications');
-              final notificationService = NotificationService();
-              await notificationService.scheduleNotifications();
-              await prefs.setString('last_notification_scheduled_date', todayString);
-            } else {
-              debugPrint('[BackgroundTask] No tomorrow prices yet, will retry next hour');
-            }
-          } catch (e) {
-            debugPrint('[BackgroundTask] Failed to get prices for notifications: $e');
-            debugPrint('[BackgroundTask] Will retry in next cycle (offline or cache invalid)');
-            // No crash - just skip notification scheduling this time
-          }
-        } else {
-          debugPrint('[BackgroundTask] Notifications already scheduled today');
-        }
-      }
-      
-      // Update widget with latest data
+      // Update widget with cached data (no network call)
       await WidgetService.updateWidget();
-      debugPrint('[BackgroundTask] Widget updated');
+      debugPrint('[BackgroundTask] Widget updated with cached data');
 
       // Schedule next hourly update (chain pattern)
       await BackgroundTaskService._scheduleNextHourlyUpdate();

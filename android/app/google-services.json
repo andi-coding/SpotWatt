@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "199348365279",
+    "project_id": "spotwatt-900e9",
+    "storage_bucket": "spotwatt-900e9.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:199348365279:android:85d6725dc70ee6dcad866a",
+        "android_client_info": {
+          "package_name": "com.spotwatt.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCttB5o8LMh3wcyVxWvCKWuXWw90JH879w"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
