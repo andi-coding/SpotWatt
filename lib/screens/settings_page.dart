@@ -57,7 +57,7 @@ class _SettingsPageState extends State<SettingsPage> {
             child: ListTile(
               leading: Icon(Icons.notifications, color: Theme.of(context).colorScheme.primary),
               title: const Text('Benachrichtigungs-Einstellungen'),
-              subtitle: const Text('Preisalarme, Ruhezeiten & Standort-Einstellungen'),
+              subtitle: const Text('Preisalarme, Ruhezeiten'),
               trailing: const Icon(Icons.arrow_forward_ios, size: 16),
               onTap: () {
                 Navigator.push(

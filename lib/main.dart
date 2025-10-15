@@ -13,6 +13,7 @@ import 'services/geofence_service.dart';
 import 'services/location_permission_helper.dart';
 import 'services/settings_cache.dart';
 import 'services/fcm_service.dart';
+import 'services/energy_provider_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -28,6 +29,14 @@ void main() async {
   // Register FCM background message handler (MUST be before runApp!)
   FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
 
+  // Register FCM foreground message handler (MUST be before runApp!)
+  // This ensures messages are NOT lost during app startup
+  FirebaseMessaging.onMessage.listen((RemoteMessage message) async {
+    debugPrint('[FCM] Foreground message received: ${message.data}');
+    // Process message immediately (app is in foreground, no need to cancel notification)
+    await handlePriceUpdateMessage(message, isBackground: false);
+  });
+
   // Initialize settings cache
   await SettingsCache().init();
 
@@ -36,7 +45,7 @@ void main() async {
   await BackgroundTaskService.initialize();
 
   // Geofence Service beim App-Start initialisieren
-  await GeofenceService().initialize();
+  //await GeofenceService().initialize();
 
   // Location Permissions werden beim ersten Screen-Load angefragt (mit Context)
 
@@ -68,6 +77,9 @@ class _WattWiseAppState extends State<WattWiseApp> {
 
     // Initialize FCM (request permissions & register token)
     await FCMService().initialize();
+
+    // Update provider cache if full cost mode is enabled and cache is old (>7 days)
+    await _updateProviderCacheIfNeeded();
 
     setState(() {
       _isLoading = false;
@@ -107,6 +119,41 @@ class _WattWiseAppState extends State<WattWiseApp> {
         _showTermsUpdate = false;
       }
     });
+  }
+
+  Future<void> _updateProviderCacheIfNeeded() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+
+      // Only check if full cost mode is enabled
+      final fullCostMode = prefs.getBool('full_cost_mode') ?? false;
+      if (!fullCostMode) {
+        return;
+      }
+
+      // Check cache age
+      final market = prefs.getString('price_market') ?? 'AT';
+      final timestampKey = 'provider_data_${market}_timestamp';
+      final lastUpdate = prefs.getInt(timestampKey);
+
+      if (lastUpdate == null) {
+        return; // No cache yet, will be loaded when user opens settings
+      }
+
+      final age = DateTime.now().millisecondsSinceEpoch - lastUpdate;
+      final sevenDays = const Duration(days: 7).inMilliseconds;
+
+      if (age > sevenDays) {
+        debugPrint('[Main] Provider cache is ${(age / 86400000).toStringAsFixed(1)} days old, updating...');
+        await EnergyProviderService().getProviders(market);
+        debugPrint('[Main] Provider cache updated successfully');
+      } else {
+        debugPrint('[Main] Provider cache is fresh (${(age / 86400000).toStringAsFixed(1)} days old)');
+      }
+    } catch (e) {
+      debugPrint('[Main] Failed to update provider cache: $e');
+      // Non-critical, continue app startup
+    }
   }
 
   void setThemeMode(ThemeMode themeMode) async {

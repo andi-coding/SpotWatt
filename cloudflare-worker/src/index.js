@@ -442,6 +442,79 @@ function aggregate15MinToHourly(periodContent, startTime, market) {
   return prices;
 }
 
+// ===== ENERGY PROVIDER ENDPOINTS =====
+
+/**
+ * Get energy providers and tax rates for a specific region
+ * GET /providers?region=AT
+ */
+async function handleGetProviders(request, env, headers) {
+  try {
+    if (!env.FCM_DB) {
+      return new Response(
+        JSON.stringify({ error: 'Database not configured' }),
+        { status: 500, headers }
+      );
+    }
+
+    const url = new URL(request.url);
+    const region = url.searchParams.get('region') || 'AT';
+
+    // Validate region
+    if (!['AT', 'DE'].includes(region)) {
+      return new Response(
+        JSON.stringify({ error: 'Invalid region (must be AT or DE)' }),
+        { status: 400, headers }
+      );
+    }
+
+    // Fetch providers for region
+    const providers = await env.FCM_DB.prepare(`
+      SELECT
+        provider_name,
+        markup_percentage,
+        markup_fixed_ct_kwh,
+        base_fee_monthly_eur
+      FROM energy_providers
+      WHERE region = ? AND active = 1
+      ORDER BY display_order, provider_name
+    `).bind(region).all();
+
+    // Fetch tax rate for region
+    const taxRateResult = await env.FCM_DB.prepare(`
+      SELECT tax_percentage
+      FROM tax_rates
+      WHERE region = ?
+    `).bind(region).first();
+
+    const taxRate = taxRateResult?.tax_percentage || (region === 'AT' ? 20.0 : 19.0);
+
+    console.log(`[Providers] ✅ Fetched ${providers.results.length} providers for ${region}`);
+
+    return new Response(
+      JSON.stringify({
+        region: region,
+        tax_rate: taxRate,
+        providers: providers.results,
+        version: 1,
+        last_updated: new Date().toISOString()
+      }),
+      {
+        headers: {
+          ...headers,
+          'Cache-Control': 'public, max-age=86400, s-maxage=86400' // 1 day cache
+        }
+      }
+    );
+  } catch (error) {
+    console.error('[Providers] Error fetching providers:', error);
+    return new Response(
+      JSON.stringify({ error: 'Failed to fetch providers', details: error.message }),
+      { status: 500, headers }
+    );
+  }
+}
+
 // ===== FCM ENDPOINTS =====
 
 /**
@@ -572,6 +645,11 @@ export default {
       return handleFCMUnregister(request, env, headers);
     }
 
+    // Energy Provider Endpoints
+    if (url.pathname === '/providers' && request.method === 'GET') {
+      return handleGetProviders(request, env, headers);
+    }
+
     const market = url.searchParams.get('market') || 'AT';
     const adminKey = url.searchParams.get('key');
     const debug = url.searchParams.get('debug') === 'xml' && adminKey === env.ADMIN_API_KEY;
@@ -619,10 +697,11 @@ export default {
       if (testCron) {
         console.log('🔧 Manual cron test triggered via API');
         try {
-          await updatePricesFromENTSOE(env);
+          // Run the same logic as scheduled job, but always send FCM (even if no update needed)
+          await runScheduledJob(env, true);
           return new Response(
             JSON.stringify({
-              message: 'Cron job executed successfully',
+              message: 'Cron job executed successfully (FCM sent)',
               timestamp: new Date().toISOString()
             }),
             { headers }
@@ -686,60 +765,71 @@ export default {
 
   // Scheduled handler - runs multiple times starting at 14:00 UTC
   async scheduled(event, env, ctx) {
-    const now = new Date();
-    console.log('🕐 Scheduled task running at', now.toISOString());
-
-    if (!env.ENTSOE_API_TOKEN) {
-      console.error('ENTSO-E API token not configured');
-      return;
-    }
-
-    // Check if we already have tomorrow's prices in cache
-    const needsUpdate = await checkIfUpdateNeeded(env);
-
-    if (needsUpdate) {
-      console.log('📥 Missing tomorrow prices, fetching from ENTSO-E...');
-
-      // Get current attempt counter (resets on successful update or at midnight UTC)
-      const todayKey = `attempt_count_${now.toISOString().split('T')[0]}`;
-      let attemptCount = 1;
-
-      if (env.PRICE_CACHE) {
-        const cachedCount = await env.PRICE_CACHE.get(todayKey);
-        attemptCount = cachedCount ? parseInt(cachedCount) + 1 : 1;
-
-        // Store updated count (expires in 6 hours - enough for all retries)
-        await env.PRICE_CACHE.put(todayKey, attemptCount.toString(), {
-          expirationTtl: 21600 // 6 hours
-        });
-      }
-
-      console.log(`🔄 Attempt ${attemptCount} for today`);
-
-      // Emergency fallback on 5th attempt (regardless of time)
-      const isLastAttempt = attemptCount >= 5;
-
-      if (isLastAttempt) {
-        console.warn('⏰ Last cron attempt (5th try) - emergency fallback mode enabled');
-      }
-
-      const updateSuccess = await updatePricesFromENTSOE(env, isLastAttempt);
-
-      // Reset counter on successful update
-      if (updateSuccess && env.PRICE_CACHE) {
-        await env.PRICE_CACHE.delete(todayKey);
-        console.log('🔄 Counter reset - update successful');
-      }
-
-      // Send FCM push notifications if update was successful
-      if (updateSuccess) {
-        await sendFCMPushNotifications(env);
-      }
-    } else {
-      console.log('✅ Already have tomorrow prices, skipping update');
-    }
+    await runScheduledJob(env, false);
   }
 };
+
+// Run scheduled job logic (shared between cron and manual test trigger)
+async function runScheduledJob(env, alwaysSendFCM = false) {
+  const now = new Date();
+  console.log('🕐 Scheduled task running at', now.toISOString());
+
+  if (!env.ENTSOE_API_TOKEN) {
+    console.error('ENTSO-E API token not configured');
+    return;
+  }
+
+  // Check if we already have tomorrow's prices in cache
+  const needsUpdate = await checkIfUpdateNeeded(env);
+
+  if (needsUpdate) {
+    console.log('📥 Missing tomorrow prices, fetching from ENTSO-E...');
+
+    // Get current attempt counter (resets on successful update or at midnight UTC)
+    const todayKey = `attempt_count_${now.toISOString().split('T')[0]}`;
+    let attemptCount = 1;
+
+    if (env.PRICE_CACHE) {
+      const cachedCount = await env.PRICE_CACHE.get(todayKey);
+      attemptCount = cachedCount ? parseInt(cachedCount) + 1 : 1;
+
+      // Store updated count (expires in 6 hours - enough for all retries)
+      await env.PRICE_CACHE.put(todayKey, attemptCount.toString(), {
+        expirationTtl: 21600 // 6 hours
+      });
+    }
+
+    console.log(`🔄 Attempt ${attemptCount} for today`);
+
+    // Emergency fallback on 5th attempt (regardless of time)
+    const isLastAttempt = attemptCount >= 5;
+
+    if (isLastAttempt) {
+      console.warn('⏰ Last cron attempt (5th try) - emergency fallback mode enabled');
+    }
+
+    const updateSuccess = await updatePricesFromENTSOE(env, isLastAttempt);
+
+    // Reset counter on successful update
+    if (updateSuccess && env.PRICE_CACHE) {
+      await env.PRICE_CACHE.delete(todayKey);
+      console.log('🔄 Counter reset - update successful');
+    }
+
+    // Send FCM push notifications if update was successful
+    if (updateSuccess) {
+      await sendFCMPushNotifications(env);
+    }
+  } else {
+    console.log('✅ Already have tomorrow prices, skipping update');
+
+    // For manual testing: always send FCM even if no update needed
+    if (alwaysSendFCM) {
+      console.log('🔧 Test mode: Sending FCM even though prices are up-to-date');
+      await sendFCMPushNotifications(env);
+    }
+  }
+}
 
 // Check if we need to update prices
 async function checkIfUpdateNeeded(env) {
@@ -890,19 +980,22 @@ async function sendFCMPushNotifications(env) {
             body: JSON.stringify({
               message: {
                 token: token,
+                // Data-only message with high priority for Doze Mode bypass
+                // No notification key = pure background processing
                 data: {
                   action: 'update_prices'
                 },
                 android: {
-                  priority: 'high' // Wake up device
+                  priority: 'high'  // Bypass Doze Mode for immediate delivery
                 },
                 apns: {
                   headers: {
-                    'apns-priority': '10' // Wake up iOS device
+                    'apns-priority': '5',        // Low priority for background content
+                    'apns-push-type': 'background'  // Required for iOS 13+ silent push
                   },
                   payload: {
                     aps: {
-                      'content-available': 1 // Silent push
+                      'content-available': 1  // Wake app for background processing
                     }
                   }
                 }
@@ -950,14 +1043,28 @@ async function sendFCMPushNotifications(env) {
       }
     });
 
-    // Mark invalid tokens as inactive
+    // Mark invalid tokens as inactive and update last_seen timestamp
     if (invalidTokens.length > 0) {
       console.log(`[FCM] Marking ${invalidTokens.length} invalid tokens as inactive`);
       for (const token of invalidTokens) {
         await env.FCM_DB.prepare(`
-          UPDATE fcm_tokens SET active = 0 WHERE token = ?
+          UPDATE fcm_tokens
+          SET active = 0,
+              last_seen = CURRENT_TIMESTAMP
+          WHERE token = ?
         `).bind(token).run();
       }
+    }
+
+    // Auto-cleanup: Delete tokens that have been inactive for >7 days
+    const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+    const deletedResult = await env.FCM_DB.prepare(`
+      DELETE FROM fcm_tokens
+      WHERE active = 0 AND last_seen < ?
+    `).bind(sevenDaysAgo).run();
+
+    if (deletedResult.meta?.changes > 0) {
+      console.log(`[FCM] 🗑️ Cleaned up ${deletedResult.meta.changes} old inactive tokens (>7 days)`);
     }
 
     console.log(`[FCM] ✅ Push notifications sent: ${successCount} success, ${errorCount} errors, ${invalidTokens.length} invalid tokens removed`);

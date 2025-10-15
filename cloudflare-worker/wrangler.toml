@@ -25,12 +25,13 @@ database_name = "spotwatt-fcm-tokens"
 database_id = "b1e2ec5c-adf1-4bba-81a9-10d71996943c"
 
 # Cron Triggers - ENTSO-E publiziert Day-Ahead Preise täglich um 12:30 CET/CEST
-# Erster Versuch um 12:00 UTC, dann Fallbacks alle 30 Min
+# Max 5 Trigger (Cloudflare Free Plan Limit)
+# Erster Versuch um 12:00 UTC, dann alle 30 Min, letzter um 14:30 UTC
 [triggers]
 crons = [
   "0 12 * * *",   # 12:00 UTC = 13:00 CET / 14:00 CEST
   "30 12 * * *",  # 12:30 UTC = 13:30 CET / 14:30 CEST
   "0 13 * * *",   # 13:00 UTC = 14:00 CET / 15:00 CEST
   "30 13 * * *",  # 13:30 UTC = 14:30 CET / 15:30 CEST
-  "0 15 * * *"    # 15:00 UTC = 16:00 CET / 17:00 CEST
+  "30 14 * * *"   # 14:30 UTC = 15:30 CET / 16:30 CEST (letzter Versuch)
 ]

@@ -7,6 +7,8 @@ import '../models/price_data.dart';
 import 'awattar_service.dart';
 import 'cloudflare_price_service.dart';
 import 'full_cost_calculator.dart';
+import 'notification_service.dart';
+import 'widget_service.dart';
 
 class NetworkException implements Exception {
   final String message;
@@ -130,6 +132,22 @@ class PriceCacheService {
           market: market == 'AT' ? PriceMarket.austria : PriceMarket.germany,
         );
         await _saveToCache(prices, market);
+
+        // Update dependent services after fresh prices
+        try {
+          await NotificationService().scheduleNotifications();
+          print('[Cache] ✅ Notifications scheduled after fresh prices');
+        } catch (e) {
+          print('[Cache] ⚠️ Failed to schedule notifications: $e');
+        }
+
+        try {
+          await WidgetService.updateWidget();
+          print('[Cache] ✅ Widget updated after fresh prices');
+        } catch (e) {
+          print('[Cache] ⚠️ Failed to update widget: $e');
+        }
+
         print('[Cache] CloudFlare fetch successful for $market, got ${prices.length} prices');
         return prices;
       } catch (e, stackTrace) {
@@ -162,7 +180,7 @@ class PriceCacheService {
     final availableDates = prices.map((p) => '${p.startTime.day}/${p.startTime.month} ${p.startTime.hour}h').toSet().toList();
     print('[Cache] Available price dates/hours: $availableDates');
     
-    // Haben wir Preise für heute?
+    // RULE 1: Haben wir Preise für HEUTE?
     final hasToday = prices.any((p) =>
       p.startTime.day == now.day &&
       p.startTime.month == now.month &&
@@ -170,27 +188,37 @@ class PriceCacheService {
     );
     print('[Cache] Has today prices (${now.day}/${now.month}/${now.year}): $hasToday');
     if (!hasToday) {
-      print('[Cache] Missing today prices - invalid');
+      print('[Cache] ❌ Missing today prices - INVALID');
       return false;
     }
 
-    // Tomorrow prices are fetched by FCM (not critical for cache validity)
-    // We only require today's prices to be present
-    // This prevents unnecessary API calls and improves UX when tomorrow prices are delayed
+    // RULE 2: Nach 17:00 Uhr MÜSSEN Morgen-Preise da sein!
+    // Begründung:
+    // - ENTSO-E published Preise ~14:00 Uhr (sicher bis 17:00)
+    // - User plant abends (17-21 Uhr) für morgen
+    // - Falls FCM fehlschlägt, holen wir Preise spätestens beim App-Open ab 17:00
     final tomorrow = now.add(const Duration(days: 1));
     final hasTomorrow = prices.any((p) =>
       p.startTime.day == tomorrow.day &&
       p.startTime.month == tomorrow.month &&
       p.startTime.year == tomorrow.year
     );
-    if (now.hour >= 14) {
-      print('[Cache] Time is after 14:00 (${now.hour}:${now.minute}), tomorrow status: $hasTomorrow');
-      if (!hasTomorrow) {
-        print('[Cache] ℹ️ Tomorrow prices not yet available (FCM will handle this)');
-      }
+
+    // Critical time window: After 17:00, tomorrow prices are REQUIRED
+    if (now.hour >= 17 && !hasTomorrow) {
+      print('[Cache] ❌ After 17:00 but missing tomorrow prices - INVALID');
+      print('[Cache] Expected tomorrow: ${tomorrow.day}/${tomorrow.month}/${tomorrow.year}');
+      return false;
     }
 
-    print('[Cache] Cache is valid');
+    // Before 17:00, tomorrow prices are optional (ENTSO-E might not have published yet)
+    if (now.hour < 17 && !hasTomorrow) {
+      print('[Cache] ℹ️ Before 17:00, tomorrow prices not yet required (cache still valid)');
+    } else if (hasTomorrow) {
+      print('[Cache] ✅ Tomorrow prices available');
+    }
+
+    print('[Cache] ✅ Cache is valid');
     return true;
   }
   

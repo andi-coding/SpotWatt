@@ -43,24 +43,43 @@ class PriceUtils {
     if (fullCostMode) {
       final taxRate = (settings.priceMarket == 'AT') ? 1.20 : 1.19;
 
-      // Helper function to extract spot price from full cost
+      // Helper function to extract spot price (NETTO) from full cost (BRUTTO)
+      //
+      // Forward formula: fullCost = spotNetto × taxRate + (|spotNetto| × percentage + fixedFee) + networkCostsBrutto
+      // Reverse formula requires case distinction due to absolute value
       double extractSpotPrice(double fullCost) {
-        // Remove VAT if applied
-        double priceWithoutTax = settings.includeTax ? fullCost / taxRate : fullCost;
+        final percentage = settings.energyProviderPercentage / 100; // Convert to decimal
+        final fixedFeeBrutto = settings.energyProviderFixedFee;
 
-        // Remove fixed costs (network costs + provider fixed fee)
-        double priceWithoutFixed = priceWithoutTax - settings.networkCosts - settings.energyProviderFixedFee;
+        // Network costs: convert to BRUTTO if user entered NETTO
+        final networkCostsBrutto = settings.includeTax
+            ? settings.networkCosts
+            : settings.networkCosts * taxRate;
 
-        // Remove percentage markup
-        if (settings.energyProviderPercentage > 0) {
-          if (priceWithoutFixed > 0) {
-            return priceWithoutFixed / (1 + settings.energyProviderPercentage / 100);
-          } else {
-            return priceWithoutFixed / (1 - settings.energyProviderPercentage / 100);
-          }
+        // Common numerator for both cases
+        final numerator = fullCost - fixedFeeBrutto - networkCostsBrutto;
+
+        // Case A: spotNetto ≥ 0
+        // fullCost = spotNetto × (taxRate + percentage) + fixedFee + networkCostsBrutto
+        // → spotNetto = (fullCost - fixedFee - networkCostsBrutto) / (taxRate + percentage)
+        final denominatorPositive = taxRate + percentage;
+        final spotPositive = numerator / denominatorPositive;
+
+        // Case B: spotNetto < 0
+        // fullCost = spotNetto × (taxRate - percentage) + fixedFee + networkCostsBrutto
+        // → spotNetto = (fullCost - fixedFee - networkCostsBrutto) / (taxRate - percentage)
+        final denominatorNegative = taxRate - percentage;
+        final spotNegative = denominatorNegative != 0 ? numerator / denominatorNegative : 0.0;
+
+        // Return the case that is self-consistent (sign matches assumption)
+        if (spotPositive >= 0) {
+          return spotPositive; // Case A is valid
+        } else if (spotNegative < 0) {
+          return spotNegative; // Case B is valid
+        } else {
+          // Fallback: assume positive (most common case)
+          return spotPositive;
         }
-
-        return priceWithoutFixed;
       }
 
       // Extract spot prices for comparison

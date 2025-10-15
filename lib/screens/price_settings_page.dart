@@ -5,16 +5,8 @@ import '../services/awattar_service.dart';
 import '../services/price_cache_service.dart';
 import '../services/notification_service.dart';
 import '../services/settings_cache.dart';
-
-enum EnergyProvider {
-  custom('custom', 'Benutzerdefiniert'),
-  awattarAT('awattar_at', 'aWATTar (AT)');
-
-  final String code;
-  final String displayName;
-
-  const EnergyProvider(this.code, this.displayName);
-}
+import '../services/energy_provider_service.dart';
+import '../models/energy_provider.dart';
 
 class PriceSettingsHelper {
   static double calculateProviderFee(double spotPrice, String providerCode, double percentage, double fixedFee) {
@@ -36,9 +28,14 @@ class _PriceSettingsPageState extends State<PriceSettingsPage> {
   double energyProviderPercentage = 0.0;
   double energyProviderFixedFee = 0.0;
   double networkCosts = 0.0;
-  bool includeTax = true;
+  bool includeTax = true;  // Netzkosten inkl. USt (Standard: ja)
   PriceMarket selectedMarket = PriceMarket.austria;
-  EnergyProvider selectedProvider = EnergyProvider.custom;
+
+  // Dynamic provider data from API
+  List<EnergyProvider> availableProviders = [];
+  EnergyProvider? selectedProvider;
+  double taxRate = 20.0; // Will be loaded from API
+  bool isLoadingProviders = true;
   
   // Text controllers for input fields
   late TextEditingController _percentageController;
@@ -90,6 +87,17 @@ class _PriceSettingsPageState extends State<PriceSettingsPage> {
 
   Future<void> _loadSettings() async {
     final prefs = await SharedPreferences.getInstance();
+
+    // Load market selection first
+    final marketCode = prefs.getString('price_market') ?? 'AT';
+    selectedMarket = PriceMarket.values.firstWhere(
+      (m) => m.code == marketCode,
+      orElse: () => PriceMarket.austria,
+    );
+
+    // Load provider data from API
+    await _loadProviders();
+
     setState(() {
       fullCostMode = prefs.getBool('full_cost_mode') ?? false;
       energyProviderFee = prefs.getDouble('energy_provider_fee') ?? 0.0;
@@ -97,31 +105,61 @@ class _PriceSettingsPageState extends State<PriceSettingsPage> {
       energyProviderFixedFee = prefs.getDouble('energy_provider_fixed_fee') ?? 0.0;
       networkCosts = prefs.getDouble('network_costs') ?? 0.0;
       includeTax = prefs.getBool('include_tax') ?? true;
-      
+
+      // Find selected provider by name
+      final providerName = prefs.getString('energy_provider') ?? 'Benutzerdefiniert';
+      selectedProvider = availableProviders.firstWhere(
+        (p) => p.providerName == providerName,
+        orElse: () => availableProviders.first, // Default to first (Benutzerdefiniert)
+      );
+
       // Update text controllers
       _percentageController.text = energyProviderPercentage.toStringAsFixed(1);
       _fixedFeeController.text = energyProviderFixedFee.toStringAsFixed(2);
       _networkCostsController.text = networkCosts.toStringAsFixed(2);
-      
-      // Load market selection
-      final marketCode = prefs.getString('price_market') ?? 'AT';
-      selectedMarket = PriceMarket.values.firstWhere(
-        (m) => m.code == marketCode,
-        orElse: () => PriceMarket.austria,
-      );
-      
-      // Load energy provider selection
-      final providerCode = prefs.getString('energy_provider') ?? 'custom';
-      selectedProvider = EnergyProvider.values.firstWhere(
-        (p) => p.code == providerCode,
-        orElse: () => EnergyProvider.custom,
-      );
-
-      // Update text controllers with loaded values
-      _percentageController.text = energyProviderPercentage.toString();
-      _fixedFeeController.text = energyProviderFixedFee.toString();
-      _networkCostsController.text = networkCosts.toString();
     });
+  }
+
+  Future<void> _loadProviders({bool resetSelection = false}) async {
+    try {
+      // Reset provider selection if requested (e.g., when market changes)
+      if (resetSelection) {
+        setState(() {
+          selectedProvider = null;
+          isLoadingProviders = true;
+        });
+      }
+
+      final service = EnergyProviderService();
+      final providerData = await service.getProviders(selectedMarket.code);
+
+      setState(() {
+        availableProviders = providerData.providers;
+        taxRate = providerData.taxRate;
+        isLoadingProviders = false;
+
+        // Set default provider (first one = Benutzerdefiniert) if none selected
+        if (selectedProvider == null && availableProviders.isNotEmpty) {
+          selectedProvider = availableProviders.first;
+        }
+      });
+
+      debugPrint('[PriceSettings] Loaded ${availableProviders.length} providers for ${selectedMarket.code}');
+    } catch (e) {
+      debugPrint('[PriceSettings] Failed to load providers: $e');
+      setState(() {
+        isLoadingProviders = false;
+      });
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Fehler beim Laden der Anbieter: $e'),
+            duration: Duration(seconds: 3),
+          ),
+        );
+      }
+    }
   }
 
 
@@ -134,7 +172,7 @@ class _PriceSettingsPageState extends State<PriceSettingsPage> {
     await prefs.setDouble('network_costs', networkCosts);
     await prefs.setBool('include_tax', includeTax);
     await prefs.setString('price_market', selectedMarket.code);
-    await prefs.setString('energy_provider', selectedProvider.code);
+    await prefs.setString('energy_provider', selectedProvider?.providerName ?? 'Benutzerdefiniert');
 
     // Update the settings cache
     await SettingsCache().loadSettings();
@@ -144,8 +182,10 @@ class _PriceSettingsPageState extends State<PriceSettingsPage> {
     final notificationService = NotificationService();
     await notificationService.rescheduleNotifications();
 
-    // When market changes, ensure cache exists for new market (lazy loading)
+    // When market changes, reload providers and ensure cache exists
     if (marketChanged) {
+      await _loadProviders(resetSelection: true); // Reload providers and reset selection
+
       final cacheService = PriceCacheService();
       await cacheService.ensureCacheForMarket(selectedMarket.code);
       if (Navigator.of(context).mounted) {
@@ -171,18 +211,21 @@ class _PriceSettingsPageState extends State<PriceSettingsPage> {
     const positiveSpot = 8.5;
     const negativeSpot = -4.0;
     
+    // Tax multiplier
+    final taxMultiplier = 1.0 + (taxRate / 100);
+
     // Berechnung für positiven Preis
-    final posProviderFee = _calculateProviderFee(positiveSpot);
-    final posWithProviderFee = positiveSpot + posProviderFee;
-    final posWithNetworkCosts = posWithProviderFee + networkCosts;
-    final taxRate = (selectedMarket == PriceMarket.austria) ? 1.20 : 1.19;
-    final posFinalPrice = includeTax ? posWithNetworkCosts * taxRate : posWithNetworkCosts;
-    
+    // Strategy: SPOT (NETTO) × USt → + Provider (BRUTTO) + Network (BRUTTO)
+    final posSpotBrutto = positiveSpot * taxMultiplier;
+    final posProviderFee = _calculateProviderFee(positiveSpot); // Already BRUTTO
+    final posNetworkCostsBrutto = includeTax ? networkCosts : networkCosts * taxMultiplier;
+    final posFinalPrice = posSpotBrutto + posProviderFee + posNetworkCostsBrutto;
+
     // Berechnung für negativen Preis
-    final negProviderFee = _calculateProviderFee(negativeSpot);
-    final negWithProviderFee = negativeSpot + negProviderFee;
-    final negWithNetworkCosts = negWithProviderFee + networkCosts;
-    final negFinalPrice = includeTax ? negWithNetworkCosts * taxRate : negWithNetworkCosts;
+    final negSpotBrutto = negativeSpot * taxMultiplier;
+    final negProviderFee = _calculateProviderFee(negativeSpot); // Already BRUTTO
+    final negNetworkCostsBrutto = includeTax ? networkCosts : networkCosts * taxMultiplier;
+    final negFinalPrice = negSpotBrutto + negProviderFee + negNetworkCostsBrutto;
     
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -190,33 +233,32 @@ class _PriceSettingsPageState extends State<PriceSettingsPage> {
         // Beispiel 1: Positiver SPOT-Preis
         const Text('Beispiel 1: Positiver SPOT-Preis', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
         const SizedBox(height: 8),
-        Text('SPOT-Preis: ${PriceUtils.formatPrice(positiveSpot)}', style: const TextStyle(fontSize: 14)),
+        Text('SPOT-Preis (NETTO): ${PriceUtils.formatPrice(positiveSpot)}', style: const TextStyle(fontSize: 14)),
+        Text('+ USt (${taxRate.toStringAsFixed(0)}%): ${PriceUtils.formatPrice(posSpotBrutto - positiveSpot)}', style: const TextStyle(fontSize: 14)),
+        Text('= SPOT inkl. USt: ${PriceUtils.formatPrice(posSpotBrutto)}', style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500)),
         if (energyProviderPercentage > 0 || energyProviderFixedFee > 0)
-          Text('+ Gebühr (|${positiveSpot.toStringAsFixed(1).replaceAll('.', ',')} × ${energyProviderPercentage.toStringAsFixed(1)}%| + ${energyProviderFixedFee.toStringAsFixed(1)}ct): ${PriceUtils.formatPrice(posProviderFee)}', style: const TextStyle(fontSize: 14)),
+          Text('+ Anbieter-Gebühr (inkl. USt): ${PriceUtils.formatPrice(posProviderFee)}', style: const TextStyle(fontSize: 14)),
         if (networkCosts > 0)
-          Text('+ Netzentgelte: ${PriceUtils.formatPrice(networkCosts)}', style: const TextStyle(fontSize: 14)),
-        if (includeTax) 
-          Text('+ USt (${selectedMarket == PriceMarket.austria ? "20" : "19"}%): ${PriceUtils.formatPrice(posFinalPrice - posWithNetworkCosts)}', style: const TextStyle(fontSize: 14)),
+          Text('+ Netzentgelte (inkl. USt): ${PriceUtils.formatPrice(posNetworkCostsBrutto)}', style: const TextStyle(fontSize: 14)),
         const Divider(height: 8),
         Text(
           'Endpreis: ${PriceUtils.formatPrice(posFinalPrice)}',
           style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
         ),
-        
+
         const SizedBox(height: 16),
-        
+
         // Beispiel 2: Negativer SPOT-Preis
         const Text('Beispiel 2: Negativer SPOT-Preis', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
         const SizedBox(height: 8),
-        Text('SPOT-Preis: ${PriceUtils.formatPrice(negativeSpot)}', style: const TextStyle(fontSize: 14)),
+        Text('SPOT-Preis (NETTO): ${PriceUtils.formatPrice(negativeSpot)}', style: const TextStyle(fontSize: 14)),
+        Text('+ USt (${taxRate.toStringAsFixed(0)}%): ${PriceUtils.formatPrice(negSpotBrutto - negativeSpot)}', style: const TextStyle(fontSize: 14)),
+        Text('= SPOT inkl. USt: ${PriceUtils.formatPrice(negSpotBrutto)}', style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500)),
         if (energyProviderPercentage > 0 || energyProviderFixedFee > 0)
-          Text('+ Gebühr (|${negativeSpot.toStringAsFixed(1).replaceAll('.', ',')} × ${energyProviderPercentage.toStringAsFixed(1)}%| + ${energyProviderFixedFee.toStringAsFixed(1)}ct): ${PriceUtils.formatPrice(negProviderFee)}', style: const TextStyle(fontSize: 14)),
-       //Text('= Nach Gebühr: ${PriceUtils.formatPrice(negWithProviderFee)}', style: const TextStyle(fontSize: 14)),
-        if (networkCosts > 0) 
-          Text('+ Netzentgelte: ${PriceUtils.formatPrice(networkCosts)}', style: const TextStyle(fontSize: 14)),
-        if (includeTax)
-          Text('+ USt (${selectedMarket == PriceMarket.austria ? "20" : "19"}%): ${PriceUtils.formatPrice(negFinalPrice - negWithNetworkCosts)}', style: const TextStyle(fontSize: 14)),
-        const Divider(height: 8),       
+          Text('+ Anbieter-Gebühr (inkl. USt): ${PriceUtils.formatPrice(negProviderFee)}', style: const TextStyle(fontSize: 14)),
+        if (networkCosts > 0)
+          Text('+ Netzentgelte (inkl. USt): ${PriceUtils.formatPrice(negNetworkCostsBrutto)}', style: const TextStyle(fontSize: 14)),
+        const Divider(height: 8),
         Text(
           'Endpreis: ${PriceUtils.formatPrice(negFinalPrice)}',
           style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
@@ -308,7 +350,7 @@ class _PriceSettingsPageState extends State<PriceSettingsPage> {
                   ),
                   const SizedBox(height: 8),
                   const Text(
-                    '• Reine Börsenpreise (aWATTar Hourly)',
+                    '• Reine Börsenpreise',
                     style: TextStyle(fontSize: 14),
                   ),
                   const Text(
@@ -446,41 +488,42 @@ class _PriceSettingsPageState extends State<PriceSettingsPage> {
                       ],
                     ),
                     const SizedBox(height: 12),
-                    DropdownButtonFormField<EnergyProvider>(
-                      value: selectedProvider,
-                      isExpanded: true,
-                      decoration: const InputDecoration(
-                        labelText: 'Energieanbieter auswählen',
-                        border: OutlineInputBorder(),
-                      ),
-                      items: EnergyProvider.values.map((provider) => DropdownMenuItem(
-                        value: provider,
-                        child: Text(
-                          provider.displayName,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      )).toList(),
-                      onChanged: (value) {
-                        if (value != null) {
-                          setState(() {
-                            selectedProvider = value;
+                    isLoadingProviders
+                      ? const CircularProgressIndicator()
+                      : DropdownButtonFormField<EnergyProvider>(
+                          value: selectedProvider,
+                          isExpanded: true,
+                          decoration: InputDecoration(
+                            labelText: 'Energieanbieter auswählen',
+                            helperText: 'Gebühren inkl. ${taxRate.toStringAsFixed(0)}% USt',
+                            border: const OutlineInputBorder(),
+                          ),
+                          items: availableProviders.map((provider) => DropdownMenuItem(
+                            value: provider,
+                            child: Text(
+                              provider.providerName,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          )).toList(),
+                          onChanged: (value) {
+                            if (value != null) {
+                              setState(() {
+                                selectedProvider = value;
 
-                            // Set fixed values for aWATTar
-                            if (value == EnergyProvider.awattarAT) {
-                              energyProviderPercentage = 3.0;
-                              energyProviderFixedFee = 1.5;
-                              _percentageController.text = '3';
-                              _fixedFeeController.text = '1.5';
+                                // Set values from selected provider
+                                energyProviderPercentage = value.markupPercentage;
+                                energyProviderFixedFee = value.markupFixedCtKwh;
+                                _percentageController.text = value.markupPercentage.toStringAsFixed(1);
+                                _fixedFeeController.text = value.markupFixedCtKwh.toStringAsFixed(2);
+                              });
+                              _saveSettings();
                             }
-                          });
-                          _saveSettings();
-                        }
-                      },
-                    ),
+                          },
+                        ),
                     
                     // Show formula info for non-custom providers
-                    if (selectedProvider != EnergyProvider.custom) ...[
+                    if (selectedProvider != null && !selectedProvider!.isCustom) ...[
                       const SizedBox(height: 8),
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
@@ -498,7 +541,7 @@ class _PriceSettingsPageState extends State<PriceSettingsPage> {
                             const SizedBox(width: 8),
                             Expanded(
                               child: Text(
-                                'Preisaufschlag: Epex Spot + 3% + 1,5 ct/kWh',
+                                'Preisaufschlag: Epex Spot${selectedProvider!.markupPercentage > 0 ? ' + ${selectedProvider!.markupPercentage}%' : ''}${selectedProvider!.markupFixedCtKwh > 0 ? ' + ${selectedProvider!.markupFixedCtKwh} ct/kWh' : ''}',
                                 style: TextStyle(
                                   fontSize: 13,
                                   color: Theme.of(context).colorScheme.onSurfaceVariant,
@@ -515,7 +558,7 @@ class _PriceSettingsPageState extends State<PriceSettingsPage> {
                     const SizedBox(height: 16),
                     
                     // Energy provider fee configuration for custom
-                    if (selectedProvider == EnergyProvider.custom) ...[
+                    if (selectedProvider != null && selectedProvider!.isCustom) ...[
                       Row(
                         children: [
                           Expanded(
@@ -577,10 +620,12 @@ class _PriceSettingsPageState extends State<PriceSettingsPage> {
                     TextFormField(
                       controller: _networkCostsController,
                       focusNode: _networkCostsFocusNode,
-                      keyboardType: TextInputType.numberWithOptions(decimal: true),
+                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
                       decoration: InputDecoration(
-                        labelText: 'Netzentgelte & Abgaben',
-                        border: OutlineInputBorder(),
+                        labelText: 'Netzentgelte & Abgaben (inkl. ${taxRate.toStringAsFixed(0)}% USt)',
+                        helperText: 'Bitte hier alle ct/kWh Posten Ihrer Rechnung + USt eintragen',
+                        helperMaxLines: 2,
+                        border: const OutlineInputBorder(),
                         suffixText: 'ct/kWh',
                       ),
                       onChanged: (value) {
@@ -594,22 +639,6 @@ class _PriceSettingsPageState extends State<PriceSettingsPage> {
                       onFieldSubmitted: (value) {
                         _saveSettings();
                       },
-                    ),
-                    
-                    const SizedBox(height: 16),
-                    
-                    // Tax toggle
-                    SwitchListTile(
-                      title: Text('Umsatzsteuer (${selectedMarket == PriceMarket.austria ? "20" : "19"}%)'),
-                      subtitle: const Text('Bruttopreise anzeigen'),
-                      value: includeTax,
-                      onChanged: (value) async {
-                        setState(() {
-                          includeTax = value;
-                        });
-                        await _saveSettings();
-                      },
-                      contentPadding: EdgeInsets.zero,
                     ),
                   ],
                 ],
