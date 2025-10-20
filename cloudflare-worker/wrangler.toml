@@ -8,8 +8,14 @@ enabled = true
 
 # Environment variables
 [vars]
-# ENTSOE_API_TOKEN wird als Secret hinzugefügt mit:
-# npx wrangler secret put ENTSOE_API_TOKEN
+# Secrets (hinzufügen mit npx wrangler secret put <NAME>):
+# - ENTSOE_API_TOKEN: ENTSO-E API Token für Preis-Daten
+# - FIREBASE_SERVICE_ACCOUNT_KEY: Firebase Service Account für FCM Push
+# - ADMIN_API_KEY: Admin Key für Test-Endpoints
+#
+# Optional (für CDN Cache Purge):
+# - CLOUDFLARE_ZONE_ID: Zone ID für Cache Purge API
+# - CLOUDFLARE_API_TOKEN: API Token mit "Cache Purge" Permission
 
 # KV Namespace für Caching
 # Erstellen mit: npx wrangler kv:namespace create "PRICE_CACHE"

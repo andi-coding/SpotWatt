@@ -1,7 +1,9 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:workmanager/workmanager.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'widget_service.dart';
+import 'price_cache_service.dart';
 
 /// Unified Background Task Service
 /// Handles widget updates via WorkManager (Android only)
@@ -87,25 +89,49 @@ class BackgroundTaskService {
 }
 
 /// Workmanager callback dispatcher (Android only)
-/// Only updates widget with cached data - FCM handles price fetching
+/// Handles two types of tasks:
+/// 1. 'updatePricesAndNotifications' - Hourly widget update (cached data only)
+/// 2. 'fetchPricesRetry' - FCM retry (fetches fresh prices with network)
 @pragma('vm:entry-point')
 void callbackDispatcher() {
   Workmanager().executeTask((task, inputData) async {
-    debugPrint('[BackgroundTask] Widget refresh task started: $task at ${DateTime.now()}');
+    debugPrint('[BackgroundTask] Task started: $task at ${DateTime.now()}');
 
     try {
-      // Update widget with cached data (no network call)
-      await WidgetService.updateWidget();
-      debugPrint('[BackgroundTask] Widget updated with cached data');
+      if (task == 'fetchPricesRetry') {
+        // ========== FCM RETRY WORKER ==========
+        // This worker runs when FCM push failed to fetch prices
+        // It waits for network (NetworkType.connected) before starting
+        debugPrint('[BackgroundTask] FCM retry worker - fetching fresh prices and updating services');
 
-      // Schedule next hourly update (chain pattern)
-      await BackgroundTaskService._scheduleNextHourlyUpdate();
+        final prefs = await SharedPreferences.getInstance();
+        final market = prefs.getString('price_market') ?? 'AT';
+
+        // Fetch prices AND update all services (Widget, Notifications, Tips)
+        await PriceCacheService().fetchAndUpdateAll(market: market);
+        debugPrint('[BackgroundTask] ✅ Fresh prices fetched and all services updated (FCM retry)');
+
+        // Reschedule regular hourly worker to maintain chain
+        await BackgroundTaskService.reschedule();
+
+      } else {
+        // ========== REGULAR HOURLY WORKER ==========
+        // Updates widget with cached data, no network call
+        debugPrint('[BackgroundTask] Hourly worker - updating widget with cached data');
+
+        await WidgetService.updateWidget();
+        debugPrint('[BackgroundTask] ✅ Widget updated with cached data');
+
+        // Schedule next hourly update (chain pattern)
+        await BackgroundTaskService._scheduleNextHourlyUpdate();
+      }
 
       debugPrint('[BackgroundTask] Task completed successfully');
       return Future.value(true);
+
     } catch (e) {
-      debugPrint('[BackgroundTask] Task failed: $e');
-      return Future.value(false);
+      debugPrint('[BackgroundTask] ❌ Task failed: $e');
+      return Future.value(false); // WorkManager will retry with exponential backoff
     }
   });
 }

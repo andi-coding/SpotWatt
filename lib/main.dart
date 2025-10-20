@@ -8,6 +8,7 @@ import 'firebase_options.dart';
 import 'screens/home_screen.dart';
 import 'screens/onboarding_screen.dart';
 import 'screens/refresh_screen.dart';
+import 'screens/device_management_page.dart';
 import 'services/background_task_service.dart';
 import 'services/geofence_service.dart';
 import 'services/location_permission_helper.dart';
@@ -71,8 +72,11 @@ class _WattWiseAppState extends State<WattWiseApp> {
     _initialize();
   }
 
+  int _defaultStartTab = 0;
+
   Future<void> _initialize() async {
     await _loadThemeMode();
+    await _loadDefaultStartTab();
     await _checkOnboarding();
 
     // Initialize FCM (request permissions & register token)
@@ -84,6 +88,11 @@ class _WattWiseAppState extends State<WattWiseApp> {
     setState(() {
       _isLoading = false;
     });
+  }
+
+  Future<void> _loadDefaultStartTab() async {
+    final prefs = await SharedPreferences.getInstance();
+    _defaultStartTab = prefs.getInt('default_start_tab') ?? 0;
   }
 
   Future<void> _loadThemeMode() async {
@@ -189,6 +198,9 @@ class _WattWiseAppState extends State<WattWiseApp> {
           if (settings.name == 'refresh') {
             return MaterialPageRoute(builder: (context) => const RefreshScreen());
           }
+          if (settings.name == '/device-management') {
+            return MaterialPageRoute(builder: (context) => const DeviceManagementPage());
+          }
           return null;
         },
         theme: ThemeData(
@@ -238,7 +250,7 @@ class _WattWiseAppState extends State<WattWiseApp> {
             ? const OnboardingScreen()
             : _showTermsUpdate
                 ? const OnboardingScreen(termsOnly: true)
-                : const HomeScreen(),
+                : HomeScreen(initialIndex: _defaultStartTab),
       ),
     );
   }

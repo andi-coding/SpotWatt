@@ -19,7 +19,7 @@ class CloudflarePriceService {
         headers: {
           'Accept': 'application/json',
         },
-      ).timeout(Duration(seconds: 10));
+      ).timeout(Duration(seconds: 8));
 
       if (response.statusCode != 200) {
         throw Exception('Failed to fetch prices: ${response.statusCode}');

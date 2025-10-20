@@ -4,6 +4,7 @@ import '../models/price_data.dart';
 import '../services/price_cache_service.dart';
 import '../widgets/price_chart.dart';
 import '../widgets/price_card.dart';
+import '../widgets/savings_tips_preview.dart';
 import '../utils/price_utils.dart';
 
 class PriceOverviewPage extends StatefulWidget {
@@ -272,6 +273,9 @@ class _PriceOverviewPageState extends State<PriceOverviewPage> with WidgetsBindi
                       cheapestTime: cheapestTime,
                       expensiveTime: expensiveTime,
                     ),
+                    const SizedBox(height: 16),
+                    // Minimal Savings Tips Preview (links to full page)
+                    const SavingsTipsPreview(),
                     const SizedBox(height: 24),
                     Text(
                       _getChartTitle(),
@@ -287,7 +291,7 @@ class _PriceOverviewPageState extends State<PriceOverviewPage> with WidgetsBindi
                     ),
                     const SizedBox(height: 24),
                     Text(
-                      'Günstigste Zeiten in den nächsten Stunden',
+                      'Top 3 günstigste Stunden',
                       style: Theme.of(context).textTheme.titleLarge,
                     ),
                     const SizedBox(height: 8),

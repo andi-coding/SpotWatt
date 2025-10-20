@@ -626,7 +626,7 @@ export default {
       'Content-Type': 'application/json',
       'Access-Control-Allow-Origin': '*',
       'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-      'Cache-Control': 'public, max-age=900, s-maxage=3600' // Browser: 15min, CDN: 1h
+      'Cache-Control': 'public, max-age=0, s-maxage=0' // Browser: 0min, CDN: disabled
     };
 
     // Handle CORS preflight
@@ -740,7 +740,7 @@ export default {
 
       const data = await fetchFromENTSOE(market, env.ENTSOE_API_TOKEN);
 
-      // Cache the data for 36 hours (safety buffer if tomorrow's prices are late)
+      // Cache the data for 48 hours (safety buffer if tomorrow's prices are late)
       if (env.PRICE_CACHE) {
         await env.PRICE_CACHE.put(`prices_${market}`, JSON.stringify(data), {
           expirationTtl: 172800 // Cache for 48 hours
@@ -818,6 +818,15 @@ async function runScheduledJob(env, alwaysSendFCM = false) {
 
     // Send FCM push notifications if update was successful
     if (updateSuccess) {
+      // NOTE: CDN cache disabled (s-maxage=0), so cache purge not needed
+      // Uncomment if re-enabling CDN cache in the future:
+      // await purgeCDNCache(env);
+
+      // Wait 2 minutes for KV propagation (global consistency)
+      console.log('⏳ Waiting 2 minutes for KV propagation to all edges...');
+      await new Promise(resolve => setTimeout(resolve, 120000));
+      console.log('✅ KV propagation complete, sending FCM push notifications');
+
       await sendFCMPushNotifications(env);
     }
   } else {
@@ -847,8 +856,13 @@ async function checkIfUpdateNeeded(env) {
     const atData = JSON.parse(atCache);
     const deData = JSON.parse(deCache);
 
-    // Check if both have tomorrow's prices
-    return !hasTomorrowPrices(atData.prices) || !hasTomorrowPrices(deData.prices);
+    // Check if both have tomorrow's prices (market-aware)
+    const atHasTomorrow = hasTomorrowPrices(atData.prices, 'AT');
+    const deHasTomorrow = hasTomorrowPrices(deData.prices, 'DE');
+
+    console.log(`[Cache Check] AT has tomorrow: ${atHasTomorrow}, DE has tomorrow: ${deHasTomorrow}`);
+
+    return !atHasTomorrow || !deHasTomorrow;
   } catch (error) {
     console.error('Error checking cache:', error);
     return true; // Update on error
@@ -885,8 +899,8 @@ async function updatePricesFromENTSOE(env, isLastCronAttempt = false) {
     ]);
 
     // Log if we have tomorrow's prices (for monitoring)
-    const hasATTomorrow = hasTomorrowPrices(atData.prices);
-    const hasDETomorrow = hasTomorrowPrices(deData.prices);
+    const hasATTomorrow = hasTomorrowPrices(atData.prices, 'AT');
+    const hasDETomorrow = hasTomorrowPrices(deData.prices, 'DE');
 
     // Cache the data for 48 hours
     if (env.PRICE_CACHE) {
@@ -910,22 +924,89 @@ async function updatePricesFromENTSOE(env, isLastCronAttempt = false) {
 }
 
 // Helper function to check if prices contain tomorrow's data
-function hasTomorrowPrices(prices) {
+// Market-aware: "tomorrow" means the next trading day in the market's timezone
+function hasTomorrowPrices(prices, market) {
   if (!prices || prices.length === 0) return false;
 
-  const now = new Date();
-  const tomorrowStart = new Date(now);
-  tomorrowStart.setDate(tomorrowStart.getDate() + 1);
-  tomorrowStart.setHours(0, 0, 0, 0); // Start of tomorrow
+  const timezone = MARKET_TIMEZONES[market] || 'Europe/Vienna';
 
-  const tomorrowEnd = new Date(tomorrowStart);
-  tomorrowEnd.setHours(23, 59, 59, 999); // End of tomorrow
+  // Get current trading day boundaries (48h window: today + tomorrow)
+  const { periodStart, periodEnd } = getTradingDayUTC(timezone);
+  // periodStart = today 00:00 local (e.g., 2025-10-14T22:00Z for CEST)
+  // periodEnd   = day after tomorrow 00:00 local (e.g., 2025-10-16T22:00Z)
 
-  // Check if we have at least one price point for tomorrow (between 00:00 and 23:59)
-  return prices.some(price => {
+  // Tomorrow's trading day: from today+24h to periodEnd
+  const tomorrowStart = new Date(periodStart.getTime() + 24 * 60 * 60 * 1000);
+  const tomorrowEnd = periodEnd;
+
+  // Check if we have at least one price point for tomorrow's trading day
+  const hasTomorrow = prices.some(price => {
     const priceTime = new Date(price.startTime);
-    return priceTime >= tomorrowStart && priceTime <= tomorrowEnd;
+    return priceTime >= tomorrowStart && priceTime < tomorrowEnd;
   });
+
+  // Debug logging
+  if (!hasTomorrow) {
+    console.log(`[${market}] ❌ No tomorrow prices. Tomorrow: ${tomorrowStart.toISOString()} - ${tomorrowEnd.toISOString()}`);
+    console.log(`[${market}] Available range: ${prices[0]?.startTime} to ${prices[prices.length - 1]?.startTime}`);
+  } else {
+    console.log(`[${market}] ✅ Tomorrow prices found (${tomorrowStart.toISOString()} - ${tomorrowEnd.toISOString()})`);
+  }
+
+  return hasTomorrow;
+}
+
+/**
+ * Purge CDN cache for price endpoints
+ * Uses Cloudflare Cache API to invalidate cached responses
+ */
+async function purgeCDNCache(env) {
+  try {
+    // Check if we have the required config
+    if (!env.CLOUDFLARE_ZONE_ID || !env.CLOUDFLARE_API_TOKEN) {
+      console.log('[Cache Purge] ⚠️ Zone ID or API Token not configured, skipping cache purge');
+      console.log('[Cache Purge] CDN cache will expire naturally (s-maxage=3600)');
+      return;
+    }
+
+    const zoneId = env.CLOUDFLARE_ZONE_ID;
+    const apiToken = env.CLOUDFLARE_API_TOKEN;
+
+    // Purge specific URLs (more efficient than purging everything)
+    const urlsToPurge = [
+      'https://spotwatt-prices.spotwatt-api.workers.dev?market=AT',
+      'https://spotwatt-prices.spotwatt-api.workers.dev?market=DE'
+    ];
+
+    console.log(`[Cache Purge] 🧹 Purging CDN cache for ${urlsToPurge.length} URLs...`);
+
+    const response = await fetch(
+      `https://api.cloudflare.com/client/v4/zones/${zoneId}/purge_cache`,
+      {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${apiToken}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          files: urlsToPurge
+        })
+      }
+    );
+
+    const result = await response.json();
+
+    if (result.success) {
+      console.log('[Cache Purge] ✅ CDN cache purged successfully');
+      console.log(`[Cache Purge] Purge will propagate to all edges within 5-10 seconds`);
+    } else {
+      console.error('[Cache Purge] ❌ Failed to purge cache:', result.errors);
+    }
+
+  } catch (error) {
+    console.error('[Cache Purge] ❌ Error purging cache:', error);
+    // Non-critical: CDN cache will expire after 1 hour anyway
+  }
 }
 
 /**

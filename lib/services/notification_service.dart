@@ -6,6 +6,7 @@ import '../models/price_data.dart';
 import '../utils/price_utils.dart';
 import 'price_cache_service.dart';
 import 'geofence_service.dart';
+import 'window_reminder_service.dart';
 
 class NotificationService {
   static final NotificationService _instance = NotificationService._internal();
@@ -14,6 +15,13 @@ class NotificationService {
 
   final FlutterLocalNotificationsPlugin notifications = FlutterLocalNotificationsPlugin();
   int _notificationId = 1; // Global notification ID counter
+
+  // Callback for handling notification clicks
+  static Function(int)? _onNotificationTap;
+
+  static void setNotificationTapCallback(Function(int) callback) {
+    _onNotificationTap = callback;
+  }
 
   Future<void> initialize(BuildContext context) async {
     const androidSettings = AndroidInitializationSettings('@drawable/ic_notification_small');
@@ -32,6 +40,16 @@ class NotificationService {
       initSettings,
       onDidReceiveNotificationResponse: (NotificationResponse response) {
         debugPrint('Notification clicked: ${response.payload}');
+
+        // Determine which tab to navigate to based on notification type
+        // Window reminder notifications have IDs >= 2000
+        if (response.id != null && response.id! >= 2000) {
+          // Navigate to Spartipps tab (index 1)
+          _onNotificationTap?.call(1);
+        } else {
+          // Navigate to Preise tab (index 0) for price notifications
+          _onNotificationTap?.call(0);
+        }
       },
     );
 
@@ -109,7 +127,10 @@ class NotificationService {
     if (dailySummaryEnabled) {
       await _scheduleDailySummary(prices, prefs);
     }
-    
+
+    // Reschedule window reminder notifications (user-set reminders for specific time windows)
+    await _rescheduleWindowReminders();
+
     debugPrint('Scheduled ${_notificationId - 1} notifications');
   }
 
@@ -374,5 +395,97 @@ class NotificationService {
     );
     
     debugPrint('Scheduled daily summary for $notificationTime');
+  }
+
+  /// Reschedule user-set window reminders after cancelAll()
+  /// This is called after all notifications are cancelled (e.g., at 14:00 when new prices arrive)
+  Future<void> _rescheduleWindowReminders() async {
+    final windowReminderService = WindowReminderService();
+
+    // Get all active reminders (expired ones are automatically filtered out)
+    final activeReminders = await windowReminderService.cleanupAndGetActiveReminders();
+
+    if (activeReminders.isEmpty) {
+      debugPrint('[NotificationService] No active window reminders to reschedule');
+      return;
+    }
+
+    debugPrint('[NotificationService] Rescheduling ${activeReminders.length} window reminders');
+
+    for (final reminder in activeReminders) {
+      await scheduleWindowReminder(reminder);
+    }
+  }
+
+  /// Generate stable notification ID from window reminder key
+  /// This ensures each time window has a unique, consistent ID
+  int _getWindowReminderId(String reminderKey) {
+    // Use hash code to generate consistent ID
+    // Start from 2000 to avoid conflicts with system notifications (1-1999)
+    return 2000 + reminderKey.hashCode.abs() % 100000;
+  }
+
+  /// Schedule a notification for a specific time window reminder
+  Future<void> scheduleWindowReminder(WindowReminder reminder) async {
+    final notificationTime = WindowReminderService().getNotificationTime(reminder.startTime);
+    final now = DateTime.now();
+
+    // Skip if notification time has already passed
+    if (notificationTime.isBefore(now)) {
+      debugPrint('[NotificationService] Skipping window reminder for ${reminder.deviceName} - notification time already passed');
+      return;
+    }
+
+    final prefs = await SharedPreferences.getInstance();
+
+    // Check quiet time
+    if (_isInQuietTime(notificationTime, prefs)) {
+      debugPrint('[NotificationService] Skipping window reminder for ${reminder.deviceName} - in quiet time');
+      return;
+    }
+
+    // Format time
+    final startHour = reminder.startTime.hour.toString().padLeft(2, '0');
+    final startMinute = reminder.startTime.minute.toString().padLeft(2, '0');
+    final endHour = reminder.endTime.hour.toString().padLeft(2, '0');
+    final endMinute = reminder.endTime.minute.toString().padLeft(2, '0');
+
+    // Format savings
+    final savingsEuro = (reminder.savingsCents / 100).toStringAsFixed(2);
+
+    // Use stable notification ID based on reminder key
+    final notificationId = _getWindowReminderId(reminder.key);
+
+    await notifications.zonedSchedule(
+      notificationId,
+      '⚡ ${reminder.deviceName} jetzt einschalten!',
+      'Optimales Zeitfenster: $startHour:$startMinute - $endHour:$endMinute Uhr • Spare ${savingsEuro}€',
+      tz.TZDateTime.from(notificationTime, tz.local),
+      const NotificationDetails(
+        android: AndroidNotificationDetails(
+          'window_reminders',
+          'Zeitfenster-Erinnerungen',
+          channelDescription: 'Erinnerungen für optimale Zeitfenster',
+          importance: Importance.high,
+          priority: Priority.high,
+          icon: '@drawable/ic_notification_small',
+        ),
+        iOS: DarwinNotificationDetails(
+          presentAlert: true,
+          presentBadge: true,
+          presentSound: true,
+        ),
+      ),
+      androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+    );
+
+    debugPrint('[NotificationService] Scheduled window reminder for ${reminder.deviceName} at $notificationTime (ID: $notificationId)');
+  }
+
+  /// Cancel a specific window reminder notification
+  Future<void> cancelWindowReminder(String reminderKey) async {
+    final notificationId = _getWindowReminderId(reminderKey);
+    await notifications.cancel(notificationId);
+    debugPrint('[NotificationService] Cancelled window reminder (ID: $notificationId)');
   }
 }
