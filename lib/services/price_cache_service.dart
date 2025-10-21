@@ -2,13 +2,13 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 import 'dart:async';
 import 'dart:io';
-import 'package:connectivity_plus/connectivity_plus.dart';
 import '../models/price_data.dart';
 import 'awattar_service.dart';
 import 'cloudflare_price_service.dart';
 import 'full_cost_calculator.dart';
 import 'notification_service.dart';
 import 'widget_service.dart';
+import 'savings_tips_service.dart';
 
 class NetworkException implements Exception {
   final String message;
@@ -28,43 +28,8 @@ class PriceCacheService {
   final AwattarService _awattarService = AwattarService();
   final FullCostCalculator _fullCostCalculator = FullCostCalculator();
   
-  /// Tests actual internet connectivity with DNS lookup to CloudFlare Worker
-  Future<bool> _testInternetConnectivity() async {
-    try {
-      final result = await InternetAddress.lookup('spotwatt-prices.spotwatt-api.workers.dev')
-          .timeout(Duration(seconds: 5));
-      return result.isNotEmpty && result[0].rawAddress.isNotEmpty;
-    } catch (e) {
-      return false;
-    }
-  }
-
-  /// Waits for network connectivity with timeout (includes DNS test)
-  Future<bool> _waitForNetwork({Duration timeout = const Duration(seconds: 5)}) async {
-    final connectivity = Connectivity();
-    final endTime = DateTime.now().add(timeout);
-    
-    while (DateTime.now().isBefore(endTime)) {
-      // Check connectivity first
-      final currentStatus = await connectivity.checkConnectivity();
-      if (currentStatus != ConnectivityResult.none) {
-        // Connectivity exists, now test actual internet
-        print('[Cache] Connectivity detected, testing DNS...');
-        final hasInternet = await _testInternetConnectivity();
-        if (hasInternet) {
-          print('[Cache] DNS test successful');
-          return true;
-        }
-        print('[Cache] DNS test failed, waiting...');
-      }
-      
-      // Wait 1 second before retry
-      await Future.delayed(Duration(seconds: 1));
-    }
-    
-    print('[Cache] Network wait timeout');
-    return false;
-  }
+  // DNS check removed - HTTP client handles connectivity internally
+  // and provides better error handling with SocketException/TimeoutException
   
   /// Gets the current market from preferences
   Future<String> _getCurrentMarket() async {
@@ -73,11 +38,22 @@ class PriceCacheService {
   }
 
   /// Gets cache keys for a specific market
-  (String cacheKey, String timestampKey) _getCacheKeys(String market) {
+  Future<(String cacheKey, String timestampKey)> _getCacheKeys(String market) async {
+    // Add Full Cost suffix to cache key if Full Cost mode is enabled
+    // This creates separate caches for each mode, allowing instant switching
+    final fullCostMode = await _fullCostCalculator.isFullCostMode();
+    final fullCostSuffix = fullCostMode ? '_fullcost' : '';
+
     if (market == 'AT') {
-      return (_cacheKeyAT, _cacheTimestampKeyAT);
+      return (
+        '${_cacheKeyAT}${fullCostSuffix}',
+        '${_cacheTimestampKeyAT}${fullCostSuffix}'
+      );
     } else {
-      return (_cacheKeyDE, _cacheTimestampKeyDE);
+      return (
+        '${_cacheKeyDE}${fullCostSuffix}',
+        '${_cacheTimestampKeyDE}${fullCostSuffix}'
+      );
     }
   }
 
@@ -87,7 +63,7 @@ class PriceCacheService {
   /// - Cache enthält Preise für heute und morgen (falls nach 14:00)
   Future<List<PriceData>> getPrices() async {
     final market = await _getCurrentMarket();
-    final (cacheKey, _) = _getCacheKeys(market);
+    final (cacheKey, _) = await _getCacheKeys(market);
 
     List<PriceData> prices;
 
@@ -105,9 +81,9 @@ class PriceCacheService {
       prices = await _fetchFreshPrices(market);
     }
 
-    // Apply full cost calculations if enabled
-    final fullCostPrices = await _fullCostCalculator.addFullCostToPrices(prices);
-    return fullCostPrices;
+    // ✅ Full Cost is already in cache (added by _fetchFreshPrices)
+    // No need to calculate again!
+    return prices;
   }
   
   /// Force fetch fresh prices from API (used by FCM background handler)
@@ -116,52 +92,96 @@ class PriceCacheService {
     return await _fetchFreshPrices(market);
   }
 
+  /// Fetch prices AND update all dependent services
+  /// Use this from top-level handlers (FCM, Background Worker, Pull-to-Refresh)
+  /// This orchestrates the update flow: API → Cache → Services
+  Future<void> fetchAndUpdateAll({String? market}) async {
+    final targetMarket = market ?? await _getCurrentMarket();
+    print('[Cache] fetchAndUpdateAll() for $targetMarket');
+
+    // 1. Fetch fresh prices (API + Full Cost + Cache)
+    await fetchFreshPrices(market: targetMarket);
+
+    // 2. Update all dependent services (orchestrated from here)
+    await updateDependentServices();
+
+    print('[Cache] ✅ fetchAndUpdateAll() completed');
+  }
+
+  /// Update all services that depend on price data
+  /// Assumes cache already contains fresh prices
+  /// Each service will call getPrices() which reads from cache
+  Future<void> updateDependentServices() async {
+    print('[Services] Updating dependent services...');
+
+    // Run all updates in parallel for better performance
+    await Future.wait([
+      NotificationService()
+          .scheduleNotifications()
+          .then((_) => print('[Services] ✅ Notifications'))
+          .catchError((e) {
+        print('[Services] ⚠️ Notifications failed: $e');
+        return null;
+      }),
+      WidgetService.updateWidget()
+          .then((_) => print('[Services] ✅ Widget'))
+          .catchError((e) {
+        print('[Services] ⚠️ Widget failed: $e');
+        return null;
+      }),
+      SavingsTipsService()
+          .recalculateTomorrowTips()
+          .then((_) => print('[Services] ✅ Tips'))
+          .catchError((e) {
+        print('[Services] ⚠️ Tips failed: $e');
+        return null;
+      }),
+    ]);
+
+    print('[Services] ✅ All services updated');
+  }
+
   Future<List<PriceData>> _fetchFreshPrices(String market) async {
-    // Cache invalid - wait for network before API call
-    print('[Cache] Waiting for network...');
-    final hasNetwork = await _waitForNetwork();
+    print('[Cache] Fetching from CloudFlare Worker for $market');
 
-    if (!hasNetwork) {
-      print('[Cache] No network available');
+    try {
+      // 1. API call (without Full Cost)
+      final prices = await CloudflarePriceService.fetchPrices(
+        market: market == 'AT' ? PriceMarket.austria : PriceMarket.germany,
+      );
+
+      // 2. Add Full Cost immediately (before caching)
+      final fullCostPrices = await _fullCostCalculator.addFullCostToPrices(prices);
+      print('[Cache] Full Cost calculated: ${fullCostPrices.length} prices');
+
+      // 3. Save to cache (WITH Full Cost)
+      await _saveToCache(fullCostPrices, market);
+
+      // ✅ Service calls removed - orchestration happens at top level
+      // See: fetchAndUpdateAll() for coordinated updates
+
+      print('[Cache] CloudFlare fetch successful for $market, got ${fullCostPrices.length} prices');
+      return fullCostPrices;
+
+    } on TimeoutException catch (e) {
+      print('[Cache] Request timeout: $e');
+      throw NetworkException('Zeitüberschreitung bei Preisabruf. Bitte versuche es später erneut.');
+
+    } on SocketException catch (e) {
+      print('[Cache] Network error: $e');
       throw NetworkException('Für aktuelle Preise wird eine Internetverbindung benötigt. Bitte WiFi oder Mobile Daten aktivieren.');
-    } else {
-      print('[Cache] Network available, fetching from CloudFlare Worker for $market');
-      try {
-        // Try CloudFlare Worker first
-        final prices = await CloudflarePriceService.fetchPrices(
-          market: market == 'AT' ? PriceMarket.austria : PriceMarket.germany,
-        );
-        await _saveToCache(prices, market);
 
-        // Update dependent services after fresh prices
-        try {
-          await NotificationService().scheduleNotifications();
-          print('[Cache] ✅ Notifications scheduled after fresh prices');
-        } catch (e) {
-          print('[Cache] ⚠️ Failed to schedule notifications: $e');
-        }
-
-        try {
-          await WidgetService.updateWidget();
-          print('[Cache] ✅ Widget updated after fresh prices');
-        } catch (e) {
-          print('[Cache] ⚠️ Failed to update widget: $e');
-        }
-
-        print('[Cache] CloudFlare fetch successful for $market, got ${prices.length} prices');
-        return prices;
-      } catch (e, stackTrace) {
-        print('[Cache] API call failed for $market: $e');
-        print('[Cache] StackTrace: $stackTrace');
-        rethrow;
-      }
+    } catch (e, stackTrace) {
+      print('[Cache] API call failed for $market: $e');
+      print('[Cache] StackTrace: $stackTrace');
+      rethrow;
     }
   }
   
   /// Prüft ob Cache noch gültig ist
   Future<bool> _isCacheValid(List<PriceData> prices, String market) async {
     final prefs = await SharedPreferences.getInstance();
-    final (_, timestampKey) = _getCacheKeys(market);
+    final (_, timestampKey) = await _getCacheKeys(market);
     final timestamp = prefs.getInt(timestampKey);
     if (timestamp == null) {
       print('[Cache] No timestamp found - invalid');
@@ -225,6 +245,8 @@ class PriceCacheService {
   /// Lädt Preise aus Cache
   Future<List<PriceData>?> _loadFromCache(String cacheKey) async {
     final prefs = await SharedPreferences.getInstance();
+    // IMPORTANT: Reload from disk to get data written by background isolate (FCM handler)
+    await prefs.reload();
     final cacheJson = prefs.getString(cacheKey);
     
     if (cacheJson == null) return null;
@@ -241,15 +263,26 @@ class PriceCacheService {
   
   /// Speichert Preise in Cache
   Future<void> _saveToCache(List<PriceData> prices, String market) async {
+    print('[Cache] 💾 Saving ${prices.length} prices to cache for market: $market');
     final prefs = await SharedPreferences.getInstance();
-    final (cacheKey, timestampKey) = _getCacheKeys(market);
+    final (cacheKey, timestampKey) = await _getCacheKeys(market);
 
     // Preise als JSON speichern
     final pricesJson = prices.map((p) => p.toJson()).toList();
-    await prefs.setString(cacheKey, json.encode(pricesJson));
+    final success = await prefs.setString(cacheKey, json.encode(pricesJson));
+    print('[Cache] 💾 setString($cacheKey) result: $success');
 
     // Timestamp speichern
-    await prefs.setInt(timestampKey, DateTime.now().millisecondsSinceEpoch);
+    final timestampSuccess = await prefs.setInt(timestampKey, DateTime.now().millisecondsSinceEpoch);
+    print('[Cache] 💾 setInt($timestampKey) result: $timestampSuccess');
+
+    // Verify save
+    final saved = prefs.getString(cacheKey);
+    if (saved != null) {
+      print('[Cache] ✅ Verified: prices saved successfully');
+    } else {
+      print('[Cache] ❌ ERROR: Failed to save prices to cache!');
+    }
   }
   
   /// Löscht den Cache für einen spezifischen Markt
@@ -257,35 +290,57 @@ class PriceCacheService {
     final prefs = await SharedPreferences.getInstance();
 
     if (market != null) {
-      // Clear specific market cache
-      final (cacheKey, timestampKey) = _getCacheKeys(market);
-      await prefs.remove(cacheKey);
-      await prefs.remove(timestampKey);
+      // Clear specific market cache (both Full Cost modes)
+      await prefs.remove('${_cacheKeyAT}');
+      await prefs.remove('${_cacheKeyAT}_fullcost');
+      await prefs.remove('${_cacheTimestampKeyAT}');
+      await prefs.remove('${_cacheTimestampKeyAT}_fullcost');
+
+      await prefs.remove('${_cacheKeyDE}');
+      await prefs.remove('${_cacheKeyDE}_fullcost');
+      await prefs.remove('${_cacheTimestampKeyDE}');
+      await prefs.remove('${_cacheTimestampKeyDE}_fullcost');
+
+      print('[Cache] Cleared cache for $market (both Full Cost modes)');
     } else {
-      // Clear all caches
+      // Clear all caches (both Full Cost modes)
       await prefs.remove(_cacheKeyAT);
+      await prefs.remove('${_cacheKeyAT}_fullcost');
       await prefs.remove(_cacheKeyDE);
+      await prefs.remove('${_cacheKeyDE}_fullcost');
       await prefs.remove(_cacheTimestampKeyAT);
+      await prefs.remove('${_cacheTimestampKeyAT}_fullcost');
       await prefs.remove(_cacheTimestampKeyDE);
+      await prefs.remove('${_cacheTimestampKeyDE}_fullcost');
+
+      print('[Cache] Cleared all caches (both markets, both Full Cost modes)');
     }
   }
 
   /// Force clear all caches (for debugging)
   Future<void> clearAllCaches() async {
     final prefs = await SharedPreferences.getInstance();
+
+    // Clear both markets, both Full Cost modes
     await prefs.remove(_cacheKeyAT);
+    await prefs.remove('${_cacheKeyAT}_fullcost');
     await prefs.remove(_cacheKeyDE);
+    await prefs.remove('${_cacheKeyDE}_fullcost');
     await prefs.remove(_cacheTimestampKeyAT);
+    await prefs.remove('${_cacheTimestampKeyAT}_fullcost');
     await prefs.remove(_cacheTimestampKeyDE);
+    await prefs.remove('${_cacheTimestampKeyDE}_fullcost');
+
     // Also remove any legacy keys that might still exist
     await prefs.remove('price_cache');
     await prefs.remove('price_cache_timestamp');
-    print('[Cache] All caches cleared');
+
+    print('[Cache] All caches cleared (including Full Cost modes)');
   }
 
   /// Check and update cache for market switch (only if needed)
   Future<void> ensureCacheForMarket(String market) async {
-    final (cacheKey, _) = _getCacheKeys(market);
+    final (cacheKey, _) = await _getCacheKeys(market);
     final cachedPrices = await _loadFromCache(cacheKey);
 
     // Only fetch if cache is missing or invalid
@@ -301,7 +356,7 @@ class PriceCacheService {
   Future<Duration?> getCacheAge({String? market}) async {
     final prefs = await SharedPreferences.getInstance();
     final marketToCheck = market ?? await _getCurrentMarket();
-    final (_, timestampKey) = _getCacheKeys(marketToCheck);
+    final (_, timestampKey) = await _getCacheKeys(marketToCheck);
     final timestamp = prefs.getInt(timestampKey);
 
     if (timestamp == null) return null;

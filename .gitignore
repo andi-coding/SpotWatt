@@ -85,3 +85,8 @@ local.properties
 *.jks
 *.keystore
 key.properties
+
+# Bug reports and test artifacts
+bugreport-*.txt
+bugreport-*/
+tests/

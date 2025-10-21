@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../main.dart';
 
 class DisplaySettingsPage extends StatefulWidget {
@@ -9,6 +10,29 @@ class DisplaySettingsPage extends StatefulWidget {
 }
 
 class _DisplaySettingsPageState extends State<DisplaySettingsPage> {
+  int _defaultStartTab = 0; // 0 = Preise, 1 = Spartipps
+
+  @override
+  void initState() {
+    super.initState();
+    _loadStartTabPreference();
+  }
+
+  Future<void> _loadStartTabPreference() async {
+    final prefs = await SharedPreferences.getInstance();
+    setState(() {
+      _defaultStartTab = prefs.getInt('default_start_tab') ?? 0;
+    });
+  }
+
+  Future<void> _saveStartTabPreference(int tabIndex) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setInt('default_start_tab', tabIndex);
+    setState(() {
+      _defaultStartTab = tabIndex;
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     final themeProvider = ThemeProvider.of(context);
@@ -68,6 +92,50 @@ class _DisplaySettingsPageState extends State<DisplaySettingsPage> {
               ),
             ),
           ],
+
+          const SizedBox(height: 32),
+
+          // Startseite section
+          Text(
+            'Startseite',
+            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Wählen Sie welche Seite beim App-Start geöffnet wird',
+            style: Theme.of(context).textTheme.bodyMedium,
+          ),
+          const SizedBox(height: 16),
+
+          Card(
+            child: RadioListTile<int>(
+              title: const Text('Preise'),
+              subtitle: const Text('Aktuelle Strompreise und Chart'),
+              value: 0,
+              groupValue: _defaultStartTab,
+              onChanged: (int? value) {
+                if (value != null) {
+                  _saveStartTabPreference(value);
+                }
+              },
+            ),
+          ),
+          const SizedBox(height: 8),
+          Card(
+            child: RadioListTile<int>(
+              title: const Text('Spartipps'),
+              subtitle: const Text('Optimale Zeitfenster für Geräte'),
+              value: 1,
+              groupValue: _defaultStartTab,
+              onChanged: (int? value) {
+                if (value != null) {
+                  _saveStartTabPreference(value);
+                }
+              },
+            ),
+          ),
         ],
       ),
     );

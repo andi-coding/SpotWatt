@@ -10,6 +10,7 @@ import '../widgets/shelly_login_dialog.dart';
 import 'price_settings_page.dart';
 import 'notification_settings_page.dart';
 import 'display_settings_page.dart';
+import 'device_management_page.dart';
 import 'about_page.dart';
 import 'legal_page.dart';
 
@@ -69,9 +70,9 @@ class _SettingsPageState extends State<SettingsPage> {
               },
             ),
           ),
-          
+
           const SizedBox(height: 16),
-          
+
           Card(
             child: ListTile(
               leading: Icon(Icons.euro, color: Theme.of(context).colorScheme.primary),
@@ -88,9 +89,28 @@ class _SettingsPageState extends State<SettingsPage> {
               },
             ),
           ),
-          
+
           const SizedBox(height: 16),
-          
+
+          Card(
+            child: ListTile(
+              leading: Icon(Icons.power, color: Theme.of(context).colorScheme.primary),
+              title: const Text('Meine Geräte'),
+              subtitle: const Text('Optimale Zeitfenster für Geräte finden'),
+              trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const DeviceManagementPage(),
+                  ),
+                );
+              },
+            ),
+          ),
+
+          const SizedBox(height: 16),
+
           Card(
             child: ListTile(
               leading: Icon(Icons.palette, color: Theme.of(context).colorScheme.primary),
@@ -107,7 +127,7 @@ class _SettingsPageState extends State<SettingsPage> {
               },
             ),
           ),
-          
+
           const SizedBox(height: 16),
           
           Card(

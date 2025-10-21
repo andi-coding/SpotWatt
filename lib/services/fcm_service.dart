@@ -7,6 +7,7 @@ import 'package:http/http.dart' as http;
 import 'package:timezone/data/latest_all.dart' as tz_data;
 import 'package:timezone/timezone.dart' as tz;
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:workmanager/workmanager.dart';
 import 'price_cache_service.dart';
 import 'background_task_service.dart';
 
@@ -14,32 +15,70 @@ import 'background_task_service.dart';
 /// Used by both background and foreground handlers
 /// Made public so it can be called from main.dart for early foreground message handling
 Future<void> handlePriceUpdateMessage(RemoteMessage message, {required bool isBackground}) async {
-  if (message.data['action'] != 'update_prices') return;
+  final prefix = isBackground ? '[FCM-BG]' : '[FCM-FG]';
+
+  debugPrint('$prefix handlePriceUpdateMessage called');
+  debugPrint('$prefix Message action: ${message.data['action']}');
+
+  if (message.data['action'] != 'update_prices') {
+    debugPrint('$prefix Ignoring message - action is not update_prices');
+    return;
+  }
 
   try {
     if (isBackground) {
-      // Initialize timezone for background isolate
-      tz_data.initializeTimeZones();
-      tz.setLocalLocation(tz.getLocation('Europe/Vienna'));
+      debugPrint('$prefix Initializing timezone for background isolate...');
+      try {
+        tz_data.initializeTimeZones();
+        tz.setLocalLocation(tz.getLocation('Europe/Vienna'));
+        debugPrint('$prefix Timezone initialized successfully');
+      } catch (e) {
+        debugPrint('$prefix ❌ Timezone initialization failed: $e');
+        throw e;
+      }
     }
 
     // Get user's selected market
+    debugPrint('$prefix Loading SharedPreferences...');
     final prefs = await SharedPreferences.getInstance();
     final market = prefs.getString('price_market') ?? 'AT';
+    debugPrint('$prefix Market: $market');
 
-    // Fetch fresh prices from API (notifications + widget update happen automatically)
-    debugPrint('[FCM] Fetching fresh prices from API for market: $market');
-    await PriceCacheService().fetchFreshPrices(market: market);
+    // Fetch fresh prices AND update all services (Widget, Notifications, Tips)
+    debugPrint('$prefix Fetching fresh prices and updating services...');
+    await PriceCacheService().fetchAndUpdateAll(market: market);
+    debugPrint('$prefix Fresh prices fetched and all services updated');
 
     // Reschedule WorkManager for next hourly check
-    debugPrint('[FCM] Rescheduling WorkManager...');
+    debugPrint('$prefix Rescheduling WorkManager...');
     await BackgroundTaskService.reschedule();
+    debugPrint('$prefix WorkManager rescheduled');
 
-    debugPrint('[FCM] ✅ Price update completed successfully');
+    debugPrint('$prefix ✅ Price update completed successfully');
 
   } catch (e, stackTrace) {
-    debugPrint('[FCM] ❌ Error updating prices: $e');
-    debugPrint('[FCM] Stack trace: $stackTrace');
+    debugPrint('$prefix ❌ Error updating prices: $e');
+    debugPrint('$prefix Stack trace: $stackTrace');
+
+    // Schedule retry worker as fallback (only for background handler)
+    if (isBackground) {
+      try {
+        await Workmanager().registerOneOffTask(
+          'fcm-retry-${DateTime.now().millisecondsSinceEpoch}', // Unique ID with timestamp
+          'fetchPricesRetry',                                    // Task name (checked in callback)
+          constraints: Constraints(
+            networkType: NetworkType.connected,  // Wait for network before starting
+          ),
+          initialDelay: Duration(seconds: 30),   // Wait 30s before attempting (avoids immediate retry)
+          backoffPolicy: BackoffPolicy.exponential,  // If retry fails, use exponential backoff
+          backoffPolicyDelay: Duration(seconds: 30),
+        );
+        debugPrint('$prefix ✅ Retry worker scheduled (waits for network)');
+      } catch (workerError) {
+        debugPrint('$prefix ❌ Failed to schedule retry worker: $workerError');
+        // Non-critical: Hourly worker will eventually update prices
+      }
+    }
   }
 }
 
@@ -47,10 +86,29 @@ Future<void> handlePriceUpdateMessage(RemoteMessage message, {required bool isBa
 @pragma('vm:entry-point')
 Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   // Initialize Flutter bindings for background isolate
-  WidgetsFlutterBinding.ensureInitialized();
+  debugPrint('[FCM-BG] ========== BACKGROUND HANDLER STARTED ==========');
+  debugPrint('[FCM-BG] Timestamp: ${DateTime.now().toIso8601String()}');
+  debugPrint('[FCM-BG] Message ID: ${message.messageId}');
+  debugPrint('[FCM-BG] Sent time: ${message.sentTime}');
 
-  debugPrint('[FCM] Background message received: ${message.data}');
-  await handlePriceUpdateMessage(message, isBackground: true);
+  try {
+    WidgetsFlutterBinding.ensureInitialized();
+    debugPrint('[FCM-BG] Flutter bindings initialized');
+  } catch (e, stackTrace) {
+    debugPrint('[FCM-BG] ❌ Failed to initialize Flutter bindings: $e');
+    debugPrint('[FCM-BG] Stack trace: $stackTrace');
+    return;
+  }
+
+  debugPrint('[FCM-BG] Background message received: ${message.data}');
+
+  try {
+    await handlePriceUpdateMessage(message, isBackground: true);
+    debugPrint('[FCM-BG] ========== BACKGROUND HANDLER COMPLETED ==========');
+  } catch (e, stackTrace) {
+    debugPrint('[FCM-BG] ❌ Handler failed: $e');
+    debugPrint('[FCM-BG] Stack trace: $stackTrace');
+  }
 }
 
 class FCMService {
