@@ -146,11 +146,11 @@ class _SpartippsPageState extends State<SpartippsPage> {
     final hasReminder = _hasReminder[key] ?? false;
 
     if (hasReminder) {
-      // Remove reminder from storage
-      await _reminderService.removeReminder(key);
-
-      // Cancel the notification
+      // Cancel the notification FIRST (needs reminder data from storage)
       await NotificationService().cancelWindowReminder(key);
+
+      // THEN remove reminder from storage
+      await _reminderService.removeReminder(key);
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
