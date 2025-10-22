@@ -4,6 +4,7 @@ import '../utils/price_utils.dart';
 import '../services/awattar_service.dart';
 import '../services/price_cache_service.dart';
 import '../services/notification_service.dart';
+import '../services/firebase_notification_service.dart';
 import '../services/settings_cache.dart';
 import '../services/energy_provider_service.dart';
 import '../models/energy_provider.dart';
@@ -181,6 +182,9 @@ class _PriceSettingsPageState extends State<PriceSettingsPage> {
     // This ensures threshold-based notifications use the correct full cost prices
     final notificationService = NotificationService();
     await notificationService.rescheduleNotifications();
+
+    // Sync full cost settings to Firebase (for server-side calculations)
+    await FirebaseNotificationService().syncPreferences();
 
     // When market changes, reload providers and ensure cache exists
     if (marketChanged) {

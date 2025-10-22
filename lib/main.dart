@@ -14,6 +14,7 @@ import 'services/geofence_service.dart';
 import 'services/location_permission_helper.dart';
 import 'services/settings_cache.dart';
 import 'services/fcm_service.dart';
+import 'services/firebase_notification_service.dart';
 import 'services/energy_provider_service.dart';
 
 void main() async {
@@ -34,8 +35,18 @@ void main() async {
   // This ensures messages are NOT lost during app startup
   FirebaseMessaging.onMessage.listen((RemoteMessage message) async {
     debugPrint('[FCM] Foreground message received: ${message.data}');
-    // Process message immediately (app is in foreground, no need to cancel notification)
-    await handlePriceUpdateMessage(message, isBackground: false);
+
+    // Check if this is a silent "update_prices" message or a notification
+    if (message.data['action'] == 'update_prices') {
+      // Silent update - no notification needed
+      debugPrint('[FCM-FG] Silent price update - processing in background');
+      await handlePriceUpdateMessage(message, isBackground: false);
+    } else if (message.notification != null) {
+      // This is a notification (daily_summary, cheapest_hour, threshold_alert)
+      // FCM already provides title/body - just need to display it manually in foreground
+      debugPrint('[FCM-FG] Displaying notification in foreground');
+      await FCMService.showForegroundNotification(message);
+    }
   });
 
   // Initialize settings cache
@@ -81,6 +92,12 @@ class _WattWiseAppState extends State<WattWiseApp> {
 
     // Initialize FCM (request permissions & register token)
     await FCMService().initialize();
+
+    // Register FCM token with Firebase (for server-side notifications)
+    await FirebaseNotificationService().registerFCMToken();
+
+    // Sync notification preferences to Firebase
+    await FirebaseNotificationService().syncPreferences();
 
     // Update provider cache if full cost mode is enabled and cache is old (>7 days)
     await _updateProviderCacheIfNeeded();

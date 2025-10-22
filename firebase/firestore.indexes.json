@@ -1,0 +1,51 @@
+{
+  "indexes": [
+    {
+      "collectionGroup": "scheduled_notifications",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "sent",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "send_at",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "scheduled_notifications",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "fcm_token",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "sent",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "scheduled_notifications",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "fcm_token",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "notification.type",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "sent",
+          "order": "ASCENDING"
+        }
+      ]
+    }
+  ],
+  "fieldOverrides": []
+}

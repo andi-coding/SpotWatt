@@ -701,12 +701,16 @@ class _SpartippsPageState extends State<SpartippsPage> {
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: isRunning
-            ? Colors.green.shade50
+            ? (theme.brightness == Brightness.dark
+                ? Colors.green.withOpacity(0.15)
+                : Colors.green.shade50)
             : theme.colorScheme.surfaceVariant.withOpacity(0.3),
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
           color: isRunning
-              ? Colors.green.shade200
+              ? (theme.brightness == Brightness.dark
+                  ? Colors.green.shade700
+                  : Colors.green.shade200)
               : theme.colorScheme.outline.withOpacity(0.2),
           width: 2,
         ),
@@ -797,10 +801,14 @@ class _SpartippsPageState extends State<SpartippsPage> {
           Container(
             padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
             decoration: BoxDecoration(
-              color: Colors.green.shade50,
+              color: theme.brightness == Brightness.dark
+                  ? Colors.green.withOpacity(0.15)
+                  : Colors.green.shade50,
               borderRadius: BorderRadius.circular(12),
               border: Border.all(
-                color: Colors.green.shade200,
+                color: theme.brightness == Brightness.dark
+                    ? Colors.green.shade700
+                    : Colors.green.shade200,
                 width: 1.5,
               ),
             ),

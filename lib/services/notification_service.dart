@@ -7,6 +7,7 @@ import '../utils/price_utils.dart';
 import 'price_cache_service.dart';
 import 'geofence_service.dart';
 import 'window_reminder_service.dart';
+import 'firebase_notification_service.dart';
 
 class NotificationService {
   static final NotificationService _instance = NotificationService._internal();
@@ -64,165 +65,37 @@ class NotificationService {
   }
 
   Future<void> scheduleNotifications() async {
-    final prefs = await SharedPreferences.getInstance();
-    
-    final priceCacheService = PriceCacheService();
-    final prices = await priceCacheService.getPrices();
-    
-    if (prices.isEmpty) return;
-    
-    // Cancel all notifications to avoid duplicates
+    // ✅ Firebase now handles: Price Threshold, Cheapest Time, Daily Summary
+    // ✅ Local notifications ONLY for: Window Reminders (user-specific, instant)
+
+    debugPrint('[NotificationService] Scheduling local notifications (Window Reminders only)');
+
+    // Cancel all local notifications to avoid duplicates
     await notifications.cancelAll();
-    
+
     // Reset notification ID counter
     _notificationId = 1;
-    
-    final priceThresholdEnabled = prefs.getBool('price_threshold_enabled') ?? false;
-    final notificationThreshold = prefs.getDouble('notification_threshold') ?? 10.0;
-    
-    if (priceThresholdEnabled) {
-      for (var price in prices) {
-        if (price.price <= notificationThreshold) {
-          if (!_isInQuietTime(price.startTime, prefs)) {
-            await _schedulePriceNotification(price);
-          }
-        }
-      }
-    }
-    
-    final cheapestTimeEnabled = prefs.getBool('cheapest_time_enabled') ?? false;
-    final notificationMinutesBefore = prefs.getInt('notification_minutes_before') ?? 15;
-
-    if (cheapestTimeEnabled) {
-      final now = DateTime.now();
-      debugPrint('[NotificationService] Current time: $now');
-      
-      // Find all available days in the price data
-      final availableDays = prices.map((p) => p.startTime.day).toSet().toList()..sort();
-      debugPrint('[NotificationService] Available days in data: $availableDays');
-      
-      // For each available day, find the cheapest hour of the WHOLE day
-      for (final day in availableDays) {
-        final dayPrices = prices.where((p) => p.startTime.day == day).toList();
-        debugPrint('[NotificationService] Day $day: ${dayPrices.length} hours found');
-        
-        if (dayPrices.length >= 24) { // Only if we have the complete day
-          final cheapestOfDay = dayPrices.reduce((a, b) => a.price < b.price ? a : b);
-          final dayName = day == now.day ? 'today' : day == now.day + 1 ? 'tomorrow' : 'day $day';
-          
-          debugPrint('[NotificationService] Cheapest of $dayName (day $day): ${cheapestOfDay.startTime} - ${PriceUtils.formatPrice(cheapestOfDay.price)}');
-          
-          await _scheduleCheapestTimeNotification(
-            cheapestOfDay, 
-            notificationMinutesBefore
-          );
-        } else {
-          debugPrint('[NotificationService] Skipping day $day - incomplete (only ${dayPrices.length}/24 hours)');
-        }
-      }
-    }
-    
-    // Schedule daily summary
-    final dailySummaryEnabled = prefs.getBool('daily_summary_enabled') ?? false;
-    if (dailySummaryEnabled) {
-      await _scheduleDailySummary(prices, prefs);
-    }
 
     // Reschedule window reminder notifications (user-set reminders for specific time windows)
+    // These are NOT handled by Firebase because they're user-specific and instant
     await _rescheduleWindowReminders();
 
-    debugPrint('Scheduled ${_notificationId - 1} notifications');
+    debugPrint('[NotificationService] Scheduled ${_notificationId - 1} local notifications (window reminders)');
   }
 
+  // ❌ REMOVED: Now handled by Firebase
+  // Price threshold and cheapest time notifications are scheduled server-side
+  // This prevents iOS force-quit issues and scales better
+
+  /* DEPRECATED - Kept for reference
   Future<void> _schedulePriceNotification(PriceData price) async {
-    final notificationTime = price.startTime.subtract(const Duration(minutes: 5));
-    
-    // Check location-based settings
-    final prefs = await SharedPreferences.getInstance();
-    final locationBasedNotifications = prefs.getBool('location_based_notifications') ?? false;
-    
-    if (locationBasedNotifications) {
-      final geofenceService = GeofenceService();
-      final isAtHome = await geofenceService.isAtHome();
-      if (!isAtHome) {
-        debugPrint('Notification skipped - user not at home');
-        return;
-      }
-    }
-    
-    if (notificationTime.isAfter(DateTime.now())) {
-      await notifications.zonedSchedule(
-        _notificationId++,
-        '💡 Günstiger Strompreis in 5 Min!',
-        'Ab ${price.startTime.hour.toString().padLeft(2, '0')}:00 Uhr nur ${PriceUtils.formatPrice(price.price)} - Perfekt für energieintensive Geräte!',
-        tz.TZDateTime.from(notificationTime, tz.local),
-        const NotificationDetails(
-          android: AndroidNotificationDetails(
-            'price_alerts',
-            'Preis-Benachrichtigungen',
-            channelDescription: 'Benachrichtigungen bei günstigen Strompreisen',
-            importance: Importance.high,
-            priority: Priority.high,
-            icon: '@drawable/ic_notification_small',
-          ),
-          iOS: DarwinNotificationDetails(
-            presentAlert: true,
-            presentBadge: true,
-            presentSound: true,
-          ),
-        ),
-        androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
-      );
-    }
+    // ... (moved to Firebase Functions)
   }
 
-  Future<void> _scheduleCheapestTimeNotification(
-    PriceData price, 
-    int minutesBefore
-  ) async {
-    final notificationTime = price.startTime.subtract(Duration(minutes: minutesBefore));
-    final prefs = await SharedPreferences.getInstance();
-    
-    // Check location-based settings
-    final locationBasedNotifications = prefs.getBool('location_based_notifications') ?? false;
-    
-    if (locationBasedNotifications) {
-      final geofenceService = GeofenceService();
-      final isAtHome = await geofenceService.isAtHome();
-      if (!isAtHome) {
-        debugPrint('Cheapest time notification skipped - user not at home');
-        return;
-      }
-    }
-    
-    if (notificationTime.isAfter(DateTime.now()) && !_isInQuietTime(notificationTime, prefs)) {
-      debugPrint('[NotificationService] ✅ Scheduling cheapest time notification for: $notificationTime (price starts: ${price.startTime})');
-      await notifications.zonedSchedule(
-        _notificationId++,
-        '⚡ Günstigster Zeitpunkt!',
-        'In $minutesBefore Minuten beginnt der günstigste Zeitpunkt des Tages (${PriceUtils.formatPrice(price.price)})',
-        tz.TZDateTime.from(notificationTime, tz.local),
-        const NotificationDetails(
-          android: AndroidNotificationDetails(
-            'cheapest_time',
-            'Günstigste Zeit',
-            channelDescription: 'Benachrichtigung zum günstigsten Zeitpunkt',
-            importance: Importance.max,
-            priority: Priority.max,
-            icon: '@drawable/ic_notification_small',
-          ),
-          iOS: DarwinNotificationDetails(
-            presentAlert: true,
-            presentBadge: true,
-            presentSound: true,
-          ),
-        ),
-        androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
-      );
-    } else {
-      debugPrint('[NotificationService] ❌ Skipping cheapest time notification for: $notificationTime (price starts: ${price.startTime}) - already past or in quiet time');
-    }
+  Future<void> _scheduleCheapestTimeNotification(PriceData price, int minutesBefore) async {
+    // ... (moved to Firebase Functions)
   }
+  */
 
   bool _isInQuietTime(DateTime time, SharedPreferences prefs) {
     // Check if quiet time is enabled
@@ -252,150 +125,16 @@ class NotificationService {
   }
   
   
-  // Find cheapest hours
+  // ❌ REMOVED: Daily summary now handled by Firebase
+  /* DEPRECATED - Kept for reference
   List<PriceData> findCheapestHours(List<PriceData> prices, int count) {
-    if (prices.isEmpty) return [];
-    
-    final sortedPrices = List<PriceData>.from(prices)
-      ..sort((a, b) => a.price.compareTo(b.price));
-    
-    return sortedPrices.take(count).toList()
-      ..sort((a, b) => a.startTime.compareTo(b.startTime));
+    // ... (moved to Firebase Functions)
   }
-  
-  // Schedule daily summary notification
-  Future<void> _scheduleDailySummary(
-    List<PriceData> prices, 
-    SharedPreferences prefs
-  ) async {
-    final summaryHour = prefs.getInt('daily_summary_hour') ?? 7;
-    final summaryMinute = prefs.getInt('daily_summary_minute') ?? 0;
-    
-    final now = DateTime.now();
-    var notificationTime = DateTime(
-      now.year,
-      now.month,
-      now.day,
-      summaryHour,
-      summaryMinute,
-    );
-    
-    // If time has passed today, schedule for tomorrow
-    bool isForTomorrow = false;
-    if (notificationTime.isBefore(now)) {
-      notificationTime = notificationTime.add(const Duration(days: 1));
-      isForTomorrow = true;
-    }
-    
-    // Find prices for the CURRENT day (today), not the notification day
-    // The summary should always show today's prices when sent
-    final targetDay = isForTomorrow ? now.add(const Duration(days: 1)) : now;
-    
-    // Only get FUTURE hours of the target day (from notification time onwards)
-    final futurePrices = prices.where((p) => 
-      p.startTime.day == targetDay.day &&
-      p.startTime.month == targetDay.month &&
-      p.startTime.year == targetDay.year &&
-      p.startTime.isAfter(notificationTime) // Only hours after the notification time
-    ).toList();
-    
-    if (futurePrices.isEmpty) return;
-    
-    // Get number of hours from preferences
-    final hoursCount = prefs.getInt('daily_summary_hours') ?? 3;
-    
-    // Find cheapest hours from FUTURE prices only
-    final cheapestHours = findCheapestHours(futurePrices, hoursCount);
-    
-    // Check for high price warnings
-    final highPriceWarningEnabled = prefs.getBool('high_price_warning_enabled') ?? false;
-    final highPriceThreshold = prefs.getDouble('high_price_threshold') ?? 50.0;
-    
-    String? highPriceWarning;
-    if (highPriceWarningEnabled) {
-      // Only warn about FUTURE high prices
-      final highPrices = futurePrices.where((p) => p.price > highPriceThreshold).toList();
-      if (highPrices.isNotEmpty) {
-        // Sort high prices by time (chronological order)
-        highPrices.sort((a, b) => a.startTime.compareTo(b.startTime));
-        
-        final warningBuffer = StringBuffer();
-        warningBuffer.write('⚠️ WARNUNG: Heute sehr hohe Preise!\n\n');
-        
-        for (var price in highPrices) {
-          warningBuffer.write('• ${price.startTime.hour.toString().padLeft(2, '0')}:00-');
-          warningBuffer.write('${price.endTime.hour.toString().padLeft(2, '0')}:00: ');
-          warningBuffer.write('${PriceUtils.formatPrice(price.price)}\n');
-        }
-        warningBuffer.write('\n');
-        
-        highPriceWarning = warningBuffer.toString();
-      }
-    }
-    
-    // Format message - always for "heute" when notification is sent
-    final dayText = 'heute';
-    final buffer = StringBuffer();
-    
-    // Add high price warning first if exists
-    if (highPriceWarning != null) {
-      buffer.write(highPriceWarning);
-      buffer.write('\n'); // Extra line between warning and cheapest hours
-    }
-    
-    // Add cheapest hours section
-    buffer.write('💡 Die $hoursCount günstigsten Stunden $dayText:\n\n');
-    for (var i = 0; i < cheapestHours.length; i++) {
-      final hour = cheapestHours[i];
-      buffer.write('• ${hour.startTime.hour}:00-${hour.endTime.hour}:00 Uhr: ');
-      buffer.write('${PriceUtils.formatPrice(hour.price)}\n');
-    }
-    
-    // Check location if needed
-    final locationBasedNotifications = prefs.getBool('location_based_notifications') ?? false;
-    if (locationBasedNotifications) {
-      final geofenceService = GeofenceService();
-      final isAtHome = await geofenceService.isAtHome();
-      if (!isAtHome) {
-        debugPrint('Daily summary skipped - user not at home');
-        return;
-      }
-    }
-    
-    // Check quiet time
-    if (_isInQuietTime(notificationTime, prefs)) {
-      debugPrint('Daily summary skipped - in quiet time');
-      return;
-    }
-    
-    final notificationText = buffer.toString().trim();
-    
-    await notifications.zonedSchedule(
-      _notificationId++,
-      '📊 Tägliche Übersicht',
-      notificationText,
-      tz.TZDateTime.from(notificationTime, tz.local),
-      NotificationDetails(
-        android: AndroidNotificationDetails(
-          'daily_summary',
-          'Tägliche Zusammenfassung',
-          channelDescription: 'Tägliche Übersicht der günstigsten Strompreise',
-          importance: Importance.high,
-          priority: Priority.high,
-          icon: '@drawable/ic_notification_small',
-          styleInformation: BigTextStyleInformation(notificationText),
-        ),
-        iOS: const DarwinNotificationDetails(
-          presentAlert: true,
-          presentBadge: true,
-          presentSound: true,
-        ),
-      ),
-      androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
-    );
-    
-    debugPrint('Scheduled daily summary for $notificationTime');
+
+  Future<void> _scheduleDailySummary(List<PriceData> prices, SharedPreferences prefs) async {
+    // ... (moved to Firebase Functions)
   }
+  */
 
   /// Reschedule user-set window reminders after cancelAll()
   /// This is called after all notifications are cancelled (e.g., at 14:00 when new prices arrive)
@@ -456,6 +195,7 @@ class NotificationService {
     // Use stable notification ID based on reminder key
     final notificationId = _getWindowReminderId(reminder.key);
 
+    // Schedule locally (fallback for immediate notifications)
     await notifications.zonedSchedule(
       notificationId,
       '⚡ ${reminder.deviceName} jetzt einschalten!',
@@ -480,12 +220,47 @@ class NotificationService {
     );
 
     debugPrint('[NotificationService] Scheduled window reminder for ${reminder.deviceName} at $notificationTime (ID: $notificationId)');
+
+    // Also schedule in Firebase (for reliability across app restarts)
+    try {
+      await FirebaseNotificationService().scheduleWindowReminder(
+        deviceName: reminder.deviceName,
+        startTime: reminder.startTime,
+        endTime: reminder.endTime,
+        savingsCents: reminder.savingsCents.round(),
+      );
+    } catch (e) {
+      debugPrint('[NotificationService] Failed to schedule window reminder in Firebase: $e');
+      // Don't fail the whole operation if Firebase fails - local notification is already scheduled
+    }
   }
 
   /// Cancel a specific window reminder notification
   Future<void> cancelWindowReminder(String reminderKey) async {
+    // Cancel local notification
     final notificationId = _getWindowReminderId(reminderKey);
     await notifications.cancel(notificationId);
-    debugPrint('[NotificationService] Cancelled window reminder (ID: $notificationId)');
+    debugPrint('[NotificationService] Cancelled local window reminder (ID: $notificationId)');
+
+    // Also cancel in Firebase (by looking up the reminder to get device name and start time)
+    try {
+      final windowReminderService = WindowReminderService();
+      final reminders = await windowReminderService.loadReminders();
+
+      // Find the reminder with matching key
+      final reminder = reminders.where((r) => r.key == reminderKey).firstOrNull;
+
+      if (reminder != null) {
+        await FirebaseNotificationService().cancelWindowReminder(
+          deviceName: reminder.deviceName,
+          startTime: reminder.startTime,
+        );
+      } else {
+        debugPrint('[NotificationService] Reminder not found in storage, skipping Firebase cancel');
+      }
+    } catch (e) {
+      debugPrint('[NotificationService] Failed to cancel window reminder in Firebase: $e');
+      // Don't fail the whole operation if Firebase fails - local notification is already cancelled
+    }
   }
 }

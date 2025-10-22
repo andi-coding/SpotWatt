@@ -450,7 +450,7 @@ function aggregate15MinToHourly(periodContent, startTime, market) {
  */
 async function handleGetProviders(request, env, headers) {
   try {
-    if (!env.FCM_DB) {
+    if (!env.DATA_DB) {
       return new Response(
         JSON.stringify({ error: 'Database not configured' }),
         { status: 500, headers }
@@ -469,7 +469,7 @@ async function handleGetProviders(request, env, headers) {
     }
 
     // Fetch providers for region
-    const providers = await env.FCM_DB.prepare(`
+    const providers = await env.DATA_DB.prepare(`
       SELECT
         provider_name,
         markup_percentage,
@@ -481,7 +481,7 @@ async function handleGetProviders(request, env, headers) {
     `).bind(region).all();
 
     // Fetch tax rate for region
-    const taxRateResult = await env.FCM_DB.prepare(`
+    const taxRateResult = await env.DATA_DB.prepare(`
       SELECT tax_percentage
       FROM tax_rates
       WHERE region = ?
@@ -515,110 +515,6 @@ async function handleGetProviders(request, env, headers) {
   }
 }
 
-// ===== FCM ENDPOINTS =====
-
-/**
- * Handle FCM device token registration
- */
-async function handleFCMRegister(request, env, headers) {
-  try {
-    if (!env.FCM_DB) {
-      return new Response(
-        JSON.stringify({ error: 'FCM database not configured' }),
-        { status: 500, headers }
-      );
-    }
-
-    const body = await request.json();
-    const { token, platform, region } = body;
-
-    // Validate input
-    if (!token || typeof token !== 'string' || token.length < 10) {
-      return new Response(
-        JSON.stringify({ error: 'Invalid token' }),
-        { status: 400, headers }
-      );
-    }
-
-    if (!platform || !['android', 'ios'].includes(platform)) {
-      return new Response(
-        JSON.stringify({ error: 'Invalid platform (must be android or ios)' }),
-        { status: 400, headers }
-      );
-    }
-
-    const userRegion = region || 'AT';
-
-    // Upsert token (insert or update if exists)
-    await env.FCM_DB.prepare(`
-      INSERT INTO fcm_tokens (token, platform, region, last_seen, active)
-      VALUES (?, ?, ?, CURRENT_TIMESTAMP, 1)
-      ON CONFLICT(token) DO UPDATE SET
-        last_seen = CURRENT_TIMESTAMP,
-        active = 1,
-        platform = excluded.platform,
-        region = excluded.region
-    `).bind(token, platform, userRegion).run();
-
-    console.log(`[FCM] ✅ Registered ${platform} token from ${userRegion}: ${token.substring(0, 20)}...`);
-
-    return new Response(
-      JSON.stringify({ success: true, message: 'Token registered' }),
-      { headers }
-    );
-  } catch (error) {
-    console.error('[FCM] Error registering token:', error);
-    return new Response(
-      JSON.stringify({ error: 'Failed to register token', details: error.message }),
-      { status: 500, headers }
-    );
-  }
-}
-
-/**
- * Handle FCM device token unregistration
- */
-async function handleFCMUnregister(request, env, headers) {
-  try {
-    if (!env.FCM_DB) {
-      return new Response(
-        JSON.stringify({ error: 'FCM database not configured' }),
-        { status: 500, headers }
-      );
-    }
-
-    const body = await request.json();
-    const { token } = body;
-
-    if (!token) {
-      return new Response(
-        JSON.stringify({ error: 'Missing token' }),
-        { status: 400, headers }
-      );
-    }
-
-    // Mark token as inactive (soft delete)
-    await env.FCM_DB.prepare(`
-      UPDATE fcm_tokens
-      SET active = 0, last_seen = CURRENT_TIMESTAMP
-      WHERE token = ?
-    `).bind(token).run();
-
-    console.log(`[FCM] ✅ Unregistered token: ${token.substring(0, 20)}...`);
-
-    return new Response(
-      JSON.stringify({ success: true, message: 'Token unregistered' }),
-      { headers }
-    );
-  } catch (error) {
-    console.error('[FCM] Error unregistering token:', error);
-    return new Response(
-      JSON.stringify({ error: 'Failed to unregister token', details: error.message }),
-      { status: 500, headers }
-    );
-  }
-}
-
 export default {
   async fetch(request, env, ctx) {
     // CORS headers
@@ -635,15 +531,6 @@ export default {
     }
 
     const url = new URL(request.url);
-
-    // FCM Endpoints
-    if (url.pathname === '/fcm/register' && request.method === 'POST') {
-      return handleFCMRegister(request, env, headers);
-    }
-
-    if (url.pathname === '/fcm/unregister' && request.method === 'POST') {
-      return handleFCMUnregister(request, env, headers);
-    }
 
     // Energy Provider Endpoints
     if (url.pathname === '/providers' && request.method === 'GET') {
@@ -825,17 +712,18 @@ async function runScheduledJob(env, alwaysSendFCM = false) {
       // Wait 2 minutes for KV propagation (global consistency)
       console.log('⏳ Waiting 2 minutes for KV propagation to all edges...');
       await new Promise(resolve => setTimeout(resolve, 120000));
-      console.log('✅ KV propagation complete, sending FCM push notifications');
+      console.log('✅ KV propagation complete, triggering Firebase notifications');
 
-      await sendFCMPushNotifications(env);
+      // Trigger Firebase to handle ALL notifications (1 subrequest!)
+      await triggerFirebaseNotifications(env);
     }
   } else {
     console.log('✅ Already have tomorrow prices, skipping update');
 
-    // For manual testing: always send FCM even if no update needed
+    // For manual testing: always trigger Firebase even if no update needed
     if (alwaysSendFCM) {
-      console.log('🔧 Test mode: Sending FCM even though prices are up-to-date');
-      await sendFCMPushNotifications(env);
+      console.log('🔧 Test mode: Triggering Firebase even though prices are up-to-date');
+      await triggerFirebaseNotifications(env);
     }
   }
 }
@@ -1010,244 +898,61 @@ async function purgeCDNCache(env) {
 }
 
 /**
- * Send FCM push notifications to all registered devices
- * This is a wake-up signal - the app will pull data from the worker
+ * Trigger Firebase Functions to handle notifications
+ * Single HTTP call to Firebase (1 subrequest!)
+ * Firebase handles:
+ * 1. Silent push to all devices (price update)
+ * 2. Scheduling personalized notifications
  */
-async function sendFCMPushNotifications(env) {
+async function triggerFirebaseNotifications(env) {
   try {
-    if (!env.FCM_DB) {
-      console.log('[FCM] FCM database not configured, skipping push notifications');
+    console.log('[Firebase] Triggering notification handler...');
+
+    // Get cached prices
+    const [atPrices, dePrices] = await Promise.all([
+      env.PRICE_CACHE.get('prices_AT', 'json'),
+      env.PRICE_CACHE.get('prices_DE', 'json')
+    ]);
+
+    if (!atPrices || !dePrices) {
+      console.error('[Firebase] No cached prices found');
       return;
     }
 
-    if (!env.FIREBASE_SERVICE_ACCOUNT_KEY) {
-      console.log('[FCM] Firebase service account key not configured, skipping push notifications');
-      return;
-    }
+    console.log(`[Firebase] Sending prices: AT=${atPrices.prices?.length || 0}, DE=${dePrices.prices?.length || 0}`);
 
-    // Get all active tokens from database
-    const result = await env.FCM_DB.prepare(`
-      SELECT token, platform, region FROM fcm_tokens WHERE active = 1
-    `).all();
+    // Firebase Function URL (configure in wrangler.toml)
+    const firebaseUrl = env.FIREBASE_FUNCTION_URL ||
+      'https://europe-west3-spotwatt-900e9.cloudfunctions.net/handlePriceUpdate';
 
-    if (!result.results || result.results.length === 0) {
-      console.log('[FCM] No active tokens found, skipping push notifications');
-      return;
-    }
+    const apiKey = env.FIREBASE_API_KEY || 'development-key';
 
-    console.log(`[FCM] 📤 Sending push notifications to ${result.results.length} devices...`);
-
-    // Get Firebase access token
-    const accessToken = await getFirebaseAccessToken(env.FIREBASE_SERVICE_ACCOUNT_KEY);
-
-    if (!accessToken) {
-      console.error('[FCM] Failed to get Firebase access token');
-      return;
-    }
-
-    // Send FCM messages in parallel (faster for many tokens)
-    const sendPromises = result.results.map(async (row) => {
-      const { token, platform, region } = row;
-
-      try {
-        const response = await fetch(
-          `https://fcm.googleapis.com/v1/projects/spotwatt-900e9/messages:send`,
-          {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${accessToken}`
-            },
-            body: JSON.stringify({
-              message: {
-                token: token,
-                // Data-only message with high priority for Doze Mode bypass
-                // No notification key = pure background processing
-                data: {
-                  action: 'update_prices'
-                },
-                android: {
-                  priority: 'high'  // Bypass Doze Mode for immediate delivery
-                },
-                apns: {
-                  headers: {
-                    'apns-priority': '5',        // Low priority for background content
-                    'apns-push-type': 'background'  // Required for iOS 13+ silent push
-                  },
-                  payload: {
-                    aps: {
-                      'content-available': 1  // Wake app for background processing
-                    }
-                  }
-                }
-              }
-            })
-          }
-        );
-
-        if (response.ok) {
-          return { success: true, token: null };
-        } else {
-          const errorData = await response.text();
-          console.error(`[FCM] Failed to send to ${platform}/${region}: ${response.status} - ${errorData}`);
-
-          // Check for invalid/unregistered token errors
-          const isInvalid = errorData.includes('UNREGISTERED') || errorData.includes('INVALID_ARGUMENT');
-          return { success: false, token: isInvalid ? token : null };
-        }
-      } catch (error) {
-        console.error(`[FCM] Error sending to ${platform}/${region}:`, error);
-        return { success: false, token: null };
-      }
-    });
-
-    // Wait for all sends to complete
-    const results = await Promise.allSettled(sendPromises);
-
-    // Count results and collect invalid tokens
-    const invalidTokens = [];
-    let successCount = 0;
-    let errorCount = 0;
-
-    results.forEach((result) => {
-      if (result.status === 'fulfilled') {
-        if (result.value.success) {
-          successCount++;
-        } else {
-          errorCount++;
-          if (result.value.token) {
-            invalidTokens.push(result.value.token);
-          }
-        }
-      } else {
-        errorCount++;
-      }
-    });
-
-    // Mark invalid tokens as inactive and update last_seen timestamp
-    if (invalidTokens.length > 0) {
-      console.log(`[FCM] Marking ${invalidTokens.length} invalid tokens as inactive`);
-      for (const token of invalidTokens) {
-        await env.FCM_DB.prepare(`
-          UPDATE fcm_tokens
-          SET active = 0,
-              last_seen = CURRENT_TIMESTAMP
-          WHERE token = ?
-        `).bind(token).run();
-      }
-    }
-
-    // Auto-cleanup: Delete tokens that have been inactive for >7 days
-    const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
-    const deletedResult = await env.FCM_DB.prepare(`
-      DELETE FROM fcm_tokens
-      WHERE active = 0 AND last_seen < ?
-    `).bind(sevenDaysAgo).run();
-
-    if (deletedResult.meta?.changes > 0) {
-      console.log(`[FCM] 🗑️ Cleaned up ${deletedResult.meta.changes} old inactive tokens (>7 days)`);
-    }
-
-    console.log(`[FCM] ✅ Push notifications sent: ${successCount} success, ${errorCount} errors, ${invalidTokens.length} invalid tokens removed`);
-  } catch (error) {
-    console.error('[FCM] Error sending push notifications:', error);
-  }
-}
-
-/**
- * Get Firebase access token using service account key
- */
-async function getFirebaseAccessToken(serviceAccountKeyJSON) {
-  try {
-    const serviceAccount = JSON.parse(serviceAccountKeyJSON);
-
-    // Create JWT for Firebase
-    const now = Math.floor(Date.now() / 1000);
-    const header = {
-      alg: 'RS256',
-      typ: 'JWT'
-    };
-    const payload = {
-      iss: serviceAccount.client_email,
-      sub: serviceAccount.client_email,
-      aud: 'https://oauth2.googleapis.com/token',
-      iat: now,
-      exp: now + 3600,
-      scope: 'https://www.googleapis.com/auth/firebase.messaging'
-    };
-
-    // Import private key
-    const privateKey = await crypto.subtle.importKey(
-      'pkcs8',
-      pemToArrayBuffer(serviceAccount.private_key),
-      {
-        name: 'RSASSA-PKCS1-v1_5',
-        hash: 'SHA-256'
-      },
-      false,
-      ['sign']
-    );
-
-    // Sign JWT
-    const encodedHeader = base64UrlEncode(JSON.stringify(header));
-    const encodedPayload = base64UrlEncode(JSON.stringify(payload));
-    const unsignedToken = `${encodedHeader}.${encodedPayload}`;
-
-    const signature = await crypto.subtle.sign(
-      'RSASSA-PKCS1-v1_5',
-      privateKey,
-      new TextEncoder().encode(unsignedToken)
-    );
-
-    const jwt = `${unsignedToken}.${base64UrlEncode(signature)}`;
-
-    // Exchange JWT for access token
-    const response = await fetch('https://oauth2.googleapis.com/token', {
+    // Single HTTP call to Firebase (1 subrequest!)
+    const response = await fetch(firebaseUrl, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: new URLSearchParams({
-        grant_type: 'urn:ietf:params:oauth:grant-type:jwt-bearer',
-        assertion: jwt
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Api-Key': apiKey
+      },
+      body: JSON.stringify({
+        atPrices: atPrices,
+        dePrices: dePrices,
+        timestamp: new Date().toISOString()
       })
     });
 
-    if (!response.ok) {
+    if (response.ok) {
+      const result = await response.json();
+      console.log(`[Firebase] ✅ Success!`);
+      console.log(`[Firebase]   - Silent pushes sent: ${result.price_update_pushes || 0}`);
+      console.log(`[Firebase]   - Notifications scheduled: ${result.notifications_scheduled || 0}`);
+    } else {
       const errorText = await response.text();
-      console.error('[FCM] Failed to get access token:', errorText);
-      return null;
+      console.error(`[Firebase] ❌ Failed: ${response.status}`, errorText);
     }
 
-    const data = await response.json();
-    return data.access_token;
   } catch (error) {
-    console.error('[FCM] Error getting Firebase access token:', error);
-    return null;
+    console.error('[Firebase] ❌ Error:', error.message);
+    // Non-critical: Apps will fetch prices on next open
   }
-}
-
-// Helper: Convert PEM to ArrayBuffer
-function pemToArrayBuffer(pem) {
-  const base64 = pem
-    .replace(/-----BEGIN PRIVATE KEY-----/g, '')
-    .replace(/-----END PRIVATE KEY-----/g, '')
-    .replace(/\s/g, '');
-  const binary = atob(base64);
-  const bytes = new Uint8Array(binary.length);
-  for (let i = 0; i < binary.length; i++) {
-    bytes[i] = binary.charCodeAt(i);
-  }
-  return bytes.buffer;
-}
-
-// Helper: Base64 URL encode
-function base64UrlEncode(data) {
-  let base64;
-  if (typeof data === 'string') {
-    base64 = btoa(data);
-  } else if (data instanceof ArrayBuffer) {
-    base64 = btoa(String.fromCharCode(...new Uint8Array(data)));
-  } else {
-    throw new Error('Invalid data type for base64UrlEncode');
-  }
-  return base64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 }
