@@ -41,8 +41,18 @@ service cloud.firestore {
       // PRODUCTION MODE (uncomment when ready):
       // allow read: if false;  // Client never needs to read
 
-      // Only Firebase Functions can write
-      allow write: if false;
+      // Client can create window reminders (type = 'window_reminder')
+      // Must include valid fcm_token and notification data
+      allow create: if request.resource.data.notification.type == 'window_reminder' &&
+                       request.resource.data.fcm_token is string &&
+                       request.resource.data.send_at is timestamp;
+
+      // Client can delete their own unsent window reminders
+      allow delete: if resource.data.notification.type == 'window_reminder' &&
+                       resource.data.sent == false;
+
+      // Only Firebase Functions can update (mark as sent)
+      allow update: if false;
     }
 
     // ========================================================================
