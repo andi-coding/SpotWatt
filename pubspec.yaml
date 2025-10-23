@@ -40,8 +40,8 @@ dependencies:
   workmanager: ^0.9.0
   geolocator: ^13.0.2
   geocoding: ^3.0.0
-  native_geofence: ^1.1.0
-  home_widget: ^0.7.0
+  # native_geofence: ^1.1.0  # Temporarily disabled - incompatible with current Xcode version
+  home_widget: ^0.8.0
   intl: ^0.19.0
   connectivity_plus: ^6.1.0
   url_launcher: ^6.3.1

@@ -10,7 +10,7 @@ import 'screens/onboarding_screen.dart';
 import 'screens/refresh_screen.dart';
 import 'screens/device_management_page.dart';
 import 'services/background_task_service.dart';
-import 'services/geofence_service.dart';
+// import 'services/geofence_service.dart';  // Temporarily disabled - incompatible with current Xcode
 import 'services/location_permission_helper.dart';
 import 'services/settings_cache.dart';
 import 'services/fcm_service.dart';

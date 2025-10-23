@@ -2,15 +2,15 @@ import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:geocoding/geocoding.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'geofence_service.dart';
+// import 'geofence_service.dart';  // Temporarily disabled - incompatible with current Xcode
 
 class LocationService {
   static const String _homeLatKey = 'home_latitude';
   static const String _homeLonKey = 'home_longitude';
   static const String _homeRadiusKey = 'home_radius';
   static const double _defaultRadius = 100.0; // 100 meters for reliable detection
-  
-  final GeofenceService _geofenceService = GeofenceService();
+
+  // final GeofenceService _geofenceService = GeofenceService();  // Temporarily disabled
 
   // Save home location
   Future<bool> saveHomeLocation() async {
@@ -24,12 +24,13 @@ class LocationService {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setDouble(_homeLatKey, position.latitude);
       await prefs.setDouble(_homeLonKey, position.longitude);
-      
+
       // Setup geofence if location-based notifications are enabled
-      final locationBasedNotifications = prefs.getBool('location_based_notifications') ?? false;
-      if (locationBasedNotifications) {
-        await _setupHomeGeofence(position.latitude, position.longitude);
-      }
+      // Temporarily disabled - incompatible with current Xcode
+      // final locationBasedNotifications = prefs.getBool('location_based_notifications') ?? false;
+      // if (locationBasedNotifications) {
+      //   await _setupHomeGeofence(position.latitude, position.longitude);
+      // }
       
       return true;
     } catch (e) {
@@ -72,50 +73,57 @@ class LocationService {
     await prefs.remove(_homeLatKey);
     await prefs.remove(_homeLonKey);
     await prefs.remove(_homeRadiusKey);
-    
-    // Remove geofence
-    await _geofenceService.removeHomeGeofence();
+
+    // Remove geofence - Temporarily disabled
+    // await _geofenceService.removeHomeGeofence();
   }
 
   // Setup geofence with current home location and radius
-  Future<void> _setupHomeGeofence(double latitude, double longitude) async {
-    final prefs = await SharedPreferences.getInstance();
-    final radius = prefs.getDouble(_homeRadiusKey) ?? _defaultRadius;
-    
-    await _geofenceService.initialize();
-    await _geofenceService.setupHomeGeofence(latitude, longitude, radius);
-  }
+  // Temporarily disabled - incompatible with current Xcode
+  // Future<void> _setupHomeGeofence(double latitude, double longitude) async {
+  //   final prefs = await SharedPreferences.getInstance();
+  //   final radius = prefs.getDouble(_homeRadiusKey) ?? _defaultRadius;
+  //
+  //   await _geofenceService.initialize();
+  //   await _geofenceService.setupHomeGeofence(latitude, longitude, radius);
+  // }
 
   // Enable location-based notifications (setup geofence)
+  // Temporarily disabled - incompatible with current Xcode
   Future<void> enableLocationBasedNotifications() async {
-    final homeLocation = await getHomeLocation();
-    if (homeLocation != null) {
-      // Request permissions first
-      final hasPermissions = await _geofenceService.requestPermissions();
-      if (hasPermissions) {
-        await _setupHomeGeofence(homeLocation['latitude']!, homeLocation['longitude']!);
-      } else {
-        debugPrint('[LocationService] Geofence permissions not granted');
-      }
-    }
+    debugPrint('[LocationService] Geofencing temporarily disabled');
+    // final homeLocation = await getHomeLocation();
+    // if (homeLocation != null) {
+    //   // Request permissions first
+    //   final hasPermissions = await _geofenceService.requestPermissions();
+    //   if (hasPermissions) {
+    //     await _setupHomeGeofence(homeLocation['latitude']!, homeLocation['longitude']!);
+    //   } else {
+    //     debugPrint('[LocationService] Geofence permissions not granted');
+    //   }
+    // }
   }
 
   // Disable location-based notifications (remove geofence)
+  // Temporarily disabled - incompatible with current Xcode
   Future<void> disableLocationBasedNotifications() async {
-    await _geofenceService.removeHomeGeofence();
+    debugPrint('[LocationService] Geofencing temporarily disabled');
+    // await _geofenceService.removeHomeGeofence();
   }
 
   // Update home radius and refresh geofence
+  // Temporarily disabled - incompatible with current Xcode
   Future<void> updateHomeRadius(double radius) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setDouble(_homeRadiusKey, radius);
-    
-    final homeLocation = await getHomeLocation();
-    final locationBasedNotifications = prefs.getBool('location_based_notifications') ?? false;
-    
-    if (homeLocation != null && locationBasedNotifications) {
-      await _setupHomeGeofence(homeLocation['latitude']!, homeLocation['longitude']!);
-    }
+
+    debugPrint('[LocationService] Geofencing temporarily disabled');
+    // final homeLocation = await getHomeLocation();
+    // final locationBasedNotifications = prefs.getBool('location_based_notifications') ?? false;
+    //
+    // if (homeLocation != null && locationBasedNotifications) {
+    //   await _setupHomeGeofence(homeLocation['latitude']!, homeLocation['longitude']!);
+    // }
   }
 
   // Get address from coordinates
