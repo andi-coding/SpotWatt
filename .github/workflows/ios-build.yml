@@ -20,7 +20,7 @@ jobs:
         uses: subosito/flutter-action@v2
         with:
           channel: 'stable'
-          flutter-version: '3.27.x' # Latest stable
+          flutter-version: '3.35.x' # Requires Dart 3.8.1+ for pubspec.yaml
 
       - name: Flutter version
         run: flutter --version
