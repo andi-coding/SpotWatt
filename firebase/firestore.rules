@@ -1,0 +1,82 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ========================================================================
+    // FCM Tokens - Devices register their push notification tokens
+    // ========================================================================
+    match /fcm_tokens/{tokenId} {
+      // Privacy: Nobody can read other users' tokens
+      allow read: if false;
+
+      // Device can write its own token (using token as document ID)
+      // This prevents User A from overwriting User B's token
+      allow create, update: if request.resource.data.token == tokenId;
+
+      // Only Functions can delete/deactivate
+      allow delete: if false;
+    }
+
+    // ========================================================================
+    // Notification Preferences - User settings for notifications
+    // ========================================================================
+    match /notification_preferences/{fcmToken} {
+      // DEVELOPMENT MODE: Allow all (for testing)
+      allow read, write: if true;
+
+      // PRODUCTION MODE (uncomment when ready):
+      // Each device can only access their own preferences
+      // Document ID must match the FCM token in the data
+      // allow read, write: if request.resource.data.fcm_token == fcmToken ||
+      //                       resource.data.fcm_token == fcmToken;
+    }
+
+    // ========================================================================
+    // Scheduled Notifications - Server-managed notification queue
+    // ========================================================================
+    match /scheduled_notifications/{notificationId} {
+      // DEVELOPMENT MODE: Allow read for debugging
+      allow read: if true;
+
+      // PRODUCTION MODE (uncomment when ready):
+      // allow read: if false;  // Client never needs to read
+
+      // Client can create window reminders (type = 'window_reminder')
+      // Must include valid fcm_token and notification data
+      allow create: if request.resource.data.notification.type == 'window_reminder' &&
+                       request.resource.data.fcm_token is string &&
+                       request.resource.data.send_at is timestamp;
+
+      // Client can delete their own unsent window reminders
+      allow delete: if resource.data.notification.type == 'window_reminder' &&
+                       resource.data.sent == false;
+
+      // Only Firebase Functions can update (mark as sent)
+      allow update: if false;
+    }
+
+    // ========================================================================
+    // Notification Events - Event queue for settings changes
+    // ========================================================================
+    match /notification_events/{eventId} {
+      // Client can create events (no read needed)
+      // Event must contain valid fcm_token
+      allow create: if request.resource.data.fcm_token is string &&
+                       request.resource.data.event_type is string;
+
+      // Only Firebase Functions can read/update/delete
+      allow read, update, delete: if false;
+    }
+
+    // ========================================================================
+    // Price Cache - Cached prices for rescheduling
+    // ========================================================================
+    match /price_cache/{market} {
+      // Clients can read (for local display)
+      allow read: if true;
+
+      // Only Firebase Functions can write
+      allow write: if false;
+    }
+  }
+}

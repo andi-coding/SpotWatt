@@ -1,15 +1,17 @@
 import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
-import 'dart:io';
-import 'dart:convert';
-import 'package:http/http.dart' as http;
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:timezone/data/latest_all.dart' as tz_data;
 import 'package:timezone/timezone.dart' as tz;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:workmanager/workmanager.dart';
+import '../firebase_options.dart';
 import 'price_cache_service.dart';
 import 'background_task_service.dart';
+import 'firebase_notification_service.dart';
+import 'notification_service.dart';
 
 /// Shared logic for handling FCM price update messages
 /// Used by both background and foreground handlers
@@ -94,8 +96,14 @@ Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   try {
     WidgetsFlutterBinding.ensureInitialized();
     debugPrint('[FCM-BG] Flutter bindings initialized');
+
+    // ✅ Initialize Firebase Core (CRITICAL for background isolate!)
+    await Firebase.initializeApp(
+      options: DefaultFirebaseOptions.currentPlatform,
+    );
+    debugPrint('[FCM-BG] Firebase Core initialized');
   } catch (e, stackTrace) {
-    debugPrint('[FCM-BG] ❌ Failed to initialize Flutter bindings: $e');
+    debugPrint('[FCM-BG] ❌ Failed to initialize: $e');
     debugPrint('[FCM-BG] Stack trace: $stackTrace');
     return;
   }
@@ -103,7 +111,13 @@ Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   debugPrint('[FCM-BG] Background message received: ${message.data}');
 
   try {
-    await handlePriceUpdateMessage(message, isBackground: true);
+    // Only handle silent "update_prices" messages in background
+    // Notification messages (daily_summary, cheapest_hour, etc.) are automatically displayed by Android
+    if (message.data['action'] == 'update_prices') {
+      await handlePriceUpdateMessage(message, isBackground: true);
+    } else {
+      debugPrint('[FCM-BG] Notification message - Android will display automatically');
+    }
     debugPrint('[FCM-BG] ========== BACKGROUND HANDLER COMPLETED ==========');
   } catch (e, stackTrace) {
     debugPrint('[FCM-BG] ❌ Handler failed: $e');
@@ -131,14 +145,16 @@ class FCMService {
         _currentToken = token;
         debugPrint('[FCM] Device token: ${token.substring(0, 20)}...');
 
-        // Only register if token changed (saves API calls)
+        // Check if token has changed
         final prefs = await SharedPreferences.getInstance();
-        final lastRegisteredToken = prefs.getString('fcm_last_registered_token');
+        final lastToken = prefs.getString('fcm_last_token');
 
-        if (token != lastRegisteredToken) {
-          debugPrint('[FCM] Token changed, registering with server...');
-          await _registerTokenWithServer(token);
-          await prefs.setString('fcm_last_registered_token', token);
+        if (token != lastToken) {
+          // Token changed or first registration
+          debugPrint('[FCM] Token changed, registering with Firebase...');
+          await FirebaseNotificationService().registerFCMToken();
+          await FirebaseNotificationService().syncPreferences();
+          await prefs.setString('fcm_last_token', token);
         } else {
           debugPrint('[FCM] Token unchanged, skipping registration');
         }
@@ -146,10 +162,14 @@ class FCMService {
 
       // Listen for token refresh (rare, but happens)
       FirebaseMessaging.instance.onTokenRefresh.listen((newToken) async {
-        debugPrint('[FCM] Token refreshed, updating server...');
-        await _registerTokenWithServer(newToken);
+        debugPrint('[FCM] Token refreshed, updating Firebase...');
+
+        // Update Firebase
+        await FirebaseNotificationService().registerFCMToken();
+        await FirebaseNotificationService().syncPreferences();
+
         final prefs = await SharedPreferences.getInstance();
-        await prefs.setString('fcm_last_registered_token', newToken);
+        await prefs.setString('fcm_last_token', newToken);
       });
 
       // Note: Foreground message handler is now registered in main.dart
@@ -160,54 +180,93 @@ class FCMService {
     }
   }
 
-  /// Register device token with your backend
-  Future<void> _registerTokenWithServer(String token) async {
-    try {
-      // Get user's selected market
-      final prefs = await SharedPreferences.getInstance();
-      final region = prefs.getString('price_market') ?? 'AT';
-
-      final response = await http.post(
-        Uri.parse('https://spotwatt-prices.spotwatt-api.workers.dev/fcm/register'),
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({
-          'token': token,
-          'platform': Platform.isIOS ? 'ios' : 'android',
-          'region': region,
-        }),
-      );
-
-      if (response.statusCode == 200) {
-        debugPrint('[FCM] Token registered successfully with server');
-      } else {
-        debugPrint('[FCM] Token registration failed: ${response.statusCode} - ${response.body}');
-      }
-    } catch (e) {
-      debugPrint('[FCM] Failed to register token with server: $e');
-      // Non-critical error, app continues to work
-    }
-  }
-
-  /// Unregister device token (when user disables notifications)
-  Future<void> unregister() async {
-    try {
-      if (_currentToken != null) {
-        await http.post(
-          Uri.parse('https://spotwatt-prices.spotwatt-api.workers.dev/fcm/unregister'),
-          headers: {'Content-Type': 'application/json'},
-          body: jsonEncode({'token': _currentToken}),
-        );
-
-        await _messaging?.deleteToken();
-        _currentToken = null;
-
-        debugPrint('[FCM] Token unregistered');
-      }
-    } catch (e) {
-      debugPrint('[FCM] Failed to unregister token: $e');
-    }
-  }
-
   /// Get current FCM token (for debugging)
   String? get currentToken => _currentToken;
+
+  /// Show FCM notification in foreground using local notifications
+  /// FCM provides the complete notification (title/body) - we just display it
+  static Future<void> showForegroundNotification(RemoteMessage message) async {
+    try {
+      // FCM already parsed the notification for us!
+      final notification = message.notification;
+      if (notification == null) {
+        debugPrint('[FCM] No notification payload - skipping');
+        return;
+      }
+
+      final title = notification.title ?? 'SpotWatt';
+      final body = notification.body ?? '';
+
+      // Extract notification type from data payload
+      final notificationType = message.data['type'] ?? 'general';
+
+      debugPrint('[FCM] Showing foreground notification: $title');
+
+      // Determine channel based on type
+      String channelId;
+      String channelName;
+      int notificationId;
+
+      switch (notificationType) {
+        case 'daily_summary':
+          channelId = 'daily_summary';
+          channelName = 'Tägliche Zusammenfassung';
+          notificationId = 100;
+          break;
+        case 'cheapest_hour':
+          channelId = 'cheapest_hour';
+          channelName = 'Günstigste Stunden';
+          notificationId = 200;
+          break;
+        case 'threshold_alert':
+          channelId = 'price_threshold';
+          channelName = 'Preisschwellen';
+          notificationId = 300;
+          break;
+        case 'window_reminder':
+          channelId = 'window_reminders';
+          channelName = 'Zeitfenster-Erinnerungen';
+          notificationId = 2000;
+          break;
+        default:
+          channelId = 'default';
+          channelName = 'Benachrichtigungen';
+          notificationId = 999;
+      }
+
+      // Import NotificationService to access flutter_local_notifications
+      final notificationService = NotificationService();
+
+      // Simply show the notification that FCM already prepared for us
+      await notificationService.notifications.show(
+        notificationId,
+        title,
+        body,
+        NotificationDetails(
+          android: AndroidNotificationDetails(
+            channelId,
+            channelName,
+            importance: Importance.high,
+            priority: Priority.high,
+            icon: '@drawable/ic_notification_small',
+            styleInformation: BigTextStyleInformation(
+              body,
+              contentTitle: title,
+            ),
+          ),
+          iOS: DarwinNotificationDetails(
+            presentAlert: true,
+            presentBadge: true,
+            presentSound: true,
+          ),
+        ),
+      );
+
+      debugPrint('[FCM] ✅ Foreground notification displayed');
+
+    } catch (e, stackTrace) {
+      debugPrint('[FCM] ❌ Failed to show foreground notification: $e');
+      debugPrint('[FCM] Stack trace: $stackTrace');
+    }
+  }
 }

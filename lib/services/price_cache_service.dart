@@ -7,6 +7,7 @@ import 'awattar_service.dart';
 import 'cloudflare_price_service.dart';
 import 'full_cost_calculator.dart';
 import 'notification_service.dart';
+import 'firebase_notification_service.dart';
 import 'widget_service.dart';
 import 'savings_tips_service.dart';
 
@@ -121,6 +122,13 @@ class PriceCacheService {
           .then((_) => print('[Services] ✅ Notifications'))
           .catchError((e) {
         print('[Services] ⚠️ Notifications failed: $e');
+        return null;
+      }),
+      FirebaseNotificationService()
+          .syncPreferences()
+          .then((_) => print('[Services] ✅ Firebase Sync'))
+          .catchError((e) {
+        print('[Services] ⚠️ Firebase sync failed: $e');
         return null;
       }),
       WidgetService.updateWidget()

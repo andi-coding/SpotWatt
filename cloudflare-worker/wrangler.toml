@@ -10,12 +10,16 @@ enabled = true
 [vars]
 # Secrets (hinzufügen mit npx wrangler secret put <NAME>):
 # - ENTSOE_API_TOKEN: ENTSO-E API Token für Preis-Daten
-# - FIREBASE_SERVICE_ACCOUNT_KEY: Firebase Service Account für FCM Push
+# - FIREBASE_API_KEY: API Key für Firebase Functions Auth (REQUIRED!)
 # - ADMIN_API_KEY: Admin Key für Test-Endpoints
 #
-# Optional (für CDN Cache Purge):
+# Optional:
+# - FIREBASE_FUNCTION_URL: Override default Firebase Function URL
 # - CLOUDFLARE_ZONE_ID: Zone ID für Cache Purge API
 # - CLOUDFLARE_API_TOKEN: API Token mit "Cache Purge" Permission
+#
+# Legacy (wird entfernt):
+# - FIREBASE_SERVICE_ACCOUNT_KEY: Alte FCM Push Methode (deprecated)
 
 # KV Namespace für Caching
 # Erstellen mit: npx wrangler kv:namespace create "PRICE_CACHE"
@@ -24,10 +28,10 @@ enabled = true
 binding = "PRICE_CACHE"
 id = "51ae355e5c7749e1915440c1337170d8"
 
-# D1 Database für FCM Device Tokens
+# D1 Database für Provider-Daten (Energy Providers, Tax Rates)
 [[d1_databases]]
-binding = "FCM_DB"
-database_name = "spotwatt-fcm-tokens"
+binding = "DATA_DB"
+database_name = "spotwatt-data"
 database_id = "b1e2ec5c-adf1-4bba-81a9-10d71996943c"
 
 # Cron Triggers - ENTSO-E publiziert Day-Ahead Preise täglich um 12:30 CET/CEST

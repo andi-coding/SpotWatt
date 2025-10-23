@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import '../services/notification_service.dart';
+import '../services/firebase_notification_service.dart';
 import '../services/location_service.dart';
 import '../services/location_permission_helper.dart';
 import '../services/exact_alarm_permission_helper.dart';
@@ -20,7 +21,7 @@ class NotificationSettingsPage extends StatefulWidget {
 class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
   final NotificationService _notificationService = NotificationService();
   final LocationService _locationService = LocationService();
-  
+
   bool priceThresholdEnabled = false;
   bool cheapestTimeEnabled = false;
   bool locationBasedNotifications = false;
@@ -38,6 +39,14 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
   void initState() {
     super.initState();
     _loadSettings();
+  }
+
+  @override
+  void dispose() {
+    // Flush pending events when user leaves settings page
+    // No need to wait 90s if user is done
+    FirebaseNotificationService().flushPendingEvents();
+    super.dispose();
   }
 
   Future<void> _loadSettings() async {
@@ -192,6 +201,7 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
               });
               await _saveSettings();
               await _notificationService.scheduleNotifications();
+              await FirebaseNotificationService().syncPreferences();
               debugPrint('Price threshold changed to: $value');
             },
             onCheapestTimeEnabledChanged: (value) async {
@@ -207,6 +217,7 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
               });
               await _saveSettings();
               await _notificationService.scheduleNotifications();
+              await FirebaseNotificationService().syncPreferences();
               debugPrint('Cheapest time notifications changed to: $value');
             },
             onNotificationThresholdChanged: (value) async {
@@ -215,6 +226,7 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
               });
               await _saveSettings();
               await _notificationService.scheduleNotifications();
+              await FirebaseNotificationService().syncPreferences();
               debugPrint('Notification threshold changed to: ${PriceUtils.formatPrice(value)}');
             },
             onNotificationMinutesBeforeChanged: (value) async {
@@ -223,6 +235,7 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
               });
               await _saveSettings();
               await _notificationService.scheduleNotifications();
+              await FirebaseNotificationService().syncPreferences();
               debugPrint('Notification minutes before changed to: ${value.toInt()}');
             },
             onDailySummaryEnabledChanged: (value) async {
@@ -238,6 +251,7 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
               });
               await _saveSettings();
               await _notificationService.scheduleNotifications();
+              await FirebaseNotificationService().syncPreferences();
             },
             onDailySummaryTimeChanged: (value) async {
               setState(() {
@@ -245,6 +259,7 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
               });
               await _saveSettings();
               await _notificationService.scheduleNotifications();
+              await FirebaseNotificationService().syncPreferences();
             },
             onDailySummaryHoursChanged: (value) async {
               setState(() {
@@ -252,6 +267,7 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
               });
               await _saveSettings();
               await _notificationService.scheduleNotifications();
+              await FirebaseNotificationService().syncPreferences();
             },
             onHighPriceWarningEnabledChanged: (value) async {
               // Not used anymore, keeping for compatibility
@@ -262,6 +278,7 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
               });
               await _saveSettings();
               await _notificationService.scheduleNotifications();
+              await FirebaseNotificationService().syncPreferences();
               debugPrint('High price threshold changed to: ${PriceUtils.formatPrice(value)}');
             },
           ),
@@ -307,6 +324,7 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
               });
               await _saveSettings();
               await _notificationService.scheduleNotifications();
+              await FirebaseNotificationService().syncPreferences();
             },
             onQuietTimeStartChanged: (value) async {
               setState(() {
@@ -314,6 +332,7 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
               });
               await _saveSettings();
               await _notificationService.scheduleNotifications();
+              await FirebaseNotificationService().syncPreferences();
             },
             onQuietTimeEndChanged: (value) async {
               setState(() {
@@ -321,6 +340,7 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
               });
               await _saveSettings();
               await _notificationService.scheduleNotifications();
+              await FirebaseNotificationService().syncPreferences();
             },
           ),
         ],
