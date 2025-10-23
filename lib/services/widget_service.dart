@@ -14,73 +14,110 @@ class WidgetService {
   
   static Future<void> updateWidget() async {
     try {
-      final cacheService = PriceCacheService();
-      
-      // Get current prices using same logic as app (with cache validation)
-      final prices = await cacheService.getPrices();
-      
-      final now = DateTime.now();
-      final currentPrice = PriceUtils.getCurrentPrice(prices);
-      
-      // Get FULL day prices (all 24 hours of today) for min/max calculation
-      // This ensures min/max values stay constant throughout the day
-      final fullTodayPrices = PriceUtils.getFullDayPrices(prices, now);
-      
-      if (currentPrice == null || fullTodayPrices.isEmpty) return;
-      
-      // Calculate min and max for the ENTIRE day (00:00 - 23:59)
-      final minPriceData = fullTodayPrices.reduce((a, b) => 
-        a.price < b.price ? a : b);
-      final maxPriceData = fullTodayPrices.reduce((a, b) => 
-        a.price > b.price ? a : b);
-      final minPrice = minPriceData.price;
-      final maxPrice = maxPriceData.price;
-      final minTime = DateFormat('HH:mm').format(minPriceData.startTime);
-      final maxTime = DateFormat('HH:mm').format(maxPriceData.startTime);
-      
-      // Determine price status using median logic (low, medium, high)
-      final priceStatus = _getPriceStatusMedian(currentPrice.price, prices);
-      
-      // Calculate trend for next hours
-      final priceTrend = _getPriceTrend(prices, now);
-      
-      // Format update time
-      final updateTime = DateFormat('HH:mm').format(now);
-
-      // Get time slot end (next hour)
-      final nextHour = DateTime(now.year, now.month, now.day, now.hour + 1, 0);
-      final timeSlot = DateFormat('HH:mm').format(nextHour);
-
-      // Get theme setting for widget
-      final themeMode = await _getThemeModeSetting();
-      
-      // Save data to widget
-      await HomeWidget.saveWidgetData<String>('current_price', 
-        '${currentPrice.price.toStringAsFixed(2)} ct/kWh');
-      await HomeWidget.saveWidgetData<String>('min_price', 
-        minPrice.toStringAsFixed(2));
-      await HomeWidget.saveWidgetData<String>('max_price', 
-        maxPrice.toStringAsFixed(2));
-      await HomeWidget.saveWidgetData<String>('min_time', minTime);
-      await HomeWidget.saveWidgetData<String>('max_time', maxTime);
-      print('Widget Update: Min at $minTime, Max at $maxTime');
-      await HomeWidget.saveWidgetData<String>('price_status', priceStatus);
-      await HomeWidget.saveWidgetData<String>('price_trend', priceTrend);
-      await HomeWidget.saveWidgetData<String>('last_update', updateTime);
-      await HomeWidget.saveWidgetData<String>('time_slot', timeSlot);
-      await HomeWidget.saveWidgetData<String>('theme_mode', themeMode);
-      
-      // Update the widget
-      print('[WidgetService] Calling HomeWidget.updateWidget...');
-      final updateResult = await HomeWidget.updateWidget(
-        name: androidWidgetName,
-        iOSName: iosWidgetKind,
-      );
-      print('[WidgetService] HomeWidget.updateWidget result: $updateResult');
+      // Platform-specific update logic
+      if (Platform.isAndroid) {
+        await _updateAndroidWidget();
+      } else if (Platform.isIOS) {
+        await _updateIOSWidget();
+      }
     } catch (e, stackTrace) {
       print('[WidgetService] Error updating widget: $e');
       print('[WidgetService] StackTrace: $stackTrace');
     }
+  }
+
+  /// Android Widget Update - UNCHANGED from original logic
+  static Future<void> _updateAndroidWidget() async {
+    final cacheService = PriceCacheService();
+
+    // Get current prices using same logic as app (with cache validation)
+    final prices = await cacheService.getPrices();
+
+    final now = DateTime.now();
+    final currentPrice = PriceUtils.getCurrentPrice(prices);
+
+    // Get FULL day prices (all 24 hours of today) for min/max calculation
+    // This ensures min/max values stay constant throughout the day
+    final fullTodayPrices = PriceUtils.getFullDayPrices(prices, now);
+
+    if (currentPrice == null || fullTodayPrices.isEmpty) return;
+
+    // Calculate min and max for the ENTIRE day (00:00 - 23:59)
+    final minPriceData = fullTodayPrices.reduce((a, b) =>
+      a.price < b.price ? a : b);
+    final maxPriceData = fullTodayPrices.reduce((a, b) =>
+      a.price > b.price ? a : b);
+    final minPrice = minPriceData.price;
+    final maxPrice = maxPriceData.price;
+    final minTime = DateFormat('HH:mm').format(minPriceData.startTime);
+    final maxTime = DateFormat('HH:mm').format(maxPriceData.startTime);
+
+    // Determine price status using median logic (low, medium, high)
+    final priceStatus = _getPriceStatusMedian(currentPrice.price, prices);
+
+    // Calculate trend for next hours
+    final priceTrend = _getPriceTrend(prices, now);
+
+    // Format update time
+    final updateTime = DateFormat('HH:mm').format(now);
+
+    // Get time slot end (next hour)
+    final nextHour = DateTime(now.year, now.month, now.day, now.hour + 1, 0);
+    final timeSlot = DateFormat('HH:mm').format(nextHour);
+
+    // Get theme setting for widget
+    final themeMode = await _getThemeModeSetting();
+
+    // Save data to widget
+    await HomeWidget.saveWidgetData<String>('current_price',
+      '${currentPrice.price.toStringAsFixed(2)} ct/kWh');
+    await HomeWidget.saveWidgetData<String>('min_price',
+      minPrice.toStringAsFixed(2));
+    await HomeWidget.saveWidgetData<String>('max_price',
+      maxPrice.toStringAsFixed(2));
+    await HomeWidget.saveWidgetData<String>('min_time', minTime);
+    await HomeWidget.saveWidgetData<String>('max_time', maxTime);
+    print('Widget Update: Min at $minTime, Max at $maxTime');
+    await HomeWidget.saveWidgetData<String>('price_status', priceStatus);
+    await HomeWidget.saveWidgetData<String>('price_trend', priceTrend);
+    await HomeWidget.saveWidgetData<String>('last_update', updateTime);
+    await HomeWidget.saveWidgetData<String>('time_slot', timeSlot);
+    await HomeWidget.saveWidgetData<String>('theme_mode', themeMode);
+
+    // Update the widget
+    print('[WidgetService] Calling HomeWidget.updateWidget (Android)...');
+    final updateResult = await HomeWidget.updateWidget(name: androidWidgetName);
+    print('[WidgetService] HomeWidget.updateWidget result: $updateResult');
+  }
+
+  /// iOS Widget Update - Only sync configuration
+  /// Widget Extension handles data fetching and calculations independently
+  static Future<void> _updateIOSWidget() async {
+    print('[WidgetService] Syncing iOS widget configuration...');
+
+    final prefs = await SharedPreferences.getInstance();
+
+    // Sync Full Cost configuration to App Group
+    await HomeWidget.saveWidgetData<double>('energy_provider_percentage',
+      prefs.getDouble('energy_provider_percentage') ?? 0.0);
+    await HomeWidget.saveWidgetData<double>('energy_provider_fixed_fee',
+      prefs.getDouble('energy_provider_fixed_fee') ?? 0.0);
+    await HomeWidget.saveWidgetData<double>('network_costs',
+      prefs.getDouble('network_costs') ?? 0.0);
+    await HomeWidget.saveWidgetData<bool>('include_tax',
+      prefs.getBool('include_tax') ?? true);
+    await HomeWidget.saveWidgetData<String>('region',
+      prefs.getString('price_market') ?? 'AT');
+    await HomeWidget.saveWidgetData<String>('theme_mode',
+      prefs.getString('theme_mode') ?? 'system');
+    await HomeWidget.saveWidgetData<bool>('full_cost_mode',
+      prefs.getBool('full_cost_mode') ?? false);
+
+    print('[WidgetService] iOS config synced: region=${prefs.getString('price_market')}, fullCost=${prefs.getBool('full_cost_mode')}');
+
+    // Trigger widget reload (Widget Extension will fetch and calculate)
+    final updateResult = await HomeWidget.updateWidget(iOSName: iosWidgetKind);
+    print('[WidgetService] iOS widget update result: $updateResult');
   }
   
   static String _getPriceStatusMedian(double current, List<PriceData> prices) {

@@ -5,7 +5,7 @@ import 'package:flutter/material.dart';
 import '../models/price_data.dart';
 import '../utils/price_utils.dart';
 import 'price_cache_service.dart';
-import 'geofence_service.dart';
+// import 'geofence_service.dart';  // Temporarily disabled - incompatible with current Xcode
 import 'window_reminder_service.dart';
 import 'firebase_notification_service.dart';
 
