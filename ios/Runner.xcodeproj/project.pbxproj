@@ -264,12 +264,10 @@
 				3B06AD1E1E4923F5004D2608 /* Thin Binary */,
 				6E8816268EC623D086139A81 /* [CP] Embed Pods Frameworks */,
 				C78DC8636DBAC5CDF5ADBEB4 /* [CP] Copy Pods Resources */,
-				CEE686E22EAA881800526D66 /* Embed App Extensions */,
 			);
 			buildRules = (
 			);
 			dependencies = (
-				CEE686E02EAA881800526D66 /* PBXTargetDependency */,
 			);
 			name = Runner;
 			productName = Runner;
