@@ -17,10 +17,7 @@ class FirebaseNotificationService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final FirebaseMessaging _messaging = FirebaseMessaging.instance;
 
-  // Debouncing für Settings-Events (90 Sekunden = 1.5 Minuten)
-  // Gibt dem User Zeit, alle Settings anzupassen bevor Event getriggert wird
-  static Timer? _debounceTimer;
-  static const Duration _eventDebounceDelay = Duration(seconds: 90);
+  // ✅ Debouncing removed: onPreferencesUpdate trigger handles changes automatically
 
   /// Helper to get daily summary time as string from preferences
   String _getDailySummaryTimeString(SharedPreferences prefs) {
@@ -105,8 +102,8 @@ class FirebaseNotificationService {
       debugPrint('[FirebaseNotifications]   - Cheapest Time: $cheapestTimeEnabled');
       debugPrint('[FirebaseNotifications]   - Threshold: $thresholdEnabled');
 
-      // Trigger event to reschedule notifications (with debouncing)
-      await _triggerSettingsChangedEvent(fcmToken);
+      // ✅ NEW: Firestore onWrite trigger handles rescheduling automatically
+      // No need to manually trigger events anymore!
 
     } catch (e) {
       debugPrint('[FirebaseNotifications] ❌ Failed to sync preferences: $e');
@@ -114,39 +111,15 @@ class FirebaseNotificationService {
     }
   }
 
-  /// Trigger a settings_changed event in Firestore (with debouncing)
-  /// Uses trailing edge debouncing: Waits 90s after LAST change before triggering
-  /// This allows user to change multiple settings and trigger only 1 event
+  /// DEPRECATED: No longer needed with Cloud Tasks and onPreferencesUpdate trigger
+  /// The Firestore onWrite trigger automatically handles preference changes
+  /*
   Future<void> _triggerSettingsChangedEvent(String fcmToken) async {
-    try {
-      // Cancel previous timer (if user changes settings again)
-      _debounceTimer?.cancel();
-
-      debugPrint('[FirebaseNotifications] ⏱️ Settings changed, waiting ${_eventDebounceDelay.inSeconds}s before triggering event...');
-
-      // Start new timer - will trigger after 90s of inactivity
-      _debounceTimer = Timer(_eventDebounceDelay, () async {
-        try {
-          final eventData = {
-            'fcm_token': fcmToken,
-            'event_type': 'settings_changed',
-            'timestamp': FieldValue.serverTimestamp(),
-            'processed': false,
-          };
-
-          await _firestore.collection('notification_events').add(eventData);
-
-          debugPrint('[FirebaseNotifications] 📨 Event triggered: settings_changed (after ${_eventDebounceDelay.inSeconds}s delay)');
-        } catch (e) {
-          debugPrint('[FirebaseNotifications] ❌ Failed to trigger event: $e');
-        }
-      });
-
-    } catch (e) {
-      debugPrint('[FirebaseNotifications] ❌ Failed to setup debounce timer: $e');
-      // Don't rethrow - event triggering is optional
-    }
+    // This function is no longer used.
+    // The onPreferencesUpdate Cloud Function triggers automatically
+    // when the notification_preferences document changes.
   }
+  */
 
   /// Register FCM token in Firestore (for silent push notifications)
   /// Called on app start and when token refreshes
@@ -212,33 +185,14 @@ class FirebaseNotificationService {
     }
   }
 
-  /// Force trigger pending settings_changed event immediately
-  /// Useful when user leaves settings page - no need to wait 90s
+  /// DEPRECATED: No longer needed with Cloud Tasks
+  /// The onPreferencesUpdate trigger fires immediately on any change
   Future<void> flushPendingEvents() async {
-    try {
-      if (_debounceTimer != null && _debounceTimer!.isActive) {
-        debugPrint('[FirebaseNotifications] 🚀 Flushing pending event immediately');
-        _debounceTimer!.cancel();
-
-        final fcmToken = await _messaging.getToken();
-        if (fcmToken != null) {
-          final eventData = {
-            'fcm_token': fcmToken,
-            'event_type': 'settings_changed',
-            'timestamp': FieldValue.serverTimestamp(),
-            'processed': false,
-          };
-
-          await _firestore.collection('notification_events').add(eventData);
-          debugPrint('[FirebaseNotifications] 📨 Event triggered immediately (flush)');
-        }
-      }
-    } catch (e) {
-      debugPrint('[FirebaseNotifications] ❌ Failed to flush events: $e');
-    }
+    // No-op: Firestore triggers handle changes automatically
+    debugPrint('[FirebaseNotifications] flushPendingEvents() is deprecated - no action needed');
   }
 
-  /// Schedule a window reminder notification via Firebase
+  /// Schedule a window reminder notification via Cloud Tasks
   /// Called when user enables a reminder for a specific time window
   Future<void> scheduleWindowReminder({
     required String deviceName,
@@ -269,25 +223,29 @@ class FirebaseNotificationService {
       final endHour = endTime.hour.toString().padLeft(2, '0');
       final endMinute = endTime.minute.toString().padLeft(2, '0');
 
-      final notificationData = {
+      // Create unique reminder ID (fcmToken + deviceName + startTime)
+      final reminderId = '${fcmToken.substring(0, 16)}_${deviceName.replaceAll(' ', '_')}_${startTime.millisecondsSinceEpoch}';
+
+      final reminderData = {
         'fcm_token': fcmToken,
-        'notification': {
-          'title': '⚡ $deviceName jetzt einschalten!',
-          'body': 'Optimales Zeitfenster: $startHour:$startMinute - $endHour:$endMinute Uhr • Spare ${savingsEuro}€',
-          'type': 'window_reminder',
-        },
-        'send_at': Timestamp.fromDate(notificationTime),
-        'created_at': FieldValue.serverTimestamp(),
-        'sent': false,
         'device_name': deviceName,
         'window_start': Timestamp.fromDate(startTime),
         'window_end': Timestamp.fromDate(endTime),
+        'savings_cents': savingsCents,
+        'send_at': Timestamp.fromDate(notificationTime),
+        'title': '⚡ $deviceName jetzt einschalten!',
+        'body': 'Optimales Zeitfenster: $startHour:$startMinute - $endHour:$endMinute Uhr • Spare ${savingsEuro}€',
+        'created_at': FieldValue.serverTimestamp(),
+        'status': 'pending', // pending, scheduled, sent, cancelled
       };
 
-      // Store in Firestore (Firebase Cron will send it)
-      await _firestore.collection('scheduled_notifications').add(notificationData);
+      // Store in Firestore (Firestore trigger will create Cloud Task)
+      await _firestore
+          .collection('window_reminders')
+          .doc(reminderId)
+          .set(reminderData);
 
-      debugPrint('[FirebaseNotifications] ✅ Window reminder scheduled for $deviceName at $notificationTime');
+      debugPrint('[FirebaseNotifications] ✅ Window reminder created for $deviceName at $notificationTime');
     } catch (e) {
       debugPrint('[FirebaseNotifications] ❌ Failed to schedule window reminder: $e');
       rethrow;
@@ -307,28 +265,22 @@ class FirebaseNotificationService {
         return;
       }
 
-      // Query for this specific window reminder (unsent only)
-      final snapshot = await _firestore
-          .collection('scheduled_notifications')
-          .where('fcm_token', isEqualTo: fcmToken)
-          .where('device_name', isEqualTo: deviceName)
-          .where('window_start', isEqualTo: Timestamp.fromDate(startTime))
-          .where('sent', isEqualTo: false)
-          .get();
+      // Construct reminder ID (same as in scheduleWindowReminder)
+      final reminderId = '${fcmToken.substring(0, 16)}_${deviceName.replaceAll(' ', '_')}_${startTime.millisecondsSinceEpoch}';
 
-      if (snapshot.docs.isEmpty) {
-        debugPrint('[FirebaseNotifications] No matching window reminder found to cancel');
+      // Update status to 'cancelled' (Firestore trigger will delete Cloud Task)
+      final docRef = _firestore.collection('window_reminders').doc(reminderId);
+      final doc = await docRef.get();
+
+      if (!doc.exists) {
+        debugPrint('[FirebaseNotifications] No window reminder found with ID: $reminderId');
         return;
       }
 
-      // Delete all matching documents (should be 1, but use batch for safety)
-      final batch = _firestore.batch();
-      for (final doc in snapshot.docs) {
-        batch.delete(doc.reference);
-      }
-      await batch.commit();
+      // Mark as cancelled (trigger will handle Cloud Task deletion)
+      await docRef.update({'status': 'cancelled'});
 
-      debugPrint('[FirebaseNotifications] ✅ Cancelled window reminder for $deviceName at $startTime (${snapshot.docs.length} documents)');
+      debugPrint('[FirebaseNotifications] ✅ Cancelled window reminder for $deviceName at $startTime');
     } catch (e) {
       debugPrint('[FirebaseNotifications] ❌ Failed to cancel window reminder: $e');
     }
@@ -341,18 +293,17 @@ class FirebaseNotificationService {
       final fcmToken = await _messaging.getToken();
       if (fcmToken == null) return;
 
-      // Query all unsent window reminders for this user
+      // Query all pending window reminders for this user
       final snapshot = await _firestore
-          .collection('scheduled_notifications')
+          .collection('window_reminders')
           .where('fcm_token', isEqualTo: fcmToken)
-          .where('notification.type', isEqualTo: 'window_reminder')
-          .where('sent', isEqualTo: false)
+          .where('status', whereIn: ['pending', 'scheduled'])
           .get();
 
-      // Delete all in batch
+      // Mark all as cancelled (triggers will handle Cloud Task deletion)
       final batch = _firestore.batch();
       for (final doc in snapshot.docs) {
-        batch.delete(doc.reference);
+        batch.update(doc.reference, {'status': 'cancelled'});
       }
       await batch.commit();
 

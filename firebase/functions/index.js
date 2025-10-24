@@ -1,7 +1,21 @@
 const functions = require('firebase-functions');
 const admin = require('firebase-admin');
+const { CloudTasksClient } = require('@google-cloud/tasks');
 
 admin.initializeApp();
+
+// Cloud Tasks Configuration
+const tasksClient = new CloudTasksClient();
+const PROJECT_ID = 'spotwatt-900e9';
+const LOCATION = 'europe-west3';
+const QUEUE_NAME = 'notification-queue';
+
+// ========================================================================
+// IN-MEMORY CACHE: Price Cache (survives between warm function invocations)
+// This dramatically reduces Firestore reads when multiple users change settings
+// Cache is invalidated only when new prices are written via cachePrices()
+// ========================================================================
+const inMemoryPriceCache = {}; // Format: { market: { data: {...} } }
 
 // ========================================================================
 // MAIN: Handle Price Update from Cloudflare Worker
@@ -74,6 +88,11 @@ async function cachePrices(atPrices, dePrices) {
 
   try {
     const batch = admin.firestore().batch();
+    
+    // ✅ Invalidate in-memory cache so functions fetch fresh data immediately
+    console.log('[Price Cache] Invalidating in-memory cache...');
+    delete inMemoryPriceCache['AT'];
+    delete inMemoryPriceCache['DE'];
 
     // Cache AT prices
     const atRef = admin.firestore().collection('price_cache').doc('AT');
@@ -90,7 +109,7 @@ async function cachePrices(atPrices, dePrices) {
     });
 
     await batch.commit();
-    console.log('[Price Cache] ✅ Prices cached successfully');
+    console.log('[Price Cache] ✅ Prices cached successfully and in-memory cache invalidated');
   } catch (error) {
     console.error('[Price Cache] ❌ Error:', error);
     // Don't throw - caching is optional
@@ -224,8 +243,12 @@ async function sendPriceUpdatePushToAll() {
 // ========================================================================
 // STEP 2: Schedule Personalized Notifications
 // ========================================================================
+/**
+ * Schedule personalized notifications for ALL users (called daily on price update)
+ * Uses Cloud Tasks to send notifications at exact times
+ */
 async function schedulePersonalizedNotifications(atPrices, dePrices) {
-  console.log('[Scheduling] Starting personalized notifications...');
+  console.log('[Scheduling] Starting personalized notifications with Cloud Tasks...');
 
   try {
     // Get users with notification preferences
@@ -241,58 +264,58 @@ async function schedulePersonalizedNotifications(atPrices, dePrices) {
     }
 
     let scheduledCount = 0;
-    const batches = [];
-    let currentBatch = admin.firestore().batch();
-    let batchCounter = 0;
 
     for (const userDoc of usersSnapshot.docs) {
       const user = userDoc.data();
+      const fcmToken = user.fcm_token;
       const prices = user.market === 'DE' ? dePrices : atPrices;
 
-      const notifications = calculateUserNotifications(user, prices);
+      try {
+        // Calculate notifications for this user
+        const notifications = calculateUserNotifications(user, prices);
 
-      for (const notification of notifications) {
-        if (batchCounter >= 500) {
-          batches.push(currentBatch);
-          currentBatch = admin.firestore().batch();
-          batchCounter = 0;
+        if (notifications.length === 0) {
+          continue;
         }
 
-        const docRef = admin.firestore()
-          .collection('scheduled_notifications')
-          .doc();
+        // Cancel old recurring tasks (NOT window reminders!)
+        if (user.recurring_tasks) {
+          const oldTaskNames = Object.values(user.recurring_tasks).flat();
+          if (oldTaskNames.length > 0) {
+            await cancelCloudTasksByName(oldTaskNames);
+          }
+        }
 
-        const ttlSeconds = getNotificationTTL(notification.type);
-        const expireAt = new Date(notification.sendAt.getTime() + ttlSeconds * 1000);
+        // Create new Cloud Tasks
+        const createdTasks = await scheduleNotificationsWithCloudTasks(fcmToken, notifications);
 
-        currentBatch.set(docRef, {
-          fcm_token: user.fcm_token,
-          user_market: user.market,
-          notification: {
-            title: notification.title,
-            body: notification.body,
-            type: notification.type
-          },
-          send_at: admin.firestore.Timestamp.fromDate(notification.sendAt),
-          expireAt: admin.firestore.Timestamp.fromDate(expireAt),
-          created_at: admin.firestore.FieldValue.serverTimestamp(),
-          sent: false
+        // Build task map (handle multiple tasks per type)
+        const taskMap = {};
+        createdTasks.forEach(task => {
+          if (!taskMap[task.type]) {
+            taskMap[task.type] = [];
+          }
+          taskMap[task.type].push(task.name);
         });
 
-        batchCounter++;
-        scheduledCount++;
+        // Update recurring_tasks field (window reminders stay intact)
+        await admin.firestore()
+          .collection('notification_preferences')
+          .doc(fcmToken)
+          .update({
+            recurring_tasks: taskMap
+          });
+
+        scheduledCount += createdTasks.length;
+
+      } catch (userError) {
+        const tokenPreview = fcmToken.substring(0, 20) + '...';
+        console.error(`[Scheduling] ❌ Failed for user ${tokenPreview}:`, userError);
+        // Continue with next user
       }
     }
 
-    if (batchCounter > 0) {
-      batches.push(currentBatch);
-    }
-
-    // Commit all batches
-    console.log(`[Scheduling] Committing ${batches.length} batches...`);
-    await Promise.all(batches.map(b => b.commit()));
-
-    console.log(`[Scheduling] ✅ Scheduled ${scheduledCount} notifications`);
+    console.log(`[Scheduling] ✅ Scheduled ${scheduledCount} notifications for ${usersSnapshot.size} users`);
     return { count: scheduledCount };
 
   } catch (error) {
@@ -302,186 +325,15 @@ async function schedulePersonalizedNotifications(atPrices, dePrices) {
 }
 
 // ========================================================================
-// CRON: Send Scheduled Notifications (every 5 minutes)
+// DELETED OLD FUNCTIONS (replaced by Cloud Tasks)
 // ========================================================================
-exports.sendScheduledNotifications = functions
-  .runWith({
-    timeoutSeconds: 280, // 4min 40s (< 5min to prevent overlap!)
-    memory: '1GB'
-  })
-  .pubsub.schedule('every 5 minutes')
-  .timeZone('Europe/Vienna')
-  .onRun(async (context) => {
-    console.log('🔔 sendScheduledNotifications triggered');
-    const startTime = Date.now();
-
-    try {
-      const now = admin.firestore.Timestamp.now();
-      const fiveMinutesFromNow = admin.firestore.Timestamp.fromDate(
-        new Date(Date.now() + 5 * 60 * 1000)
-      );
-
-      // Query notifications due in next 5 minutes
-      const snapshot = await admin.firestore()
-        .collection('scheduled_notifications')
-        .where('sent', '==', false)
-        .where('send_at', '>=', now)
-        .where('send_at', '<', fiveMinutesFromNow)
-        .orderBy('send_at', 'asc')
-        .limit(2000)
-        .get();
-
-      if (snapshot.empty) {
-        console.log('No notifications to send');
-        return null;
-      }
-
-      console.log(`📨 Processing ${snapshot.size} notifications`);
-
-      // Build FCM messages with TTL
-      const messages = snapshot.docs.map(doc => {
-        const data = doc.data();
-        const ttlSeconds = getNotificationTTL(data.notification.type);
-
-        return {
-          token: data.fcm_token,
-          notification: {
-            title: data.notification.title,
-            body: data.notification.body
-          },
-          data: {
-            type: String(data.notification.type || 'general'),
-            tab_index: '0'
-          },
-          apns: {
-            headers: {
-              'apns-expiration': String(Math.floor(Date.now() / 1000) + ttlSeconds)
-            },
-            payload: {
-              aps: {
-                sound: 'default',
-                badge: 1
-              }
-            }
-          },
-          android: {
-            priority: 'high',
-            ttl: ttlSeconds * 1000, // in Millisekunden
-            notification: {
-              channelId: getChannelId(data.notification.type),
-              sound: 'default'
-            }
-          }
-        };
-      });
-
-      // Send in batches of 500
-      let successCount = 0;
-      let failCount = 0;
-      const failedTokens = [];
-
-      for (let i = 0; i < messages.length; i += 500) {
-        const batch = messages.slice(i, i + 500);
-
-        try {
-          const response = await admin.messaging().sendEach(batch);
-          successCount += response.successCount;
-          failCount += response.failureCount;
-
-          response.responses.forEach((resp, idx) => {
-            if (!resp.success) {
-              const error = resp.error;
-              console.error(`❌ Failed: ${error.code}`);
-
-              if (error.code === 'messaging/invalid-registration-token' ||
-                  error.code === 'messaging/registration-token-not-registered') {
-                failedTokens.push(batch[idx].token);
-              }
-            }
-          });
-
-        } catch (error) {
-          console.error('❌ Batch send error:', error);
-          failCount += batch.length;
-        }
-      }
-
-      // Mark all as sent
-      const updateBatches = [];
-      let updateBatch = admin.firestore().batch();
-      let updateCounter = 0;
-
-      snapshot.docs.forEach(doc => {
-        if (updateCounter >= 500) {
-          updateBatches.push(updateBatch);
-          updateBatch = admin.firestore().batch();
-          updateCounter = 0;
-        }
-
-        updateBatch.update(doc.ref, {
-          sent: true,
-          sent_at: admin.firestore.FieldValue.serverTimestamp()
-        });
-        updateCounter++;
-      });
-
-      if (updateCounter > 0) {
-        updateBatches.push(updateBatch);
-      }
-
-      await Promise.all(updateBatches.map(b => b.commit()));
-
-      // Cleanup invalid tokens (mark inactive + TTL for auto-deletion)
-      if (failedTokens.length > 0) {
-        console.log(`🧹 Cleaning up ${failedTokens.length} invalid tokens...`);
-        const cleanupBatch = admin.firestore().batch();
-        const ttlExpireAt = admin.firestore.Timestamp.fromDate(
-          new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) // Delete in 7 days
-        );
-
-        for (const token of failedTokens) {
-          const tokenRef = admin.firestore().collection('fcm_tokens').doc(token);
-          cleanupBatch.update(tokenRef, {
-            active: false,
-            invalidated_at: admin.firestore.FieldValue.serverTimestamp(),
-            ttl_expire_at: ttlExpireAt
-          });
-        }
-
-        await cleanupBatch.commit();
-      }
-
-      const duration = Date.now() - startTime;
-      console.log(`✅ Completed in ${duration}ms - Sent: ${successCount}, Failed: ${failCount}`);
-
-      if (duration > 240000) {
-        console.warn('⚠️ Approaching timeout! Duration:', duration, 'ms');
-      }
-
-      return null;
-
-    } catch (error) {
-      console.error('❌ Fatal error:', error);
-      throw error;
-    }
-  });
+// - sendScheduledNotifications: Polling-based system (replaced by Cloud Tasks)
+// - getNotificationTTL: TTL for Firestore docs (Cloud Tasks auto-delete after execution)
+// ========================================================================
 
 // ========================================================================
 // HELPER FUNCTIONS
 // ========================================================================
-
-function getNotificationTTL(notificationType) {
-  switch (notificationType) {
-    case 'cheapest_hour':
-      return 15 * 60; // 15 Minuten (dringend!)
-    case 'threshold_alert':
-      return 15 * 60; // 10 Minuten (sehr dringend!)
-    case 'daily_summary':
-      return 2 * 60 * 60; // 2 Stunden (nicht so kritisch)
-    default:
-      return 30 * 60; // 30 Minuten default
-  }
-}
 
 function calculateUserNotifications(user, priceData) {
   const notifications = [];
@@ -511,16 +363,6 @@ function calculateUserNotifications(user, priceData) {
     return date;
   };
 
-  const roundToNearestFiveMinutes = (date) => {
-    const rounded = new Date(date);
-    const minutes = rounded.getMinutes();
-    const roundedMinutes = Math.round(minutes / 5) * 5;
-    rounded.setMinutes(roundedMinutes);
-    rounded.setSeconds(0);
-    rounded.setMilliseconds(0);
-    return rounded;
-  };
-
   // 1. Daily Summary (matching app logic with hour count + high price warning)
   if (user.daily_summary_enabled) {
     const [hour, minute] = (user.daily_summary_time ?? '07:00').split(':');
@@ -534,9 +376,8 @@ function calculateUserNotifications(user, priceData) {
       localSendAt.setDate(localSendAt.getDate() + 1);
     }
 
-    // Convert back to UTC for Firestore
-    let sendAt = toUTC(localSendAt);
-    sendAt = roundToNearestFiveMinutes(sendAt);
+    // Convert back to UTC for Cloud Tasks (exact time, no rounding needed!)
+    const sendAt = toUTC(localSendAt);
 
     if (sendAt > now && !isInQuietTime(sendAt, user, userTimezoneOffset)) {
       const summaryBody = generateDailySummaryWithHours(prices, user, sendAt, userTimezoneOffset);
@@ -557,15 +398,14 @@ function calculateUserNotifications(user, priceData) {
     const cheapestHoursPerDay = findCheapestHourPerDay(prices, user);
 
     for (const hour of cheapestHoursPerDay) {
-      let sendAt = new Date(hour.startTime);
+      const sendAt = new Date(hour.startTime);
       const minutesBefore = user.notification_minutes_before ?? 15;
       sendAt.setMinutes(sendAt.getMinutes() - minutesBefore);
-      sendAt = roundToNearestFiveMinutes(sendAt);
 
       if (sendAt > now && !isInQuietTime(sendAt, user, userTimezoneOffset)) {
         const fullCost = calculateFullCost(hour.price, user);
         const priceText = user.full_cost_mode
-          ? `${fullCost.toFixed(2)} ct/kWh (Vollkosten)`
+          ? `${fullCost.toFixed(2)} ct/kWh`
           : `${hour.price.toFixed(2)} ct/kWh`;
 
         const startTime = formatTime(hour.startTime, userTimezoneOffset);
@@ -591,14 +431,13 @@ function calculateUserNotifications(user, priceData) {
     });
 
     for (const period of belowThreshold) {
-      let sendAt = new Date(period.startTime);
-      sendAt.setMinutes(sendAt.getMinutes() - 5); // ✅ Fixed 5min (urgent!)
-      sendAt = roundToNearestFiveMinutes(sendAt);
+      const sendAt = new Date(period.startTime);
+      sendAt.setMinutes(sendAt.getMinutes() - 5); // Fixed 5min before (urgent!)
 
       if (sendAt > now && !isInQuietTime(sendAt, user, userTimezoneOffset)) {
         const effectivePrice = calculateFullCost(period.price, user);
         const priceText = user.full_cost_mode
-          ? `${effectivePrice.toFixed(2)} ct/kWh (Vollkosten)`
+          ? `${effectivePrice.toFixed(2)} ct/kWh`
           : `${period.price.toFixed(2)} ct/kWh`;
 
         notifications.push({
@@ -718,11 +557,20 @@ function generateDailySummaryWithHours(prices, user, notificationTime, userTimez
 function findCheapestHourPerDay(prices, user) {
   const cheapestPerDay = [];
 
-  // Group prices by day
+  console.log(`[findCheapestHourPerDay] Processing ${prices.length} prices`);
+
+  // Get user timezone offset
+  const userTimezoneOffset = user.timezone ?? 60; // Default: UTC+1
+
+  // Group prices by day (in user's LOCAL timezone!)
   const pricesByDay = {};
   for (const price of prices) {
-    const date = new Date(price.startTime);
-    const dayKey = `${date.getFullYear()}-${date.getMonth() + 1}-${date.getDate()}`;
+    // Convert UTC to user's local time for grouping
+    const utcDate = new Date(price.startTime);
+    const localDate = new Date(utcDate);
+    localDate.setMinutes(localDate.getMinutes() + userTimezoneOffset);
+
+    const dayKey = `${localDate.getFullYear()}-${localDate.getMonth() + 1}-${localDate.getDate()}`;
 
     if (!pricesByDay[dayKey]) {
       pricesByDay[dayKey] = [];
@@ -730,9 +578,13 @@ function findCheapestHourPerDay(prices, user) {
     pricesByDay[dayKey].push(price);
   }
 
-  // Find cheapest hour per day (only complete days with 24 hours)
+  console.log(`[findCheapestHourPerDay] Grouped into ${Object.keys(pricesByDay).length} days:`,
+    Object.entries(pricesByDay).map(([day, prices]) => `${day}=${prices.length}h`).join(', '));
+
+  // Find cheapest hour per day (accept incomplete days - future filtering happens in caller)
   for (const [dayKey, dayPrices] of Object.entries(pricesByDay)) {
-    if (dayPrices.length >= 24) {
+    console.log(`[findCheapestHourPerDay] Day ${dayKey}: ${dayPrices.length} hours`);
+    if (dayPrices.length > 0) {
       // Calculate effective price (with full cost if enabled)
       const pricesWithCost = dayPrices.map(p => ({
         ...p,
@@ -791,148 +643,35 @@ function getChannelId(type) {
 }
 
 // ========================================================================
-// EVENT QUEUE: Process notification events (Option 3 implementation)
-// Triggered when app writes to notification_events collection
+// DELETED: Event Queue System (replaced by onPreferencesUpdate trigger)
+// The following functions have been removed:
+// - processNotificationEvents: Replaced by onPreferencesUpdate (direct Firestore trigger)
+// - handleSettingsChanged: Logic moved into onPreferencesUpdate
+// - cancelUserNotifications: Replaced by cancelCloudTasksByName (Cloud Tasks)
+//
+// Benefits of new system:
+// - 0 extra writes (no notification_events collection needed)
+// - 0 extra reads (change.before/after provides data)
+// - Instant triggering (no event queue delay)
 // ========================================================================
-exports.processNotificationEvents = functions
-  .region('europe-west3')
-  .runWith({
-    timeoutSeconds: 120,
-    memory: '512MB'
-  })
-  .firestore.document('notification_events/{eventId}')
-  .onCreate(async (snap, context) => {
-    const event = snap.data();
-    const eventId = context.params.eventId;
 
-    console.log(`📨 Processing event: ${event.event_type} for token: ${event.fcm_token}`);
-
-    try {
-      switch (event.event_type) {
-        case 'settings_changed':
-          await handleSettingsChanged(event.fcm_token);
-          break;
-
-        case 'reminder_added':
-          // Future: Handle window reminder added
-          console.log('reminder_added event - not yet implemented');
-          break;
-
-        case 'all_reminders_cancelled':
-          // Future: Cancel all window reminders for user
-          console.log('all_reminders_cancelled event - not yet implemented');
-          break;
-
-        default:
-          console.warn(`⚠️ Unknown event type: ${event.event_type}`);
-      }
-
-      // Mark event as processed (or delete it)
-      await snap.ref.delete();
-      console.log(`✅ Event ${eventId} processed and deleted`);
-
-    } catch (error) {
-      console.error(`❌ Error processing event ${eventId}:`, error);
-
-      // Mark as failed (keep for debugging)
-      await snap.ref.update({
-        processed: true,
-        error: error.message,
-        failed_at: admin.firestore.FieldValue.serverTimestamp()
-      });
-    }
-
-    return null;
-  });
-
-// ========================================================================
-// Handle settings_changed event
-// Cancel all scheduled notifications for user and reschedule with new settings
-// ========================================================================
-async function handleSettingsChanged(fcmToken) {
-  console.log(`[Settings Changed] Processing for token: ${fcmToken}`);
-
-  try {
-    // STEP 1: Delete all pending notifications for this user
-    const deletedCount = await cancelUserNotifications(fcmToken);
-    console.log(`[Settings Changed] Cancelled ${deletedCount} pending notifications`);
-
-    // STEP 2: Get latest user preferences
-    const userDoc = await admin.firestore()
-      .collection('notification_preferences')
-      .doc(fcmToken)
-      .get();
-
-    if (!userDoc.exists) {
-      console.log('[Settings Changed] No preferences found - user may have disabled all notifications');
-      return;
-    }
-
-    const user = userDoc.data();
-
-    // Check if any notifications are enabled
-    if (!user.has_any_notification_enabled) {
-      console.log('[Settings Changed] All notifications disabled - nothing to schedule');
-      return;
-    }
-
-    // STEP 3: Get latest prices for user's market
-    const prices = await getLatestPrices(user.market);
-
-    if (!prices || prices.prices.length === 0) {
-      console.log(`[Settings Changed] No prices available for market ${user.market}`);
-      return;
-    }
-
-    // STEP 4: Calculate and schedule new notifications
-    const notifications = calculateUserNotifications(user, prices);
-    const scheduledCount = await scheduleNotifications(fcmToken, user.market, notifications);
-
-    console.log(`[Settings Changed] ✅ Rescheduled ${scheduledCount} notifications`);
-
-  } catch (error) {
-    console.error('[Settings Changed] ❌ Error:', error);
-    throw error;
-  }
-}
-
-// Cancel all unsent notifications for a user
-async function cancelUserNotifications(fcmToken) {
-  const snapshot = await admin.firestore()
-    .collection('scheduled_notifications')
-    .where('fcm_token', '==', fcmToken)
-    .where('sent', '==', false)
-    .get();
-
-  if (snapshot.empty) {
-    return 0;
-  }
-
-  // Delete in batches of 500
-  const batches = [];
-  let currentBatch = admin.firestore().batch();
-  let counter = 0;
-
-  snapshot.docs.forEach(doc => {
-    if (counter >= 500) {
-      batches.push(currentBatch);
-      currentBatch = admin.firestore().batch();
-      counter = 0;
-    }
-    currentBatch.delete(doc.ref);
-    counter++;
-  });
-
-  if (counter > 0) {
-    batches.push(currentBatch);
-  }
-
-  await Promise.all(batches.map(b => b.commit()));
-  return snapshot.size;
-}
-
-// Get latest prices from Firestore cache
+/**
+ * Get latest prices from Firestore cache WITH in-memory caching
+ * This function uses a 2-tier cache system:
+ * 1. In-Memory Cache (instant, survives between warm function calls)
+ * 2. Firestore Cache (fast, persistent)
+ */
 async function getLatestPrices(market) {
+  // TIER 1: Check in-memory cache (no TTL - only invalidated by cachePrices())
+  const cachedEntry = inMemoryPriceCache[market];
+  if (cachedEntry) {
+    console.log(`[Price Cache] ✅ HIT (in-memory) for market ${market}`);
+    return cachedEntry.data;
+  }
+
+  // TIER 2: Cache miss - fetch from Firestore
+  console.log(`[Price Cache] ⚠️ MISS (in-memory) for market ${market} - fetching from Firestore...`);
+
   try {
     const pricesDoc = await admin.firestore()
       .collection('price_cache')
@@ -940,62 +679,498 @@ async function getLatestPrices(market) {
       .get();
 
     if (!pricesDoc.exists) {
-      console.warn(`No cached prices found for market ${market}`);
+      console.warn(`[Price Cache] ❌ No cached prices found in Firestore for market ${market}`);
       return null;
     }
 
-    return pricesDoc.data();
+    const pricesData = pricesDoc.data();
+
+    // Store in in-memory cache (persists until invalidated or cold start)
+    inMemoryPriceCache[market] = {
+      data: pricesData
+    };
+
+    console.log(`[Price Cache] ✅ Loaded from Firestore and cached in memory for ${market}`);
+
+    return pricesData;
+
   } catch (error) {
-    console.error(`Error fetching prices for ${market}:`, error);
+    console.error(`[Price Cache] ❌ Error fetching prices for ${market}:`, error);
     return null;
   }
 }
 
 // Schedule notifications for a user
-async function scheduleNotifications(fcmToken, market, notifications) {
-  if (notifications.length === 0) {
-    return 0;
-  }
+// ========================================================================
+// DELETED: scheduleNotifications (Firestore-based)
+// Replaced by: scheduleNotificationsWithCloudTasks (see below)
+// ========================================================================
 
-  const batches = [];
-  let currentBatch = admin.firestore().batch();
-  let counter = 0;
+// ========================================================================
+// CLOUD TASKS: New notification scheduling system
+// ========================================================================
 
-  for (const notification of notifications) {
-    if (counter >= 500) {
-      batches.push(currentBatch);
-      currentBatch = admin.firestore().batch();
-      counter = 0;
+/**
+ * HTTP Function: Execute Notification Task
+ * Called by Cloud Tasks at the exact scheduled time
+ */
+exports.executeNotificationTask = functions
+  .region(LOCATION)
+  .runWith({
+    memory: '256MB',
+    timeoutSeconds: 60
+  })
+  .https.onRequest(async (req, res) => {
+    // Security: Only allow POST requests
+    if (req.method !== 'POST') {
+      console.warn('[Execute Task] Method not allowed:', req.method);
+      return res.status(405).send('Method Not Allowed');
     }
 
-    const docRef = admin.firestore()
-      .collection('scheduled_notifications')
-      .doc();
+    try {
+      const payload = req.body;
+      const tokenPreview = payload.fcm_token ? payload.fcm_token.substring(0, 20) + '...' : 'unknown';
+      console.log(`[Execute Task] Processing notification for token: ${tokenPreview}`);
 
-    const ttlSeconds = getNotificationTTL(notification.type);
-    const expireAt = new Date(notification.sendAt.getTime() + ttlSeconds * 1000);
+      if (!payload.fcm_token || !payload.title || !payload.body) {
+        console.error('[Execute Task] Missing required fields');
+        return res.status(400).send('Bad Request');
+      }
 
-    currentBatch.set(docRef, {
-      fcm_token: fcmToken,
-      user_market: market,
-      notification: {
+      // Send FCM notification
+      await admin.messaging().send({
+        token: payload.fcm_token,
+        notification: {
+          title: payload.title,
+          body: payload.body
+        },
+        data: {
+          type: String(payload.type || 'general'),
+          tab_index: '0'
+        },
+        android: {
+          priority: 'high',
+          notification: {
+            channelId: getChannelId(payload.type),
+            priority: 'high'
+          }
+        },
+        apns: {
+          headers: {
+            'apns-priority': '10',
+            'apns-expiration': String(Math.floor(Date.now() / 1000) + 3600)
+          },
+          payload: {
+            aps: {
+              alert: {
+                title: payload.title,
+                body: payload.body
+              },
+              sound: 'default'
+            }
+          }
+        }
+      });
+
+      console.log(`[Execute Task] ✅ Notification sent successfully`);
+      return res.status(200).send('OK');
+
+    } catch (error) {
+      console.error('[Execute Task] ❌ Error:', error);
+      return res.status(500).send('Internal Server Error');
+    }
+  });
+
+/**
+ * HTTP Function: Process Notification Preferences (Debounced)
+ * Called by Cloud Tasks after 10s delay to handle burst updates
+ * Reads fresh state from Firestore and schedules notifications
+ */
+exports.processNotificationPreferences = functions
+  .region(LOCATION)
+  .runWith({
+    timeoutSeconds: 120,
+    memory: '512MB'
+  })
+  .https.onRequest(async (req, res) => {
+    try {
+      const { fcmToken, updateTimestamp } = req.body;
+
+      if (!fcmToken) {
+        return res.status(400).send('Missing fcmToken');
+      }
+
+      const tokenPreview = fcmToken.substring(0, 20) + '...';
+      console.log(`[Process Prefs] Processing for token: ${tokenPreview} (ts: ${updateTimestamp})`);
+
+      // Read CURRENT state from Firestore (10s after last change!)
+      const doc = await admin.firestore()
+        .collection('notification_preferences')
+        .doc(fcmToken)
+        .get();
+
+      if (!doc.exists) {
+        console.log(`[Process Prefs] Preferences deleted for ${tokenPreview}`);
+        return res.status(200).send('OK - preferences deleted');
+      }
+
+      const prefs = doc.data();
+
+      // Check if this task is outdated (a newer update happened after this task was created)
+      const currentTimestamp = prefs.updated_at?.toMillis() || 0;
+      if (currentTimestamp > updateTimestamp) {
+        console.log(`[Process Prefs] ⏭️ Skipping outdated task (current: ${currentTimestamp}, task: ${updateTimestamp})`);
+        return res.status(200).send('OK - skipped (outdated)');
+      }
+
+      console.log(`[Process Prefs] ✅ Task is current, processing...`);
+
+      // STEP 1: Cancel ALL old recurring tasks
+      if (prefs.recurring_tasks) {
+        const oldTaskNames = Object.values(prefs.recurring_tasks).flat();
+        if (oldTaskNames.length > 0) {
+          console.log(`[Process Prefs] Cancelling ${oldTaskNames.length} old recurring tasks...`);
+          await cancelCloudTasksByName(oldTaskNames);
+        }
+      }
+
+      // STEP 2: Check if all notifications are disabled
+      if (!prefs.has_any_notification_enabled) {
+        console.log(`[Process Prefs] All notifications disabled for ${tokenPreview}`);
+
+        // Clear recurring_tasks field
+        await admin.firestore()
+          .collection('notification_preferences')
+          .doc(fcmToken)
+          .update({
+            recurring_tasks: admin.firestore.FieldValue.delete()
+          });
+
+        return res.status(200).send('OK - all disabled');
+      }
+
+      // STEP 3: Get latest prices
+      const prices = await getLatestPrices(prefs.market);
+
+      if (!prices || !prices.prices || prices.prices.length === 0) {
+        console.log(`[Process Prefs] No prices available for market ${prefs.market}`);
+        return res.status(200).send('OK - no prices');
+      }
+
+      // STEP 4: Calculate new notifications
+      const notifications = calculateUserNotifications(prefs, prices);
+
+      if (notifications.length === 0) {
+        console.log(`[Process Prefs] No notifications to schedule for ${tokenPreview}`);
+        return res.status(200).send('OK - no notifications');
+      }
+
+      // STEP 5: Create Cloud Tasks
+      console.log(`[Process Prefs] Creating ${notifications.length} Cloud Tasks...`);
+      const createdTasks = await scheduleNotificationsWithCloudTasks(fcmToken, notifications);
+
+      // STEP 6: Save task names (using arrays for multiple tasks per type)
+      const taskMap = {};
+      createdTasks.forEach(task => {
+        if (!taskMap[task.type]) {
+          taskMap[task.type] = [];
+        }
+        taskMap[task.type].push(task.name);
+      });
+
+      await admin.firestore()
+        .collection('notification_preferences')
+        .doc(fcmToken)
+        .update({
+          recurring_tasks: taskMap
+        });
+
+      console.log(`[Process Prefs] ✅ Rescheduled ${notifications.length} recurring notifications for ${tokenPreview}`);
+
+      return res.status(200).send('OK');
+    } catch (error) {
+      console.error('[Process Prefs] Error:', error);
+      return res.status(500).send('Internal Server Error');
+    }
+  });
+
+/**
+ * Firestore Trigger: On Preferences Update (Debounce Trigger)
+ * Triggered when user preferences change
+ * Creates/updates a debounce task with 10s delay (idempotent by fcmToken)
+ */
+exports.onPreferencesUpdate = functions
+  .region(LOCATION)
+  .runWith({
+    timeoutSeconds: 30,
+    memory: '256MB'
+  })
+  .firestore.document('notification_preferences/{fcmToken}')
+  .onWrite(async (change, context) => {
+    const fcmToken = context.params.fcmToken;
+    const oldPreferences = change.before.data();
+    const newPreferences = change.after.data();
+
+    const tokenPreview = fcmToken.substring(0, 20) + '...';
+
+    // CRITICAL: Prevent infinite loop!
+    // If ONLY recurring_tasks changed, this is our own update
+    // Skip processing to avoid trigger loop
+    if (oldPreferences && newPreferences) {
+      const oldWithoutTasks = { ...oldPreferences };
+      const newWithoutTasks = { ...newPreferences };
+      delete oldWithoutTasks.recurring_tasks;
+      delete newWithoutTasks.recurring_tasks;
+
+      if (JSON.stringify(oldWithoutTasks) === JSON.stringify(newWithoutTasks)) {
+        console.log(`[Prefs Update] Skipping - only recurring_tasks changed (avoiding loop)`);
+        return;
+      }
+    }
+
+    console.log(`[Prefs Update] Scheduling debounced processing for ${tokenPreview} (+10s)`);
+
+    // Create debounce task with unique timestamp (multi-task approach)
+    // Each update creates a new task, but only the latest will actually process
+    const parent = tasksClient.queuePath(PROJECT_ID, LOCATION, QUEUE_NAME);
+
+    // Generate safe task ID (fcmToken contains : which is not allowed)
+    const safeTokenId = Buffer.from(fcmToken)
+      .toString('base64')
+      .replace(/\+/g, '-')   // Replace + with -
+      .replace(/\//g, '_')   // Replace / with _
+      .replace(/=/g, '')     // Remove padding =
+      .substring(0, 40);     // Max 40 chars (leave room for timestamp)
+
+    // Add timestamp to make each task unique (avoids Cloud Tasks tombstone conflicts)
+    const updateTimestamp = Date.now();
+    const taskName = tasksClient.taskPath(
+      PROJECT_ID,
+      LOCATION,
+      QUEUE_NAME,
+      `debounce-${safeTokenId}-${updateTimestamp}`
+    );
+
+    const targetUrl = `https://${LOCATION}-${PROJECT_ID}.cloudfunctions.net/processNotificationPreferences`;
+    const taskPayload = {
+      fcmToken,
+      updateTimestamp  // Task will check if it's the latest before processing
+    };
+
+    // Create task (no deletion needed - timestamp check handles deduplication)
+    try {
+      await tasksClient.createTask({
+        parent,
+        task: {
+          name: taskName,
+          scheduleTime: {
+            seconds: Math.floor(Date.now() / 1000) + 10  // 10 seconds delay
+          },
+          httpRequest: {
+            httpMethod: 'POST',
+            url: targetUrl,
+            body: Buffer.from(JSON.stringify(taskPayload)).toString('base64'),
+            headers: {
+              'Content-Type': 'application/json'
+            }
+          }
+        }
+      });
+
+      console.log(`[Prefs Update] ✅ Debounce task scheduled for ${tokenPreview} (+10s, ts: ${updateTimestamp})`);
+    } catch (error) {
+      console.error(`[Prefs Update] ❌ Failed to create debounce task:`, error);
+    }
+  });
+
+
+// ========================================================================
+// FIRESTORE TRIGGER: Window Reminder Created/Updated
+// Manages Cloud Tasks for window reminders (Spartipps feature)
+// ========================================================================
+exports.onWindowReminderUpdate = functions
+  .region(LOCATION)
+  .runWith({
+    timeoutSeconds: 60,
+    memory: '256MB'
+  })
+  .firestore.document('window_reminders/{reminderId}')
+  .onWrite(async (change, context) => {
+    const reminderId = context.params.reminderId;
+    const oldData = change.before.data();
+    const newData = change.after.data();
+
+    console.log(`[Window Reminder] Processing ${reminderId}`);
+
+    // CASE 1: Reminder was deleted
+    if (!newData) {
+      console.log(`[Window Reminder] Deleted - cancelling Cloud Task if exists`);
+      if (oldData && oldData.task_name) {
+        await cancelCloudTasksByName([oldData.task_name]);
+      }
+      return;
+    }
+
+    // CASE 2: Reminder was cancelled
+    if (newData.status === 'cancelled') {
+      console.log(`[Window Reminder] Cancelled - deleting Cloud Task`);
+      if (newData.task_name) {
+        await cancelCloudTasksByName([newData.task_name]);
+      }
+      return;
+    }
+
+    // CASE 3: Reminder was created or rescheduled (status: 'pending')
+    if (newData.status === 'pending') {
+      console.log(`[Window Reminder] Creating Cloud Task...`);
+
+      // Cancel old task if exists
+      if (oldData && oldData.task_name) {
+        await cancelCloudTasksByName([oldData.task_name]);
+      }
+
+      // Create Cloud Task
+      const targetUrl = `https://${LOCATION}-${PROJECT_ID}.cloudfunctions.net/executeNotificationTask`;
+
+      const taskPayload = {
+        fcm_token: newData.fcm_token,
+        title: newData.title,
+        body: newData.body,
+        type: 'window_reminder'
+      };
+
+      // Sanitize reminderId to only contain valid characters [A-Za-z0-9-_]
+      const safeReminderId = reminderId.replace(/[^A-Za-z0-9-_]/g, '_');
+      const taskId = `window-${safeReminderId}-${Date.now()}`;
+      const taskName = tasksClient.taskPath(PROJECT_ID, LOCATION, QUEUE_NAME, taskId);
+
+      const task = {
+        name: taskName,
+        httpRequest: {
+          httpMethod: 'POST',
+          url: targetUrl,
+          body: Buffer.from(JSON.stringify(taskPayload)).toString('base64'),
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        },
+        scheduleTime: {
+          seconds: newData.send_at.seconds
+        }
+      };
+
+      try {
+        await tasksClient.createTask({
+          parent: tasksClient.queuePath(PROJECT_ID, LOCATION, QUEUE_NAME),
+          task
+        });
+
+        // Update reminder with task_name and status
+        await admin.firestore()
+          .collection('window_reminders')
+          .doc(reminderId)
+          .update({
+            task_name: taskName,
+            status: 'scheduled'
+          });
+
+        console.log(`[Window Reminder] ✅ Cloud Task created: ${taskId}`);
+      } catch (error) {
+        console.error(`[Window Reminder] ❌ Failed to create task:`, error);
+
+        // Mark as failed
+        await admin.firestore()
+          .collection('window_reminders')
+          .doc(reminderId)
+          .update({
+            status: 'failed',
+            error: error.message
+          });
+      }
+    }
+
+    // CASE 4: Task already scheduled - no action needed
+    if (newData.status === 'scheduled') {
+      console.log(`[Window Reminder] Already scheduled - no action needed`);
+    }
+  });
+
+/**
+ * Create Cloud Tasks for scheduled notifications
+ */
+async function scheduleNotificationsWithCloudTasks(fcmToken, notifications) {
+  const targetUrl = `https://${LOCATION}-${PROJECT_ID}.cloudfunctions.net/executeNotificationTask`;
+  const createdTasks = [];
+
+  for (const notification of notifications) {
+    try {
+      const taskPayload = {
+        fcm_token: fcmToken,
         title: notification.title,
         body: notification.body,
         type: notification.type
-      },
-      send_at: admin.firestore.Timestamp.fromDate(notification.sendAt),
-      expireAt: admin.firestore.Timestamp.fromDate(expireAt),
-      created_at: admin.firestore.FieldValue.serverTimestamp(),
-      sent: false
-    });
+      };
 
-    counter++;
+      // Create unique task name
+      const timestamp = Date.now();
+      const random = Math.random().toString(36).substring(7);
+      const taskId = `notif-${notification.type}-${fcmToken.substring(0, 16)}-${timestamp}-${random}`;
+      const taskName = tasksClient.taskPath(PROJECT_ID, LOCATION, QUEUE_NAME, taskId);
+
+      const task = {
+        name: taskName,
+        httpRequest: {
+          httpMethod: 'POST',
+          url: targetUrl,
+          body: Buffer.from(JSON.stringify(taskPayload)).toString('base64'),
+          headers: {
+            'Content-Type': 'application/json'
+          }
+        },
+        scheduleTime: {
+          seconds: Math.floor(notification.sendAt.getTime() / 1000)
+        }
+      };
+
+      await tasksClient.createTask({
+        parent: tasksClient.queuePath(PROJECT_ID, LOCATION, QUEUE_NAME),
+        task
+      });
+
+      createdTasks.push({
+        type: notification.type,
+        name: taskName
+      });
+
+      console.log(`[Cloud Tasks] ✅ Created task: ${notification.type} at ${notification.sendAt.toISOString()}`);
+
+    } catch (error) {
+      console.error(`[Cloud Tasks] ❌ Failed to create task for ${notification.type}:`, error);
+      // Continue with other tasks even if one fails
+    }
   }
 
-  if (counter > 0) {
-    batches.push(currentBatch);
-  }
+  return createdTasks;
+}
 
-  await Promise.all(batches.map(b => b.commit()));
-  return notifications.length;
+/**
+ * Cancel Cloud Tasks by their names
+ */
+async function cancelCloudTasksByName(taskNames) {
+  const cancelPromises = taskNames.map(async (taskName) => {
+    try {
+      await tasksClient.deleteTask({ name: taskName });
+      const taskId = taskName.split('/').pop();
+      console.log(`[Cloud Tasks] ✅ Cancelled task: ${taskId}`);
+    } catch (error) {
+      if (error.code === 5) { // NOT_FOUND
+        const taskId = taskName.split('/').pop();
+        console.log(`[Cloud Tasks] ⚠️ Task already executed: ${taskId}`);
+      } else {
+        console.error(`[Cloud Tasks] ❌ Failed to cancel task:`, error);
+      }
+    }
+  });
+
+  await Promise.all(cancelPromises);
 }

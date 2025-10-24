@@ -2,6 +2,8 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:workmanager/workmanager.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:firebase_core/firebase_core.dart';
+import '../firebase_options.dart';
 import 'widget_service.dart';
 import 'price_cache_service.dart';
 
@@ -96,6 +98,18 @@ class BackgroundTaskService {
 void callbackDispatcher() {
   Workmanager().executeTask((task, inputData) async {
     debugPrint('[BackgroundTask] Task started: $task at ${DateTime.now()}');
+
+    // Initialize Firebase for background isolate (required for Firestore access)
+    // Safe to call multiple times - will use cached instance after first init
+    try {
+      await Firebase.initializeApp(
+        options: DefaultFirebaseOptions.currentPlatform,
+      );
+      debugPrint('[BackgroundTask] Firebase initialized');
+    } catch (e) {
+      // Firebase might already be initialized - safe to ignore
+      debugPrint('[BackgroundTask] Firebase init: $e (likely already initialized)');
+    }
 
     try {
       if (task == 'fetchPricesRetry') {

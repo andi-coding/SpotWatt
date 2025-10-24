@@ -78,5 +78,29 @@ service cloud.firestore {
       // Only Firebase Functions can write
       allow write: if false;
     }
+
+    // ========================================================================
+    // Window Reminders - Spartipps reminder scheduling (Cloud Tasks based)
+    // ========================================================================
+    match /window_reminders/{reminderId} {
+      // DEVELOPMENT MODE: Allow all for debugging
+      allow read: if true;
+
+      // PRODUCTION MODE (uncomment when ready):
+      // allow read: if false;  // Client never needs to read
+
+      // Client can create reminders
+      // Must include valid fcm_token, device_name, and timing data
+      allow create: if request.resource.data.fcm_token is string &&
+                       request.resource.data.device_name is string &&
+                       request.resource.data.send_at is timestamp &&
+                       request.resource.data.status == 'pending';
+
+      // Client can update to cancel (status = 'cancelled')
+      allow update: if request.resource.data.status == 'cancelled';
+
+      // Client can delete their own reminders
+      allow delete: if true;  // In dev mode - tighten in production
+    }
   }
 }
