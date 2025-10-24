@@ -34,14 +34,15 @@ binding = "DATA_DB"
 database_name = "spotwatt-data"
 database_id = "b1e2ec5c-adf1-4bba-81a9-10d71996943c"
 
-# Cron Triggers - ENTSO-E publiziert Day-Ahead Preise täglich um 12:30 CET/CEST
+# Cron Triggers - ENTSO-E publiziert Day-Ahead Preise täglich ~13:00 Lokalzeit
+# Optimiert für Sommerzeit (CEST): Erster Versuch 13:50 CEST
+# Winterzeit (CET): Erster Versuch wird im Code abgebrochen (zu früh)
 # Max 5 Trigger (Cloudflare Free Plan Limit)
-# Erster Versuch um 12:00 UTC, dann alle 30 Min, letzter um 14:30 UTC
 [triggers]
 crons = [
-  "0 12 * * *",   # 12:00 UTC = 13:00 CET / 14:00 CEST
-  "30 12 * * *",  # 12:30 UTC = 13:30 CET / 14:30 CEST
-  "0 13 * * *",   # 13:00 UTC = 14:00 CET / 15:00 CEST
-  "30 13 * * *",  # 13:30 UTC = 14:30 CET / 15:30 CEST
-  "30 14 * * *"   # 14:30 UTC = 15:30 CET / 16:30 CEST (letzter Versuch)
+  "50 11 * * *",  # 11:50 UTC = 12:50 CET / 13:50 CEST (Sommer: OK, Winter: zu früh → skip)
+  "50 12 * * *",  # 12:50 UTC = 13:50 CET / 14:50 CEST (60min später)
+  "20 13 * * *",  # 13:20 UTC = 14:20 CET / 15:20 CEST (30min später)
+  "50 13 * * *",  # 13:50 UTC = 14:50 CET / 15:50 CEST (30min später)
+  "20 14 * * *"   # 14:20 UTC = 15:20 CET / 16:20 CEST (30min später, letzter Versuch)
 ]

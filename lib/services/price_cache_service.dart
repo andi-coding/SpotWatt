@@ -25,6 +25,8 @@ class PriceCacheService {
   static const String _cacheKeyDE = 'price_cache_DE';
   static const String _cacheTimestampKeyAT = 'price_cache_timestamp_AT';
   static const String _cacheTimestampKeyDE = 'price_cache_timestamp_DE';
+  static const String _lastApiCallKey = 'last_api_call_timestamp';
+  static const Duration _minApiFetchInterval = Duration(minutes: 30); // Rate limiting
   
   final AwattarService _awattarService = AwattarService();
   final FullCostCalculator _fullCostCalculator = FullCostCalculator();
@@ -153,6 +155,11 @@ class PriceCacheService {
     print('[Cache] Fetching from CloudFlare Worker for $market');
 
     try {
+      // Record API call timestamp for rate limiting
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setInt(_lastApiCallKey, DateTime.now().millisecondsSinceEpoch);
+      print('[Cache] 📡 API call timestamp recorded for rate limiting');
+
       // 1. API call (without Full Cost)
       final prices = await CloudflarePriceService.fetchPrices(
         market: market == 'AT' ? PriceMarket.austria : PriceMarket.germany,
@@ -187,6 +194,9 @@ class PriceCacheService {
   }
   
   /// Prüft ob Cache noch gültig ist
+  /// iOS-spezifische Logik:
+  /// - Nach 14:00 Uhr werden Morgen-Preise benötigt (nicht erst ab 17:00)
+  /// - Rate Limiting: Max. 1 API-Aufruf alle 30 Minuten
   Future<bool> _isCacheValid(List<PriceData> prices, String market) async {
     final prefs = await SharedPreferences.getInstance();
     final (_, timestampKey) = await _getCacheKeys(market);
@@ -200,14 +210,14 @@ class PriceCacheService {
     print('[Cache] Current time: ${now.toString()}');
     print('[Cache] Cache time: ${cacheTime.toString()}');
     print('[Cache] Cache age: ${now.difference(cacheTime).inMinutes} minutes');
-    
+
     // Cache zu alt?
     //if (now.difference(cacheTime) > _cacheValidity) return false;
-    
+
     // Debug: Show all available dates in prices
     final availableDates = prices.map((p) => '${p.startTime.day}/${p.startTime.month} ${p.startTime.hour}h').toSet().toList();
     print('[Cache] Available price dates/hours: $availableDates');
-    
+
     // RULE 1: Haben wir Preise für HEUTE?
     final hasToday = prices.any((p) =>
       p.startTime.day == now.day &&
@@ -220,11 +230,7 @@ class PriceCacheService {
       return false;
     }
 
-    // RULE 2: Nach 17:00 Uhr MÜSSEN Morgen-Preise da sein!
-    // Begründung:
-    // - ENTSO-E published Preise ~14:00 Uhr (sicher bis 17:00)
-    // - User plant abends (17-21 Uhr) für morgen
-    // - Falls FCM fehlschlägt, holen wir Preise spätestens beim App-Open ab 17:00
+    // Check if tomorrow prices exist
     final tomorrow = now.add(const Duration(days: 1));
     final hasTomorrow = prices.any((p) =>
       p.startTime.day == tomorrow.day &&
@@ -232,21 +238,69 @@ class PriceCacheService {
       p.startTime.year == tomorrow.year
     );
 
-    // Critical time window: After 17:00, tomorrow prices are REQUIRED
-    if (now.hour >= 17 && !hasTomorrow) {
-      print('[Cache] ❌ After 17:00 but missing tomorrow prices - INVALID');
+    // RULE 2: Platform-specific tomorrow price requirements
+    // iOS: 14:00, Android: 16:30
+    final int tomorrowRequiredHour = Platform.isIOS ? 14 : 16;
+    final int tomorrowRequiredMinute = Platform.isIOS ? 0 : 30;
+
+    // iOS: After 14:00, Android: After 16:30
+    // Begründung (iOS):
+    // - ENTSO-E published Preise ~13:00 Uhr
+    // - iOS silent push funktioniert NICHT nach Force Quit
+    // - User öffnet App nach 14:00 → muss Morgen-Preise sofort bekommen
+    // Begründung (Android):
+    // - FCM funktioniert zuverlässig auch nach Force Quit
+    // - Fallback ab 16:30 als Sicherheitsnetz (falls FCM fehlschlägt)
+    // - CloudFlare Cron läuft letztmalig 15:20 CET / 16:20 CEST
+    // - 16:30 = 10-70 Min nach letztem Cron (je nach Jahreszeit)
+    final requiredTime = now.hour * 60 + now.minute;
+    final thresholdTime = tomorrowRequiredHour * 60 + tomorrowRequiredMinute;
+
+    if (requiredTime >= thresholdTime && !hasTomorrow) {
+      // Rate Limiting: Nicht zu oft API aufrufen wenn Preise noch nicht da sind
+      final canCallApi = await _canCallApi();
+      if (!canCallApi) {
+        print('[Cache] ⚠️ Missing tomorrow prices BUT rate limit active');
+        print('[Cache] ℹ️ Keeping cache to prevent excessive API calls');
+        return true; // Cache als "valid" betrachten um API-Spam zu vermeiden
+      }
+
+      print('[Cache] ❌ After $tomorrowRequiredHour:00 (${Platform.operatingSystem}) but missing tomorrow prices - INVALID');
       print('[Cache] Expected tomorrow: ${tomorrow.day}/${tomorrow.month}/${tomorrow.year}');
       return false;
     }
 
-    // Before 17:00, tomorrow prices are optional (ENTSO-E might not have published yet)
-    if (now.hour < 17 && !hasTomorrow) {
-      print('[Cache] ℹ️ Before 17:00, tomorrow prices not yet required (cache still valid)');
+    // Before required hour, tomorrow prices are optional (ENTSO-E might not have published yet)
+    if (now.hour < tomorrowRequiredHour && !hasTomorrow) {
+      print('[Cache] ℹ️ Before $tomorrowRequiredHour:00, tomorrow prices not yet required (cache still valid)');
     } else if (hasTomorrow) {
       print('[Cache] ✅ Tomorrow prices available');
     }
 
     print('[Cache] ✅ Cache is valid');
+    return true;
+  }
+
+  /// Rate Limiting: Prüft ob API-Aufruf erlaubt ist
+  /// Returns true wenn API aufgerufen werden darf (>30 min seit letztem Aufruf)
+  Future<bool> _canCallApi() async {
+    final prefs = await SharedPreferences.getInstance();
+    final lastApiCall = prefs.getInt(_lastApiCallKey);
+
+    if (lastApiCall == null) {
+      print('[Cache] Rate limit: No previous API call, OK to call');
+      return true;
+    }
+
+    final lastCallTime = DateTime.fromMillisecondsSinceEpoch(lastApiCall);
+    final timeSinceLastCall = DateTime.now().difference(lastCallTime);
+
+    if (timeSinceLastCall < _minApiFetchInterval) {
+      print('[Cache] Rate limit: Only ${timeSinceLastCall.inMinutes} min since last API call (min: ${_minApiFetchInterval.inMinutes} min)');
+      return false;
+    }
+
+    print('[Cache] Rate limit: ${timeSinceLastCall.inMinutes} min since last API call, OK to call');
     return true;
   }
   

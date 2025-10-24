@@ -650,8 +650,27 @@ export default {
     }
   },
 
-  // Scheduled handler - runs multiple times starting at 14:00 UTC
+  // Scheduled handler - runs multiple times starting at 11:50 UTC
   async scheduled(event, env, ctx) {
+    const now = new Date();
+
+    // Berechne Lokalzeit für Österreich (ENTSO-E publiziert nach CET/CEST)
+    const localTimeStr = now.toLocaleString('en-US', {
+      timeZone: 'Europe/Vienna',
+      hour: '2-digit',
+      hour12: false
+    });
+    const localHour = parseInt(localTimeStr.split(',')[1].trim().split(':')[0]);
+
+    // Zu früh? (vor 13:00 Lokalzeit)
+    // Im Winter (CET): 11:50 UTC = 12:50 CET → skip
+    // Im Sommer (CEST): 11:50 UTC = 13:50 CEST → run
+    if (localHour < 13) {
+      console.log(`⏸️ Too early: ${localHour}:xx local time (CET) - ENTSO-E likely hasn't published yet, skipping`);
+      return;
+    }
+
+    console.log(`✅ Local time check passed: ${localHour}:xx - proceeding with scheduled job`);
     await runScheduledJob(env, false);
   }
 };
